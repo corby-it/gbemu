@@ -1,0 +1,23 @@
+# linux build stuff
+bin
+build
+*.o
+*.a
+*.so
+
+# eclipse stuff
+.cproject
+.project
+.settings
+
+# visual studio stuff
+*.tlog
+.vs
+
+# windows build stuff
+Debug
+Release
+
+# other
+*.log
+windows/*.bmp
