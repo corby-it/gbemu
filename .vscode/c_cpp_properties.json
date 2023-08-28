@@ -1,0 +1,28 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "includePath": [
+                "${workspaceFolder}/src/**"
+            ],
+            "defines": [],
+            "compilerPath": "/usr/bin/g++",
+            "cStandard": "c11",
+            "cppStandard": "c++14",
+            "intelliSenseMode": "linux-gcc-x64",
+            "compilerArgs": [
+                "-std=c++14",
+                "-fmessage-length=0",
+                "-fsigned-char",
+                "-ffunction-sections",
+                "-fdata-sections",
+                "-Wall",
+                "-Wextra",
+                "-pedantic",
+                "-Werror",
+                "-Wno-psabi"
+            ]
+        }
+    ],
+    "version": 4
+}
