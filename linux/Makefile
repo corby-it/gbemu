@@ -31,7 +31,8 @@ CFG ?= release
 PREPROCESSOR_DEFINES += \
 -DMAJOR_VER=$(MAJOR_VER) \
 -DMINOR_VER=$(MINOR_VER) \
--DBUILD_NUM=$(BUILD_NUM) 
+-DBUILD_NUM=$(BUILD_NUM) \
+-DPROJECT_NAME=$(PROJECT_NAME)
 
 
 
@@ -104,7 +105,8 @@ SRC_ROOT := ../src
 
 SRC_DIRS := \
 $(SRC_ROOT) \
-$(SRC_ROOT)/imgui 
+$(SRC_ROOT)/imgui \
+$(SRC_ROOT)/ui 
 
 
 # Add all individual c/cpp files here from other places where not everything must be compiled
