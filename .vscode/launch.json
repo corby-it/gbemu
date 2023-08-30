@@ -5,6 +5,16 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Debug LLDB",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/linux/bin/debug/gbemu",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopOnEntry": false,
+            "preLaunchTask": "Build debug"
+        },
+        {
             "name": "Debug GDB",
             "type": "cppdbg",
             "request": "launch",

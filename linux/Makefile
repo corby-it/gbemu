@@ -106,7 +106,8 @@ SRC_ROOT := ../src
 SRC_DIRS := \
 $(SRC_ROOT) \
 $(SRC_ROOT)/imgui \
-$(SRC_ROOT)/ui 
+$(SRC_ROOT)/ui \
+$(SRC_ROOT)/gb
 
 
 # Add all individual c/cpp files here from other places where not everything must be compiled
