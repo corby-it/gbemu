@@ -31,11 +31,6 @@ struct Registers {
     // 7        zero flag: 1 if the result of the last math operation is 0 or if two values match when using the CP instruction
     uint8_t flags;
 
-    static constexpr uint8_t maskZ = 0b10000000;
-    static constexpr uint8_t maskN = 0b01000000;
-    static constexpr uint8_t maskH = 0b00100000;
-    static constexpr uint8_t maskC = 0b00010000;
-
 
     // Utils --------------------------------------------------------------------------------------
     uint16_t BC() const { return (B << 8) | C; }
@@ -59,6 +54,15 @@ struct Registers {
     
 
     void reset();
+
+    static constexpr const uint16_t PCinitialValue = 0x0000;
+
+private:
+
+    static constexpr const uint8_t maskZ = 0b10000000;
+    static constexpr const uint8_t maskN = 0b01000000;
+    static constexpr const uint8_t maskH = 0b00100000;
+    static constexpr const uint8_t maskC = 0b00010000;
 };
 
 
@@ -71,6 +75,10 @@ public:
     void reset();
 
     bool step();
+
+    uint32_t elapsedCycles() const { return mCycles; }
+    const Registers& regs() const { return mRegs; }
+
 
     // the gb cpu actually runs at 4.194304 MHz but, since we are not counting actual clock
     // cycles but machine cycles (clock cycles / 4) we have to use the clock frequency

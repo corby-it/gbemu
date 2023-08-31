@@ -2,6 +2,7 @@
 #include "Cpu.h"
 #include <cassert>
 
+
 void Registers::reset()
 {
     // at reset we set all registers to 0, the actual hardware 
@@ -13,7 +14,7 @@ void Registers::reset()
     E = 0;
     H = 0;
     L = 0;
-    PC = 0;
+    PC = PCinitialValue;
     SP = 0;
     flags = 0;
 }
@@ -54,7 +55,7 @@ uint8_t CPU::execute(uint8_t opcode, bool& ok)
     // - https://gbdev.io/gb-opcodes/optables/
     // - https://gekkio.fi/files/gb-docs/gbctr.pdf
 
-    // this function return the number of machine cycles used to execute the instruction
+    // this function returns the number of machine cycles used to execute the instruction
 
 
     switch(opcode) {

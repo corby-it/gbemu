@@ -2,6 +2,12 @@
 #include "gb/Bus.h"
 #include "gb/Cpu.h"
 
+// this is required to implement a test runner for doctest, otherwise it won't compile
+// in release mode everything will be stripped away
+#define DOCTEST_CONFIG_IMPLEMENT
+#include "doctest/doctest.h"
+
+
 // Main code
 int main(int argc, char **argv)
 {
@@ -24,7 +30,7 @@ int main(int argc, char **argv)
     bus.write8(0x0A, 0x10); // jp addrL
     bus.write8(0x0B, 0x00); // jp addrH
     bus.write8(0x0C, 0x80); // ADD B
-    bus.write8(0x0D, 0xC3); // JP to compare
+    bus.write8(0x0D, 0xC3); // JP to CP A
     bus.write8(0x0E, 0x08); // jp addrL
     bus.write8(0x0F, 0x00); // jp addrH
     bus.write8(0x10, 0x01); // wrong opcode to stop the cpu

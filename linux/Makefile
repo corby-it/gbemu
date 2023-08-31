@@ -38,19 +38,22 @@ PREPROCESSOR_DEFINES += \
 
 ifeq ($(CFG),release)
 	OPTIMIZATION_FLAGS = -O3
+	PREPROCESSOR_DEFINES += -DDOCTEST_CONFIG_DISABLE
 else ifeq ($(CFG),debug)
 	OPTIMIZATION_FLAGS = -O0 -g3
 else
 	$(error error: CFG must be 'release' or 'debug', it was '$(CFG)')
 endif
 
+$(info PPDEFINES: $(PREPROCESSOR_DEFINES))
+
 
 WARNING_FLAGS = -Wall -Wextra -pedantic -Werror -Wno-psabi
-OTHER_FLAGS = -c -std=c++14 -fmessage-length=0 -fsigned-char -ffunction-sections -fdata-sections
+OTHER_FLAGS = -c -std=c++17 -fmessage-length=0 -fsigned-char -ffunction-sections -fdata-sections
 GLFW3_CXXFLAGS = `pkg-config --cflags glfw3`
 GLFW3_LDFLAGS = `pkg-config --static --libs glfw3`
 # OPTIMIZATION_FLAGS:
-# -O0 / -O2: optimization level (0: no optimization, good for debug builds, 2: level 2 optimization)
+# -O0 / -O3: optimization level (0: no optimization, good for debug builds, 3: max optimization)
 # -g3: compile with level 3 debug information
 #
 # WARNING_FLAGS:
@@ -63,7 +66,7 @@ GLFW3_LDFLAGS = `pkg-config --static --libs glfw3`
 #
 # OTHER_FLAGS:
 # -c: compile to object files without linking
-# -std=c++14: uses c++14 features
+# -std=c++17: uses c++17 features
 # -fmessage-length=n: Try to format error messages so that they fit on lines of about n characters. The default is 72 characters 
 #		for g++ and 0 for the rest of the front ends supported by GCC. If n is zero, then no line-wrapping is done; each error 
 #		message appears on a single line.
@@ -97,8 +100,6 @@ BIN_DIR := $(BIN_ROOT_DIR)/$(CFG)
 
 DEPS_DIR := $(BUILD_DIR)/deps
 
-BINARY_NAME := $(BIN_DIR)/$(PROJECT_NAME)
-
 
 # Add all directories where ALL source files must be compiled 
 SRC_ROOT := ../src
@@ -107,7 +108,8 @@ SRC_DIRS := \
 $(SRC_ROOT) \
 $(SRC_ROOT)/imgui \
 $(SRC_ROOT)/ui \
-$(SRC_ROOT)/gb
+$(SRC_ROOT)/gb \
+$(SRC_ROOT)/tests
 
 
 # Add all individual c/cpp files here from other places where not everything must be compiled
@@ -138,6 +140,10 @@ vpath %.cpp $(SRC_DIRS) $(ADDITIONAL_SRC_DIRS)
 # Objects and sources
 # --------------------------------------------------------------------------------------------------
 
+BINARY_NAME := $(BIN_DIR)/$(PROJECT_NAME)
+TESTS_BINARY_NAME = $(BINARY_NAME)-tests
+
+
 # strip individual source files from their directory path
 CPP_SOURCES += $(notdir $(SRC_FILES))
 
@@ -150,15 +156,36 @@ OBJS += $(patsubst %.cpp,%.o,$(filter %.cpp,$(CPP_SOURCES)))
 # additional libraries that must be linked 
 LIBS += -lGL
 
+# we need to remove the main object file from the objects files when 
+# we are building the test binary
+TEST_OBJS := $(filter-out main.o,$(OBJS))
+# on the other hand we need to remove the main_tests object file when we build the regular binary
+OBJS := $(filter-out main_tests.o,$(OBJS))
+
 
 
 # --------------------------------------------------------------------------------------------------
 # Targets
 # --------------------------------------------------------------------------------------------------
 
-.PHONY: all clean cleandeps cleanall cleandriver documentation dos2unix
+.PHONY: all clean cleandeps cleanall tests
 
 .DELETE_ON_ERROR:
+
+
+tests: $(TESTS_BINARY_NAME)
+
+
+$(TESTS_BINARY_NAME): $(addprefix $(BUILD_DIR)/,$(TEST_OBJS)) | $(BIN_DIR)
+	@echo 'Building target: $@'
+	@echo 'Updated prerequisites: $?'
+	@echo 'Invoking: G++ Linker v$(CXXVERSION)'
+	$(CXX) $(LDFLAGS) -o "$@" $^ $(LIB_DIRS) $(LIBS) $(GLFW3_LDFLAGS)
+	@echo 'Finished building target: $@'
+	@echo ' '
+
+
+
 
 
 all: $(BINARY_NAME)
@@ -185,20 +212,6 @@ $(BINARY_NAME): $(addprefix $(BUILD_DIR)/,$(OBJS)) | $(BIN_DIR)
 	@echo 'Finished building target: $@'
 	@echo ' '
 
-
-documentation:
-	@echo 'Generating documentation...'
-	$(MAKE) -C $(DOCS_DIR)
-	@echo 'Done.'
-	@echo ' '
-
-
-dos2unix:
-	@echo 'Converting newline characters to LF in source files...'
-	dos2unix $(foreach dir,$(SRC_DIRS),$(wildcard $(dir)/*.h))
-	dos2unix $(foreach dir,$(SRC_DIRS),$(wildcard $(dir)/*.cpp))
-	@echo 'Done converting newline characters'
-	@echo ' '
 
 
 
@@ -240,13 +253,7 @@ cleandeps:
 	@echo 'Finished $@ for CFG=$(CFG)'
 	@echo ' '
 
-cleandocs:
-	@echo 'Removing all documentation files'
-	$(MAKE) -C $(DOCS_DIR) clean
-	@echo 'Finished $@'
-	@echo ' '
-
-cleanall: cleandocs
+cleanall:
 	@echo 'Removing all files for all configurations'
 	-$(RMDIR) $(BUILD_ROOT_DIR)/* $(BIN_ROOT_DIR)/*
 	@echo 'Finished $@'
