@@ -4,23 +4,49 @@
 
 #include <cstdint>
 #include <cstring>
+#include <cassert>
 
-
+template<size_t N>
 class WRam {
 public:
     WRam() {
         memset(mData, 0, sizeof(mData));
     }
 
-    uint8_t read8(uint16_t addr) const;
-    uint16_t read16(uint16_t addr) const;
+    uint8_t read8(uint16_t addr) const
+    {
+        assert(addr < N);
+        return mData[addr];
+    }
 
-    void write8(uint16_t addr, uint8_t val);
-    void write16(uint16_t addr, uint16_t val);
+    uint16_t read16(uint16_t addr) const
+    {
+        assert(addr < N - 1);
+        // the GB is little endian so:
+        // - the byte at [addr] is the lsb
+        // - the byte at [addr+1] is the msb
+        return mData[addr] | mData[addr+1];
+    }
+
+    void write8(uint16_t addr, uint8_t val)
+    {
+        assert(addr < N);
+        mData[addr] = val;
+    }
+  
+    void write16(uint16_t addr, uint16_t val)
+    {
+        assert(addr < N - 1);
+        // the GB is little endian so:
+        // - the lsb must be written at [addr]
+        // - the msb must be written at [addr+1]
+        mData[addr] = val & 0xff;
+        mData[addr+1] = (val >> 8) & 0xff;
+    }
 
 
 private:
-    uint8_t mData[64*1024];
+    uint8_t mData[N];
 
 };
 

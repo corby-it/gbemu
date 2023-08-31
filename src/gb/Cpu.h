@@ -37,6 +37,19 @@ struct Registers {
     uint16_t DE() const { return (D << 8) | E; }
     uint16_t HL() const { return (H << 8) | L; }
 
+    void setBC(uint16_t val) {
+        B = val >> 8;
+        C = val & 0xff;
+    }
+    void setDE(uint16_t val) {
+        D = val >> 8;
+        E = val & 0xff;
+    }
+    void setHL(uint16_t val) {
+        H = val >> 8;
+        L = val & 0xff;
+    }
+
     bool getZ() const { return flags >> 7; }
     bool getN() const { return (flags >> 6) & 0x1; }
     bool getH() const { return (flags >> 5) & 0x1; }
@@ -54,6 +67,9 @@ struct Registers {
     
 
     void reset();
+
+    bool equal(const Registers& other);
+    bool equalSkipPC(const Registers& other);
 
     static constexpr const uint16_t PCinitialValue = 0x0000;
 
@@ -77,8 +93,8 @@ public:
     bool step();
 
     uint32_t elapsedCycles() const { return mCycles; }
-    const Registers& regs() const { return mRegs; }
-
+    
+    Registers regs;
 
     // the gb cpu actually runs at 4.194304 MHz but, since we are not counting actual clock
     // cycles but machine cycles (clock cycles / 4) we have to use the clock frequency
@@ -110,7 +126,6 @@ private:
 
     // Members ------------------------------------------------------------------------------------
 
-    Registers mRegs;
 
     // each instruction of the gameboy uses a number of clock cycles that is 
     // divisible by 4, here we use that number already divided by 4 (usually called m-cycles,

@@ -15,7 +15,7 @@ int main(int argc, char **argv)
     (void)argc;
     (void)argv;
 
-    Bus bus;
+    TestBus bus;
     CPU cpu(bus);
 
     bus.write8(0x00, op::LD_A_n8); // LD A,0
