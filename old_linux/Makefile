@@ -45,7 +45,6 @@ else
 	$(error error: CFG must be 'release' or 'debug', it was '$(CFG)')
 endif
 
-$(info PPDEFINES: $(PREPROCESSOR_DEFINES))
 
 
 WARNING_FLAGS = -Wall -Wextra -pedantic -Werror -Wno-psabi

@@ -1,7 +1,9 @@
 
+#include "Version.h"
 #include "gb/Bus.h"
 #include "gb/Cpu.h"
 #include "gb/Opcodes.h"
+#include <cstdio>
 
 // this is required to implement a test runner for doctest, otherwise it won't compile
 // in release mode everything will be stripped away
@@ -14,6 +16,9 @@ int main(int argc, char **argv)
 {
     (void)argc;
     (void)argv;
+
+    printf("%s - %s\n", PROJECT_NAME_STR, VERSION_STR);
+
 
     TestBus bus;
     CPU cpu(bus);
