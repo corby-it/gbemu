@@ -373,7 +373,7 @@ uint8_t CPU::execute(uint8_t opcode, bool& ok)
     }
 
 
-    return 1;
+    //return 1;
 }
 
 uint8_t CPU::opLdImm(uint8_t& dst)

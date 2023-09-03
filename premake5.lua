@@ -47,6 +47,9 @@ workspace(project_name)
 
     includedirs {
         src_base,
+    }
+
+    externalincludedirs {
         src_base .. "/imgui",
         src_base .. "/imgui/backends",
     }
@@ -58,8 +61,10 @@ workspace(project_name)
         "BUILD_VER=" .. _OPTIONS["build_ver"]
     }
 
-    -- only link against OpenGL system library
-    links { "GL" }
+    flags {
+        "FatalWarnings"
+    }
+    
 
     filter "configurations:debug"
         symbols "On"
@@ -68,6 +73,9 @@ workspace(project_name)
     filter "configurations:release"
         symbols "Off"
         optimize "Speed"
+        flags {
+            "LinkTimeOptimization"
+        }
         defines { "DOCTEST_CONFIG_DISABLE" }
 
     filter { "system:linux", "action:gmake" }
@@ -89,9 +97,26 @@ workspace(project_name)
             "-flto=auto",
             "`pkg-config --static --libs glfw3`"
         }
+        links { 
+            "GL"
+        }
+
+    filter { "system:windows", "action:vs*" }
+        externalincludedirs {
+            "$(LIBRARIES_PATH)/glfw-3.3.8.bin.WIN64/include"
+        }
+        libdirs {
+            "$(LIBRARIES_PATH)/glfw-3.3.8.bin.WIN64/lib-vc2022"
+        }
+        links {
+            "opengl32.lib",
+            "glfw3.lib"
+        }
+        warnings "Extra"
+
 
     project(project_name)
-        kind "WindowedApp"
+        kind "ConsoleApp"
         language "C++"
         cppdialect "C++17"
         
