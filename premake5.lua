@@ -61,9 +61,8 @@ workspace(project_name)
         "BUILD_VER=" .. _OPTIONS["build_ver"]
     }
 
-    flags {
-        "FatalWarnings"
-    }
+    warnings "Extra"
+    flags { "FatalWarnings" }
     
 
     filter "configurations:debug"
@@ -80,21 +79,16 @@ workspace(project_name)
 
     filter { "system:linux", "action:gmake" }
         buildoptions { 
-            "-Wall",
-            "-Wextra",
             "-pedantic",
-            "-Werror",
             "-Wno-psabi",
             "-fmessage-length=0",
             "-fsigned-char",
             "-ffunction-sections",
             "-fdata-sections",
-            "-flto=auto",
             "`pkg-config --cflags glfw3`"
         }
         linkoptions {
             "-Wl,--gc-sections",
-            "-flto=auto",
             "`pkg-config --static --libs glfw3`"
         }
         links { 
@@ -113,7 +107,6 @@ workspace(project_name)
             "opengl32.lib",
             "glfw3_mt.lib"
         }
-        warnings "Extra"
         systemversion "latest"
         staticruntime "On"
     
