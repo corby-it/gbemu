@@ -492,7 +492,7 @@ TEST_CASE("CPU test LD reg,[HL]") {
     CPU cpu(bus);
 
     const uint8_t val = 0x32;
-    const uint16_t addr = 0xff00;
+    const uint16_t addr = 0x1234;
     const uint16_t pc = Registers::PCinitialValue;
 
     cpu.regs.setHL(addr);
@@ -517,12 +517,6 @@ TEST_CASE("CPU test LD reg,[HL]") {
         CHECK(cpu.regs.C == val);
         CHECK(cpu.elapsedCycles() == 2);
     }
-    SUBCASE("Test LD C,[HL]") {
-        bus.write8(pc, op::LD_C_inHL);
-        cpu.step();
-        CHECK(cpu.regs.C == val);
-        CHECK(cpu.elapsedCycles() == 2);
-    }
     SUBCASE("Test LD D,[HL]") {
         bus.write8(pc, op::LD_D_inHL);
         cpu.step();
@@ -535,19 +529,81 @@ TEST_CASE("CPU test LD reg,[HL]") {
         CHECK(cpu.regs.E == val);
         CHECK(cpu.elapsedCycles() == 2);
     }
-        SUBCASE("Test LD H,[HL]") {
-        bus.write8(pc, op::LD_H_inHL);
-        cpu.step();
-        CHECK(cpu.regs.H == val);
-        CHECK(cpu.elapsedCycles() == 2);
-    }
     SUBCASE("Test LD H,[HL]") {
         bus.write8(pc, op::LD_H_inHL);
         cpu.step();
         CHECK(cpu.regs.H == val);
         CHECK(cpu.elapsedCycles() == 2);
     }
+    SUBCASE("Test LD L,[HL]") {
+        bus.write8(pc, op::LD_L_inHL);
+        cpu.step();
+        CHECK(cpu.regs.L == val);
+        CHECK(cpu.elapsedCycles() == 2);
+    }
 }
+
+
+
+TEST_CASE("CPU test LD [HL],reg") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint8_t val = 0x32;
+    const uint16_t addr = 0x1234;
+    const uint16_t pc = Registers::PCinitialValue;
+
+    cpu.regs.setHL(addr);
+
+    SUBCASE("Test LD [HL],A") {
+        cpu.regs.A = val;
+        bus.write8(pc, op::LD_inHl_A);
+        cpu.step();
+        CHECK(bus.read8(addr) == val);
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+    SUBCASE("Test LD [HL],B") {
+        cpu.regs.B = val;
+        bus.write8(pc, op::LD_inHl_B);
+        cpu.step();
+        CHECK(bus.read8(addr) == val);
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+    SUBCASE("Test LD [HL],C") {
+        cpu.regs.C = val;
+        bus.write8(pc, op::LD_inHl_C);
+        cpu.step();
+        CHECK(bus.read8(addr) == val);
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+    SUBCASE("Test LD [HL],D") {
+        cpu.regs.D = val;
+        bus.write8(pc, op::LD_inHl_D);
+        cpu.step();
+        CHECK(bus.read8(addr) == val);
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+    SUBCASE("Test LD [HL],E") {
+        cpu.regs.E = val;
+        bus.write8(pc, op::LD_inHl_E);
+        cpu.step();
+        CHECK(bus.read8(addr) == val);
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+    SUBCASE("Test LD [HL],H") {
+        bus.write8(pc, op::LD_inHl_H);
+        cpu.step();
+        CHECK(bus.read8(addr) == addr >> 8);
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+    SUBCASE("Test LD [HL],L") {
+        bus.write8(pc, op::LD_inHl_L);
+        cpu.step();
+        CHECK(bus.read8(addr) == (addr & 0xff));
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+}
+
 
 
 TEST_CASE("CPU test ADD A,reg") {
@@ -632,7 +688,7 @@ TEST_CASE("CPU test ADD A,[HL]") {
     TestBus bus;
     CPU cpu(bus);
 
-    const uint16_t addr = 0xff00;
+    const uint16_t addr = 0x1234;
     const uint16_t pc = Registers::PCinitialValue;
 
     cpu.regs.setHL(addr);

@@ -108,7 +108,8 @@ private:
     // instructions
     uint8_t opLdImm(uint8_t& dst);
     uint8_t opLdReg(uint8_t& dst, const uint8_t& src);
-    uint8_t opLdInd(uint8_t& dst);
+    uint8_t opLdRegInd(uint8_t& dst);
+    uint8_t opLdIndReg(const uint8_t& src);
     uint8_t opAddReg(const uint8_t& reg);
     uint8_t opAddInd();
     uint8_t opJpImm();
