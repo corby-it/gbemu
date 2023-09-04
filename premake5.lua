@@ -102,6 +102,7 @@ workspace(project_name)
         }
 
     filter { "system:windows", "action:vs*" }
+        startproject(project_name)
         externalincludedirs {
             "$(LIBRARIES_PATH)/glfw-3.3.8.bin.WIN64/include"
         }
@@ -110,9 +111,16 @@ workspace(project_name)
         }
         links {
             "opengl32.lib",
-            "glfw3.lib"
+            "glfw3_mt.lib"
         }
         warnings "Extra"
+        systemversion "latest"
+        staticruntime "On"
+    
+    filter { "system:windows", "action:vs*", "configurations:debug" }
+        ignoredefaultlibraries {
+            "LIBCMT"
+        }
 
 
     project(project_name)
