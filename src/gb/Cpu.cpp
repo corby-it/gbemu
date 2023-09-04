@@ -169,40 +169,40 @@ uint8_t CPU::execute(uint8_t opcode, bool& ok)
         case op::LD_C_A       : return opLdReg(regs.C, regs.A); // LD C,A
 
         // 0x5*
-        //case op::LD_D_B       : return 1;
-        //case op::LD_D_C       : return 1;
-        //case op::LD_D_D       : return 1;
-        //case op::LD_D_E       : return 1;
-        //case op::LD_D_H       : return 1;
-        //case op::LD_D_L       : return 1;
+        case op::LD_D_B       : return opLdReg(regs.D, regs.B); // LD D,B
+        case op::LD_D_C       : return opLdReg(regs.D, regs.C); // LD D,C
+        case op::LD_D_D       : return opLdReg(regs.D, regs.D); // LD D,D
+        case op::LD_D_E       : return opLdReg(regs.D, regs.E); // LD D,E
+        case op::LD_D_H       : return opLdReg(regs.D, regs.H); // LD D,H
+        case op::LD_D_L       : return opLdReg(regs.D, regs.L); // LD D,L
         case op::LD_D_inHL    : return opLdInd(regs.D); // LD A,[HL]
-        //case op::LD_D_A       : return 1;
-        //case op::LD_E_B       : return 1;
-        //case op::LD_E_C       : return 1;
-        //case op::LD_E_D       : return 1;
-        //case op::LD_E_E       : return 1;
-        //case op::LD_E_H       : return 1;
-        //case op::LD_E_L       : return 1;
+        case op::LD_D_A       : return opLdReg(regs.D, regs.A); // LD D,A
+        case op::LD_E_B       : return opLdReg(regs.E, regs.B); // LD E,B
+        case op::LD_E_C       : return opLdReg(regs.E, regs.C); // LD E,C
+        case op::LD_E_D       : return opLdReg(regs.E, regs.D); // LD E,D
+        case op::LD_E_E       : return opLdReg(regs.E, regs.E); // LD E,E
+        case op::LD_E_H       : return opLdReg(regs.E, regs.H); // LD E,H
+        case op::LD_E_L       : return opLdReg(regs.E, regs.L); // LD E,L
         case op::LD_E_inHL    : return opLdInd(regs.E); // LD E,[HL]
-        //case op::LD_E_A       : return 1;
+        case op::LD_E_A       : return opLdReg(regs.E, regs.A); // LD E,A
 
         // 0x6*
-        //case op::LD_H_B       : return 1;
-        //case op::LD_H_C       : return 1;
-        //case op::LD_H_D       : return 1;
-        //case op::LD_H_E       : return 1;
-        //case op::LD_H_H       : return 1;
-        //case op::LD_H_L       : return 1;
+        case op::LD_H_B       : return opLdReg(regs.H, regs.B); // LD H,B
+        case op::LD_H_C       : return opLdReg(regs.H, regs.C); // LD H,C
+        case op::LD_H_D       : return opLdReg(regs.H, regs.D); // LD H,D
+        case op::LD_H_E       : return opLdReg(regs.H, regs.E); // LD H,E
+        case op::LD_H_H       : return opLdReg(regs.H, regs.H); // LD H,H
+        case op::LD_H_L       : return opLdReg(regs.H, regs.L); // LD H,L
         case op::LD_H_inHL    : return opLdInd(regs.H); // LD H,[HL]
-        //case op::LD_H_A       : return 1;
-        //case op::LD_L_B       : return 1;
-        //case op::LD_L_C       : return 1;
-        //case op::LD_L_D       : return 1;
-        //case op::LD_L_E       : return 1;
-        //case op::LD_L_H       : return 1;
-        //case op::LD_L_L       : return 1;
+        case op::LD_H_A       : return opLdReg(regs.H, regs.A); // LD H,A
+        case op::LD_L_B       : return opLdReg(regs.L, regs.B); // LD L,B
+        case op::LD_L_C       : return opLdReg(regs.L, regs.C); // LD L,C
+        case op::LD_L_D       : return opLdReg(regs.L, regs.D); // LD L,D
+        case op::LD_L_E       : return opLdReg(regs.L, regs.E); // LD L,E
+        case op::LD_L_H       : return opLdReg(regs.L, regs.H); // LD L,H
+        case op::LD_L_L       : return opLdReg(regs.L, regs.L); // LD L,L
         case op::LD_L_inHL    : return opLdInd(regs.L); // LD L,[HL]
-        //case op::LD_L_A       : return 1;
+        case op::LD_L_A       : return opLdReg(regs.L, regs.A); // LD L,A
 
         // 0x7*
         //case op::LD_inHl_B    : return 1;
@@ -371,9 +371,6 @@ uint8_t CPU::execute(uint8_t opcode, bool& ok)
             ok = false;
             return 1;
     }
-
-
-    //return 1;
 }
 
 uint8_t CPU::opLdImm(uint8_t& dst)

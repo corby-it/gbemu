@@ -209,7 +209,7 @@ TEST_CASE("CPU test LD C,reg") {
         bus.write8(pc, op::LD_C_B);
         cpu.regs.B = val;
         cpu.step();
-        CHECK(cpu.regs.B == val);
+        CHECK(cpu.regs.C == val);
         CHECK(cpu.elapsedCycles() == 1);
     }
     SUBCASE("Test LD C,C") {
@@ -248,6 +248,243 @@ TEST_CASE("CPU test LD C,reg") {
         CHECK(cpu.elapsedCycles() == 1);
     }
 }
+
+
+TEST_CASE("CPU test LD D,reg") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint8_t val = 0x32;
+    const uint16_t pc = Registers::PCinitialValue;
+
+    SUBCASE("Test LD D,A") {
+        bus.write8(pc, op::LD_D_A);
+        cpu.regs.A = val;
+        cpu.step();
+        CHECK(cpu.regs.D == val);
+        CHECK(cpu.elapsedCycles() == 1);
+    }
+    SUBCASE("Test LD D,B") {
+        bus.write8(pc, op::LD_D_B);
+        cpu.regs.B = val;
+        cpu.step();
+        CHECK(cpu.regs.D == val);
+        CHECK(cpu.elapsedCycles() == 1);
+    }
+    SUBCASE("Test LD D,C") {
+        bus.write8(pc, op::LD_D_C);
+        cpu.regs.C = val;
+        cpu.step();
+        CHECK(cpu.regs.D == val);
+        CHECK(cpu.elapsedCycles() == 1);
+    }
+    SUBCASE("Test LD D,D") {
+        bus.write8(pc, op::LD_D_D);
+        cpu.regs.D = val;
+        cpu.step();
+        CHECK(cpu.regs.D == val);
+        CHECK(cpu.elapsedCycles() == 1);
+    }
+    SUBCASE("Test LD D,E") {
+        bus.write8(pc, op::LD_D_E);
+        cpu.regs.E = val;
+        cpu.step();
+        CHECK(cpu.regs.D == val);
+        CHECK(cpu.elapsedCycles() == 1);
+    }
+    SUBCASE("Test LD D,H") {
+        bus.write8(pc, op::LD_D_H);
+        cpu.regs.H = val;
+        cpu.step();
+        CHECK(cpu.regs.D == val);
+        CHECK(cpu.elapsedCycles() == 1);
+    }
+    SUBCASE("Test LD D,L") {
+        bus.write8(pc, op::LD_D_L);
+        cpu.regs.L = val;
+        cpu.step();
+        CHECK(cpu.regs.D == val);
+        CHECK(cpu.elapsedCycles() == 1);
+    }
+}
+
+
+TEST_CASE("CPU test LD E,reg") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint8_t val = 0x32;
+    const uint16_t pc = Registers::PCinitialValue;
+
+    SUBCASE("Test LD E,A") {
+        bus.write8(pc, op::LD_E_A);
+        cpu.regs.A = val;
+        cpu.step();
+        CHECK(cpu.regs.E == val);
+        CHECK(cpu.elapsedCycles() == 1);
+    }
+    SUBCASE("Test LD E,B") {
+        bus.write8(pc, op::LD_E_B);
+        cpu.regs.B = val;
+        cpu.step();
+        CHECK(cpu.regs.E == val);
+        CHECK(cpu.elapsedCycles() == 1);
+    }
+    SUBCASE("Test LD E,C") {
+        bus.write8(pc, op::LD_E_C);
+        cpu.regs.C = val;
+        cpu.step();
+        CHECK(cpu.regs.E == val);
+        CHECK(cpu.elapsedCycles() == 1);
+    }
+    SUBCASE("Test LD E,D") {
+        bus.write8(pc, op::LD_E_D);
+        cpu.regs.D = val;
+        cpu.step();
+        CHECK(cpu.regs.E == val);
+        CHECK(cpu.elapsedCycles() == 1);
+    }
+    SUBCASE("Test LD E,E") {
+        bus.write8(pc, op::LD_E_E);
+        cpu.regs.E = val;
+        cpu.step();
+        CHECK(cpu.regs.E == val);
+        CHECK(cpu.elapsedCycles() == 1);
+    }
+    SUBCASE("Test LD E,H") {
+        bus.write8(pc, op::LD_E_H);
+        cpu.regs.H = val;
+        cpu.step();
+        CHECK(cpu.regs.E == val);
+        CHECK(cpu.elapsedCycles() == 1);
+    }
+    SUBCASE("Test LD E,L") {
+        bus.write8(pc, op::LD_E_L);
+        cpu.regs.L = val;
+        cpu.step();
+        CHECK(cpu.regs.E == val);
+        CHECK(cpu.elapsedCycles() == 1);
+    }
+}
+
+
+TEST_CASE("CPU test LD H,reg") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint8_t val = 0x32;
+    const uint16_t pc = Registers::PCinitialValue;
+
+    SUBCASE("Test LD H,A") {
+        bus.write8(pc, op::LD_H_A);
+        cpu.regs.A = val;
+        cpu.step();
+        CHECK(cpu.regs.H == val);
+        CHECK(cpu.elapsedCycles() == 1);
+    }
+    SUBCASE("Test LD H,B") {
+        bus.write8(pc, op::LD_H_B);
+        cpu.regs.B = val;
+        cpu.step();
+        CHECK(cpu.regs.H == val);
+        CHECK(cpu.elapsedCycles() == 1);
+    }
+    SUBCASE("Test LD H,C") {
+        bus.write8(pc, op::LD_H_C);
+        cpu.regs.C = val;
+        cpu.step();
+        CHECK(cpu.regs.H == val);
+        CHECK(cpu.elapsedCycles() == 1);
+    }
+    SUBCASE("Test LD H,D") {
+        bus.write8(pc, op::LD_H_D);
+        cpu.regs.D = val;
+        cpu.step();
+        CHECK(cpu.regs.H == val);
+        CHECK(cpu.elapsedCycles() == 1);
+    }
+    SUBCASE("Test LD H,E") {
+        bus.write8(pc, op::LD_H_E);
+        cpu.regs.E = val;
+        cpu.step();
+        CHECK(cpu.regs.H == val);
+        CHECK(cpu.elapsedCycles() == 1);
+    }
+    SUBCASE("Test LD H,H") {
+        bus.write8(pc, op::LD_H_H);
+        cpu.regs.H = val;
+        cpu.step();
+        CHECK(cpu.regs.H == val);
+        CHECK(cpu.elapsedCycles() == 1);
+    }
+    SUBCASE("Test LD H,L") {
+        bus.write8(pc, op::LD_H_L);
+        cpu.regs.L = val;
+        cpu.step();
+        CHECK(cpu.regs.H == val);
+        CHECK(cpu.elapsedCycles() == 1);
+    }
+}
+
+
+TEST_CASE("CPU test LD L,reg") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint8_t val = 0x32;
+    const uint16_t pc = Registers::PCinitialValue;
+
+    SUBCASE("Test LD L,A") {
+        bus.write8(pc, op::LD_L_A);
+        cpu.regs.A = val;
+        cpu.step();
+        CHECK(cpu.regs.L == val);
+        CHECK(cpu.elapsedCycles() == 1);
+    }
+    SUBCASE("Test LD L,B") {
+        bus.write8(pc, op::LD_L_B);
+        cpu.regs.B = val;
+        cpu.step();
+        CHECK(cpu.regs.L == val);
+        CHECK(cpu.elapsedCycles() == 1);
+    }
+    SUBCASE("Test LD L,C") {
+        bus.write8(pc, op::LD_L_C);
+        cpu.regs.C = val;
+        cpu.step();
+        CHECK(cpu.regs.L == val);
+        CHECK(cpu.elapsedCycles() == 1);
+    }
+    SUBCASE("Test LD L,D") {
+        bus.write8(pc, op::LD_L_D);
+        cpu.regs.D = val;
+        cpu.step();
+        CHECK(cpu.regs.L == val);
+        CHECK(cpu.elapsedCycles() == 1);
+    }
+    SUBCASE("Test LD L,E") {
+        bus.write8(pc, op::LD_L_E);
+        cpu.regs.E = val;
+        cpu.step();
+        CHECK(cpu.regs.L == val);
+        CHECK(cpu.elapsedCycles() == 1);
+    }
+    SUBCASE("Test LD L,H") {
+        bus.write8(pc, op::LD_L_H);
+        cpu.regs.H = val;
+        cpu.step();
+        CHECK(cpu.regs.L == val);
+        CHECK(cpu.elapsedCycles() == 1);
+    }
+    SUBCASE("Test LD L,L") {
+        bus.write8(pc, op::LD_L_L);
+        cpu.regs.L = val;
+        cpu.step();
+        CHECK(cpu.regs.L == val);
+        CHECK(cpu.elapsedCycles() == 1);
+    }
+}
+
 
 
 TEST_CASE("CPU test LD reg,[HL]") {
