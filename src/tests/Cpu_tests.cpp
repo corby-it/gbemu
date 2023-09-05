@@ -605,6 +605,56 @@ TEST_CASE("CPU test LD [HL],reg") {
 }
 
 
+TEST_CASE("CPU test LD [HL],n8") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint8_t val = 0x32;
+    const uint16_t addr = 0x1234;
+    const uint16_t pc = Registers::PCinitialValue;
+
+    cpu.regs.setHL(addr);
+
+    bus.write8(pc, op::LD_inHL_n8);
+    bus.write8(pc + 1, val);
+
+    cpu.step();
+    CHECK(bus.read8(addr) == val);
+    CHECK(cpu.elapsedCycles() == 3);
+}
+
+
+TEST_CASE("CPU test LD A,[BC]/[DE]") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint8_t val = 0x32;
+    const uint16_t addr = 0x1234;
+    const uint16_t pc = Registers::PCinitialValue;
+
+    bus.write8(addr, val);
+
+    SUBCASE("test LD A,[BC]") {
+        cpu.regs.setBC(addr);
+        bus.write8(pc, op::LD_A_inBC);
+
+        cpu.step();
+        CHECK(cpu.regs.A == val);
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+    SUBCASE("test LD A,[DE]") {
+        cpu.regs.setDE(addr);
+        bus.write8(pc, op::LD_A_inDE);
+
+        cpu.step();
+        CHECK(cpu.regs.A == val);
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+}
+
+
+
+
 
 TEST_CASE("CPU test ADD A,reg") {
     TestBus bus;

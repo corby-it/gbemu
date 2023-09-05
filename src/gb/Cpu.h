@@ -106,12 +106,16 @@ private:
     uint8_t execute(uint8_t opcode, bool& err);
 
     // instructions
-    uint8_t opLdImm(uint8_t& dst);
-    uint8_t opLdReg(uint8_t& dst, const uint8_t& src);
+    uint8_t opLdRegImm(uint8_t& dst);
+    uint8_t opLdRegReg(uint8_t& dst, const uint8_t& src);
     uint8_t opLdRegInd(uint8_t& dst);
     uint8_t opLdIndReg(const uint8_t& src);
-    uint8_t opAddReg(const uint8_t& reg);
+    uint8_t opLdIndImm();
+    uint8_t opLdAInd(const uint16_t& addr);
+
+    uint8_t opAddRegReg(const uint8_t& reg);
     uint8_t opAddInd();
+    
     uint8_t opJpImm();
     uint8_t opJpInd();
     uint8_t opJpCondImm(bool cond);
