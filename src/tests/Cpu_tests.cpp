@@ -653,6 +653,72 @@ TEST_CASE("CPU test LD A,[BC]/[DE]") {
 }
 
 
+TEST_CASE("CPU test LD [BC]/[DE],A") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint8_t val = 0x32;
+    const uint16_t addr = 0x1234;
+    const uint16_t pc = Registers::PCinitialValue;
+
+    cpu.regs.A = val;
+
+    SUBCASE("test LD [BC],A") {
+        cpu.regs.setBC(addr);
+        bus.write8(pc, op::LD_inBC_A);
+
+        cpu.step();
+        CHECK(bus.read8(addr) == val);
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+    SUBCASE("test LD [DE],A") {
+        cpu.regs.setDE(addr);
+        bus.write8(pc, op::LD_inDE_A);
+
+        cpu.step();
+        CHECK(bus.read8(addr) == val);
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+}
+
+
+TEST_CASE("CPU test LD A,[a16]") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint8_t val = 0x32;
+    const uint16_t addr = 0x1234;
+    const uint16_t pc = Registers::PCinitialValue;
+
+    bus.write8(pc, op::LD_A_ina16);
+    bus.write8(pc + 1, addr & 0xff);
+    bus.write8(pc + 2, addr >> 8);
+    bus.write8(addr, val);
+    
+    cpu.step();
+    CHECK(cpu.regs.A == val);
+    CHECK(cpu.elapsedCycles() == 4);
+}
+
+
+TEST_CASE("CPU test LD [a16],A") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint8_t val = 0x32;
+    const uint16_t addr = 0x1234;
+    const uint16_t pc = Registers::PCinitialValue;
+
+    bus.write8(pc, op::LD_ina16_A);
+    bus.write8(pc + 1, addr & 0xff);
+    bus.write8(pc + 2, addr >> 8);
+    cpu.regs.A = val;
+    
+    cpu.step();
+    CHECK(bus.read8(addr) == val);
+    CHECK(cpu.elapsedCycles() == 4);
+}
+
 
 
 
