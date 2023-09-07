@@ -331,9 +331,9 @@ uint8_t CPU::execute(uint8_t opcode, bool& ok)
         // case op::RST_18       : return 1;
 
         // 0xE*
-        // case op::LDH_ina8_A   : return 1;
+        case op::LDH_ina8_A    : return opLdIndImm8Reg();
         // case op::POP_HL       : return 1;
-        // case op::LD_inC_A     : return 1;
+        case op::LDH_inC_A     : return opLdIndReg(0xFF00 + regs.C, regs.A); // LD [C],A  (address is 0xff00 + C)
         // case op:: 0xE3 not implemented
         // case op:: 0xE4 not implemented
         // case op::PUSH_HL      : return 1;
@@ -341,7 +341,7 @@ uint8_t CPU::execute(uint8_t opcode, bool& ok)
         // case op::RST_20       : return 1;
         // case op::ADD_SP_e8    : return 1;
         case op::JP_HL        : return opJpInd(); // JP HL
-        case op::LD_ina16_A   : return opLdIndImmReg();
+        case op::LD_ina16_A   : return opLdIndImm16Reg();
         // case op:: 0xEB not implemented
         // case op:: 0xEC not implemented
         // case op:: 0xED not implemented
@@ -349,9 +349,9 @@ uint8_t CPU::execute(uint8_t opcode, bool& ok)
         // case op::RST_28       : return 1;
 
         // 0xF*
-        // case op::LDH_A_ina8   : return 1;
+        case op::LDH_A_ina8    : return opLdRegIndImm8();
         // case op::POP_AF       : return 1;
-        // case op::LD_A_inC     : return 1;
+        case op::LDH_A_inC     : return opLdRegInd(regs.A, 0xFF00 + regs.C);  // LD A,[C]  (address is 0xff00 + C)
         // case op::DI           : return 1;
         // case op:: 0xF4 not implemented
         // case op::PUSH_AF      : return 1;
@@ -359,7 +359,7 @@ uint8_t CPU::execute(uint8_t opcode, bool& ok)
         // case op::RST_30       : return 1;
         // case op::LD_HL_SPpe8  : return 1;
         // case op::LD_SP_HL     : return 1;
-        case op::LD_A_ina16   : return opLdRegIndImm();
+        case op::LD_A_ina16   : return opLdRegIndImm16();
         // case op::EI           : return 1;
         // case op:: 0xFB not implemented
         // case op:: 0xFC not implemented
@@ -416,7 +416,7 @@ uint8_t CPU::opLdIndImm()
     return 3;
 }
 
-uint8_t CPU::opLdRegIndImm()
+uint8_t CPU::opLdRegIndImm16()
 {
     // load in register from memory at immediate address (only works with the A register)
     // LD A,[a16]
@@ -428,7 +428,7 @@ uint8_t CPU::opLdRegIndImm()
     return 4;
 }
 
-uint8_t CPU::opLdIndImmReg()
+uint8_t CPU::opLdIndImm16Reg()
 {
     // load in memory at immediate address from register (only works with the A register)
     // LD [a16],A
@@ -439,6 +439,30 @@ uint8_t CPU::opLdIndImmReg()
 
     return 4;
 }
+
+uint8_t CPU::opLdRegIndImm8()
+{
+    // load in register from memory at immediate 8-bit address
+    // only works with the A register, the actual address is 0xff00 + a8
+    // LDH A,[a8]
+    auto addrLsb = mBus.read8(regs.PC++);
+    regs.A = mBus.read8(0xff00 + addrLsb);
+
+    return 3;
+}
+
+uint8_t CPU::opLdIndImm8Reg()
+{
+    // load in memory at immediate 8-bit address from register
+    // only works with the A register, the actual address is 0xff00 + a8
+    // LDH [a8],A
+    auto addrLsb = mBus.read8(regs.PC++);
+    mBus.write8(0xff00 + addrLsb, regs.A);
+
+    return 3;
+}
+
+
 
 
 

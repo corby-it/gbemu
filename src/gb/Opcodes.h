@@ -271,7 +271,7 @@ namespace op {
     // 0xE*
     static constexpr const uint8_t LDH_ina8_A   = 0xE0;
     static constexpr const uint8_t POP_HL       = 0xE1;
-    static constexpr const uint8_t LD_inC_A     = 0xE2;
+    static constexpr const uint8_t LDH_inC_A    = 0xE2;
     //static constexpr const uint8_t            = 0xE3;
     //static constexpr const uint8_t            = 0xE4;
     static constexpr const uint8_t PUSH_HL      = 0xE5;
@@ -289,7 +289,7 @@ namespace op {
     // 0xF*
     static constexpr const uint8_t LDH_A_ina8   = 0xF0;
     static constexpr const uint8_t POP_AF       = 0xF1;
-    static constexpr const uint8_t LD_A_inC     = 0xF2;
+    static constexpr const uint8_t LDH_A_inC    = 0xF2;
     static constexpr const uint8_t DI           = 0xF3;
     //static constexpr const uint8_t            = 0xF4;
     static constexpr const uint8_t PUSH_AF      = 0xF5;

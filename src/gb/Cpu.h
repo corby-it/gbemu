@@ -111,8 +111,10 @@ private:
     uint8_t opLdRegInd(uint8_t& dst, uint16_t srcAddr);
     uint8_t opLdIndReg(uint16_t dstAddr, const uint8_t& src);
     uint8_t opLdIndImm();
-    uint8_t opLdRegIndImm();
-    uint8_t opLdIndImmReg();
+    uint8_t opLdRegIndImm16();
+    uint8_t opLdIndImm16Reg();
+    uint8_t opLdRegIndImm8();
+    uint8_t opLdIndImm8Reg();
 
     uint8_t opAddRegReg(const uint8_t& reg);
     uint8_t opAddInd();
