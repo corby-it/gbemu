@@ -117,7 +117,7 @@ uint8_t CPU::execute(uint8_t opcode, bool& ok)
         // 0x2*
         //case op::JR_NZ_e8     : return 1;
         //case op::LD_HL_n16    : return 1;
-        //case op::LD_inHLp_A   : return 1;
+        case op::LD_inHLp_A   : return opLdIndIncA();
         //case op::INC_HL       : return 1;
         //case op::INC_H        : return 1;
         //case op::DEC_H        : return 1;
@@ -125,7 +125,7 @@ uint8_t CPU::execute(uint8_t opcode, bool& ok)
         //case op::DAA          : return 1;
         //case op::JR_Z_e8      : return 1;
         //case op::ADD_HL_HL    : return 1;
-        //case op::LD_A_inHLp   : return 1;
+        case op::LD_A_inHLp   : return opLdAIndInc();
         //case op::DEC_HL       : return 1;
         //case op::INC_L        : return 1;
         //case op::DEC_L        : return 1;
@@ -135,7 +135,7 @@ uint8_t CPU::execute(uint8_t opcode, bool& ok)
         // 0x3*
         //case op::JR_NC_e8     : return 1;
         //case op::LD_SP_n16    : return 1;
-        //case op::LD_inHLm_A   : return 1;
+        case op::LD_inHLm_A   : return opLdIndDecA();
         //case op::INC_SP       : return 1;
         //case op::INC_inHL     : return 1;
         //case op::DEC_inHL     : return 1;
@@ -143,7 +143,7 @@ uint8_t CPU::execute(uint8_t opcode, bool& ok)
         //case op::SCF          : return 1;
         //case op::JR_C_e8      : return 1;
         //case op::ADD_HL_SP    : return 1;
-        //case op::LD_A_inHLm   : return 1;
+        case op::LD_A_inHLm   : return opLdAIndDec();
         //case op::DEC_SP       : return 1;
         //case op::INC_A        : return 1;
         //case op::DEC_A        : return 1;
@@ -460,6 +460,50 @@ uint8_t CPU::opLdIndImm8Reg()
     mBus.write8(0xff00 + addrLsb, regs.A);
 
     return 3;
+}
+
+uint8_t CPU::opLdAIndDec()
+{
+    // load in A the value in mem[HL] and decrement the value of HL
+    // LD A,[HL-]
+    auto addr = regs.HL();
+    regs.A = mBus.read8(addr);
+    regs.setHL(addr - 1);
+
+    return 2;
+}
+
+uint8_t CPU::opLdAIndInc()
+{
+    // load in A the value in mem[HL] and increment the value of HL
+    // LD A,[HL+]
+    auto addr = regs.HL();
+    regs.A = mBus.read8(addr);
+    regs.setHL(addr + 1);
+
+    return 2;
+}
+
+uint8_t CPU::opLdIndDecA()
+{
+    // load in mem[HL] the value of A and decrement the value of HL
+    // LD [HL-],A
+    auto addr = regs.HL();
+    mBus.write8(addr, regs.A);
+    regs.setHL(addr - 1);
+
+    return 2;
+}
+
+uint8_t CPU::opLdIndIncA()
+{
+    // load in mem[HL] the value of A and increment the value of HL
+    // LD [HL+],A
+    auto addr = regs.HL();
+    mBus.write8(addr, regs.A);
+    regs.setHL(addr + 1);
+
+    return 2;
 }
 
 

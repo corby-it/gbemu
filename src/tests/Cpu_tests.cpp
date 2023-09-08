@@ -792,6 +792,59 @@ TEST_CASE("CPU test LDH [a8],A") {
 }
 
 
+TEST_CASE("CPU test LD indirect from HL with increment and decrement") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint8_t val = 0x32;
+    const uint16_t addr = 0x1234;
+    const uint16_t pc = Registers::PCinitialValue;
+
+    cpu.regs.setHL(addr);
+
+
+    SUBCASE("Test LD A,[HL-]") {
+        bus.write8(pc, op::LD_A_inHLm);
+        bus.write8(addr, val);
+
+        cpu.step();
+        CHECK(cpu.regs.A == val);
+        CHECK(cpu.regs.HL() == addr - 1);
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+
+    SUBCASE("Test LD [HL-],A") {
+        bus.write8(pc, op::LD_inHLm_A);
+        cpu.regs.A = val;
+
+        cpu.step();
+        CHECK(bus.read8(addr) == val);
+        CHECK(cpu.regs.HL() == addr - 1);
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+
+    SUBCASE("Test LD A,[HL+]") {
+        bus.write8(pc, op::LD_A_inHLp);
+        bus.write8(addr, val);
+
+        cpu.step();
+        CHECK(cpu.regs.A == val);
+        CHECK(cpu.regs.HL() == addr + 1);
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+
+    SUBCASE("Test LD [HL+],A") {
+        bus.write8(pc, op::LD_inHLp_A);
+        cpu.regs.A = val;
+
+        cpu.step();
+        CHECK(bus.read8(addr) == val);
+        CHECK(cpu.regs.HL() == addr + 1);
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+}
+
+
 
 
 TEST_CASE("CPU test ADD A,reg") {
