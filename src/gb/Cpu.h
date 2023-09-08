@@ -64,7 +64,7 @@ struct Registers {
     void clearN() { flags &= ~maskN; }
     void clearH() { flags &= ~maskH; }
     void clearC() { flags &= ~maskC; }
-    
+
 
     void reset();
 
@@ -81,6 +81,20 @@ private:
     static constexpr const uint8_t maskC = 0b00010000;
 };
 
+
+struct Reg16Proxy {
+    Reg16Proxy(uint8_t& msb, uint8_t& lsb)
+        : msb(msb), lsb(lsb)
+    {}
+
+    void operator=(uint16_t val) {
+        msb = val >> 8;
+        lsb = val & 0xff;
+    }
+
+    uint8_t& msb;
+    uint8_t& lsb;
+};
 
 
 
@@ -105,7 +119,7 @@ private:
 
     uint8_t execute(uint8_t opcode, bool& err);
 
-    // instructions
+    // 8-bit load instructions
     uint8_t opLdRegImm(uint8_t& dst);
     uint8_t opLdRegReg(uint8_t& dst, const uint8_t& src);
     uint8_t opLdRegInd(uint8_t& dst, uint16_t srcAddr);
@@ -120,6 +134,11 @@ private:
     uint8_t opLdIndDecA();
     uint8_t opLdIndIncA();
 
+    // 16-bit load instructions
+    uint8_t opLdReg16Imm(Reg16Proxy reg);
+    uint8_t opLdSPImm();
+
+    // 8-bit arithmetic and logical instructions
     uint8_t opAddRegReg(const uint8_t& reg);
     uint8_t opAddInd();
     

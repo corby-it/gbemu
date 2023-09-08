@@ -846,6 +846,50 @@ TEST_CASE("CPU test LD indirect from HL with increment and decrement") {
 
 
 
+TEST_CASE("CPU test LD immediate 16-bit in register") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint16_t val = 0x1234;
+    const uint16_t pc = Registers::PCinitialValue;
+
+    bus.write16(pc + 1, val);
+
+    SUBCASE("Test LD BC,n16") {
+        bus.write8(pc, op::LD_BC_n16);
+        cpu.step();
+        
+        CHECK(cpu.regs.BC() == val);
+        CHECK(cpu.elapsedCycles() == 3);
+    }
+
+    SUBCASE("Test LD DE,n16") {
+        bus.write8(pc, op::LD_DE_n16);
+        cpu.step();
+        
+        CHECK(cpu.regs.DE() == val);
+        CHECK(cpu.elapsedCycles() == 3);
+    }
+
+    SUBCASE("Test LD HL,n16") {
+        bus.write8(pc, op::LD_HL_n16);
+        cpu.step();
+        
+        CHECK(cpu.regs.HL() == val);
+        CHECK(cpu.elapsedCycles() == 3);
+    }
+
+    SUBCASE("Test LD SP,n16") {
+        bus.write8(pc, op::LD_SP_n16);
+        cpu.step();
+        
+        CHECK(cpu.regs.SP == val);
+        CHECK(cpu.elapsedCycles() == 5);
+    }
+}
+
+
+
 
 TEST_CASE("CPU test ADD A,reg") {
     TestBus bus;

@@ -80,7 +80,7 @@ uint8_t CPU::execute(uint8_t opcode, bool& ok)
     switch(opcode) {
         // 0x0*
         case op::NOP          : return 1; // nothing to do here
-        //case op::LD_BC_n16    : return 1;
+        case op::LD_BC_n16    : return opLdReg16Imm(Reg16Proxy(regs.B, regs.C));
         case op::LD_inBC_A    : return opLdIndReg(regs.BC(), regs.A);
         //case op::INC_BC       : return 1;
         //case op::INC_B        : return 1;
@@ -98,7 +98,7 @@ uint8_t CPU::execute(uint8_t opcode, bool& ok)
 
         // 0x1*
         //case op::STOP_n8      : return 1;
-        // case op::LD_DE_n16    : return 1;
+        case op::LD_DE_n16    : return opLdReg16Imm(Reg16Proxy(regs.D, regs.E));
         case op::LD_inDE_A    : return opLdIndReg(regs.DE(), regs.A);
         //case op::INC_DE       : return 1;
         //case op::INC_D        : return 1;
@@ -116,7 +116,7 @@ uint8_t CPU::execute(uint8_t opcode, bool& ok)
 
         // 0x2*
         //case op::JR_NZ_e8     : return 1;
-        //case op::LD_HL_n16    : return 1;
+        case op::LD_HL_n16    : return opLdReg16Imm(Reg16Proxy(regs.H, regs.L));
         case op::LD_inHLp_A   : return opLdIndIncA();
         //case op::INC_HL       : return 1;
         //case op::INC_H        : return 1;
@@ -134,7 +134,7 @@ uint8_t CPU::execute(uint8_t opcode, bool& ok)
 
         // 0x3*
         //case op::JR_NC_e8     : return 1;
-        //case op::LD_SP_n16    : return 1;
+        case op::LD_SP_n16    : return opLdSPImm();
         case op::LD_inHLm_A   : return opLdIndDecA();
         //case op::INC_SP       : return 1;
         //case op::INC_inHL     : return 1;
@@ -505,6 +505,32 @@ uint8_t CPU::opLdIndIncA()
 
     return 2;
 }
+
+uint8_t CPU::opLdReg16Imm(Reg16Proxy reg)
+{
+    // load immediate 16-bit value into BC, DE or HL
+    // e.g.: LD BC,n16
+    uint16_t val = mBus.read8(regs.PC++);
+    val |= mBus.read8(regs.PC++) << 8;
+    
+    reg = val;
+
+    return 3;
+}
+
+uint8_t CPU::opLdSPImm()
+{
+    // load immediate 16-bit value into SP
+    // LD SP,n16
+    uint16_t val = mBus.read8(regs.PC++);
+    val |= mBus.read8(regs.PC++) << 8;
+
+    regs.SP = val;
+
+    return 5;
+}
+
+
 
 
 
