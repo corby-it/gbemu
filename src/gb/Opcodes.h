@@ -25,7 +25,7 @@ namespace op {
     static constexpr const uint8_t DEC_B        = 0x05;
     static constexpr const uint8_t LD_B_n8      = 0x06;
     static constexpr const uint8_t RLCA         = 0x07;
-    static constexpr const uint8_t LD_a16_SP    = 0x08;
+    static constexpr const uint8_t LD_ina16_SP  = 0x08;
     static constexpr const uint8_t ADD_HL_BC    = 0x09;
     static constexpr const uint8_t LD_A_inBC    = 0x0A;
     static constexpr const uint8_t DEC_BC       = 0x0B;

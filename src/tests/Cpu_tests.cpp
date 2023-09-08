@@ -812,7 +812,6 @@ TEST_CASE("CPU test LD indirect from HL with increment and decrement") {
         CHECK(cpu.regs.HL() == addr - 1);
         CHECK(cpu.elapsedCycles() == 2);
     }
-
     SUBCASE("Test LD [HL-],A") {
         bus.write8(pc, op::LD_inHLm_A);
         cpu.regs.A = val;
@@ -822,7 +821,6 @@ TEST_CASE("CPU test LD indirect from HL with increment and decrement") {
         CHECK(cpu.regs.HL() == addr - 1);
         CHECK(cpu.elapsedCycles() == 2);
     }
-
     SUBCASE("Test LD A,[HL+]") {
         bus.write8(pc, op::LD_A_inHLp);
         bus.write8(addr, val);
@@ -832,7 +830,6 @@ TEST_CASE("CPU test LD indirect from HL with increment and decrement") {
         CHECK(cpu.regs.HL() == addr + 1);
         CHECK(cpu.elapsedCycles() == 2);
     }
-
     SUBCASE("Test LD [HL+],A") {
         bus.write8(pc, op::LD_inHLp_A);
         cpu.regs.A = val;
@@ -862,7 +859,6 @@ TEST_CASE("CPU test LD immediate 16-bit in register") {
         CHECK(cpu.regs.BC() == val);
         CHECK(cpu.elapsedCycles() == 3);
     }
-
     SUBCASE("Test LD DE,n16") {
         bus.write8(pc, op::LD_DE_n16);
         cpu.step();
@@ -870,7 +866,6 @@ TEST_CASE("CPU test LD immediate 16-bit in register") {
         CHECK(cpu.regs.DE() == val);
         CHECK(cpu.elapsedCycles() == 3);
     }
-
     SUBCASE("Test LD HL,n16") {
         bus.write8(pc, op::LD_HL_n16);
         cpu.step();
@@ -878,16 +873,150 @@ TEST_CASE("CPU test LD immediate 16-bit in register") {
         CHECK(cpu.regs.HL() == val);
         CHECK(cpu.elapsedCycles() == 3);
     }
-
     SUBCASE("Test LD SP,n16") {
         bus.write8(pc, op::LD_SP_n16);
         cpu.step();
         
         CHECK(cpu.regs.SP == val);
-        CHECK(cpu.elapsedCycles() == 5);
+        CHECK(cpu.elapsedCycles() == 3);
     }
 }
 
+
+TEST_CASE("CPU test LD [a16],SP") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint16_t addr = 0x1234;
+    const uint16_t val = 0x4321;
+    const uint16_t pc = Registers::PCinitialValue;
+
+    bus.write8(pc, op::LD_ina16_SP);
+    bus.write16(pc + 1, addr);
+
+    cpu.regs.SP = val;
+    cpu.step();
+
+    CHECK(bus.read16(addr) == val);
+    CHECK(cpu.elapsedCycles() == 5);
+}
+
+TEST_CASE("CPU test LD SP,HL") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint16_t val = 0x4321;
+    const uint16_t pc = Registers::PCinitialValue;
+
+    bus.write8(pc, op::LD_SP_HL);
+    cpu.regs.setHL(val);
+
+    cpu.step();
+
+    CHECK(cpu.regs.SP == val);
+    CHECK(cpu.elapsedCycles() == 2);
+}
+
+TEST_CASE("CPU test PUSH reg16") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint16_t addr = 0x1234;
+    const uint16_t val = 0x4321;
+    const uint16_t pc = Registers::PCinitialValue;
+
+    cpu.regs.SP = addr;
+
+    SUBCASE("Test PUSH BC") {
+        bus.write8(pc, op::PUSH_BC);
+        cpu.regs.setBC(val);
+        cpu.step();
+
+        CHECK(bus.read16(addr - 2) == val);
+        CHECK(cpu.regs.SP == addr - 2);
+        CHECK(cpu.elapsedCycles() == 4);
+    }
+    SUBCASE("Test PUSH DE") {
+        bus.write8(pc, op::PUSH_DE);
+        cpu.regs.setDE(val);
+        cpu.step();
+
+        CHECK(bus.read16(addr - 2) == val);
+        CHECK(cpu.regs.SP == addr - 2);
+        CHECK(cpu.elapsedCycles() == 4);
+    }
+    SUBCASE("Test PUSH HL") {
+        bus.write8(pc, op::PUSH_HL);
+        cpu.regs.setHL(val);
+        cpu.step();
+
+        CHECK(bus.read16(addr - 2) == val);
+        CHECK(cpu.regs.SP == addr - 2);
+        CHECK(cpu.elapsedCycles() == 4);
+    }
+    SUBCASE("Test PUSH AF") {
+        bus.write8(pc, op::PUSH_AF);
+        cpu.regs.setAF(val);
+        cpu.step();
+
+        CHECK(bus.read16(addr - 2) == val);
+        CHECK(cpu.regs.SP == addr - 2);
+        CHECK(cpu.elapsedCycles() == 4);
+    }
+}
+
+TEST_CASE("CPU test POP reg16") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint16_t addr = 0x1234;
+    const uint16_t val = 0x4321;
+    const uint16_t pc = Registers::PCinitialValue;
+
+    cpu.regs.SP = addr;
+    bus.write16(addr, val);
+
+    SUBCASE("Test POP BC") {
+        bus.write8(pc, op::POP_BC);
+        cpu.step();
+
+        CHECK(cpu.regs.BC() == val);
+        CHECK(cpu.regs.SP == addr + 2);
+        CHECK(cpu.elapsedCycles() == 3);
+    }
+    SUBCASE("Test POP DE") {
+        bus.write8(pc, op::POP_DE);
+        cpu.step();
+
+        CHECK(cpu.regs.DE() == val);
+        CHECK(cpu.regs.SP == addr + 2);
+        CHECK(cpu.elapsedCycles() == 3);
+    }
+    SUBCASE("Test POP HL") {
+        bus.write8(pc, op::POP_HL);
+        cpu.step();
+
+        CHECK(cpu.regs.HL() == val);
+        CHECK(cpu.regs.SP == addr + 2);
+        CHECK(cpu.elapsedCycles() == 3);
+    }
+    SUBCASE("Test POP AF") {
+        bus.write8(pc, op::POP_AF);
+        cpu.step();
+
+        CHECK(cpu.regs.AF() == val);
+        CHECK(cpu.regs.SP == addr + 2);
+        CHECK(cpu.elapsedCycles() == 3);
+
+        // if the value written to AF is 0x4321 the flags will be replaced with 0x21
+        // this means that 0x2 will end up in the most significant nibble of the flags
+        // so the flags will be z=0, n=0, h=1, c=0
+        CHECK_FALSE(cpu.regs.getZ());
+        CHECK_FALSE(cpu.regs.getN());
+        CHECK(cpu.regs.getH());
+        CHECK_FALSE(cpu.regs.getC());
+    }
+}
 
 
 

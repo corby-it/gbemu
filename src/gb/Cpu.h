@@ -33,6 +33,7 @@ struct Registers {
 
 
     // Utils --------------------------------------------------------------------------------------
+    uint16_t AF() const { return (A << 8) | flags; }
     uint16_t BC() const { return (B << 8) | C; }
     uint16_t DE() const { return (D << 8) | E; }
     uint16_t HL() const { return (H << 8) | L; }
@@ -49,11 +50,15 @@ struct Registers {
         H = val >> 8;
         L = val & 0xff;
     }
+    void setAF(uint16_t val) {
+        A = val >> 8;
+        flags = val & 0xff;
+    }
 
-    bool getZ() const { return flags >> 7; }
-    bool getN() const { return (flags >> 6) & 0x1; }
-    bool getH() const { return (flags >> 5) & 0x1; }
-    bool getC() const { return (flags >> 4) & 0x1; }
+    bool getZ() const { return flags & maskZ; }
+    bool getN() const { return flags & maskN; }
+    bool getH() const { return flags & maskH; }
+    bool getC() const { return flags & maskC; }
 
     void setZ() { flags |= maskZ; }
     void setN() { flags |= maskN; }
@@ -137,6 +142,10 @@ private:
     // 16-bit load instructions
     uint8_t opLdReg16Imm(Reg16Proxy reg);
     uint8_t opLdSPImm();
+    uint8_t opLdIndImm16Sp();
+    uint8_t opLdSpHl();
+    uint8_t opPushReg16(uint16_t val);
+    uint8_t opPopReg16(Reg16Proxy reg);
 
     // 8-bit arithmetic and logical instructions
     uint8_t opAddRegReg(const uint8_t& reg);

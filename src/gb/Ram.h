@@ -25,7 +25,7 @@ public:
         // the GB is little endian so:
         // - the byte at [addr] is the lsb
         // - the byte at [addr+1] is the msb
-        return mData[addr] | mData[addr+1];
+        return mData[addr] | (mData[addr+1] << 8);
     }
 
     void write8(uint16_t addr, uint8_t val)
