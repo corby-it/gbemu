@@ -80,7 +80,7 @@ uint8_t CPU::execute(uint8_t opcode, bool& ok)
     switch(opcode) {
         // 0x0*
         case op::NOP          : return 1; // nothing to do here
-        case op::LD_BC_n16    : return opLdReg16Imm(Reg16Proxy(regs.B, regs.C));
+        case op::LD_BC_n16    : return opLdReg16Imm(regs.B, regs.C);
         case op::LD_inBC_A    : return opLdIndReg(regs.BC(), regs.A);
         //case op::INC_BC       : return 1;
         //case op::INC_B        : return 1;
@@ -98,7 +98,7 @@ uint8_t CPU::execute(uint8_t opcode, bool& ok)
 
         // 0x1*
         //case op::STOP_n8      : return 1;
-        case op::LD_DE_n16    : return opLdReg16Imm(Reg16Proxy(regs.D, regs.E));
+        case op::LD_DE_n16    : return opLdReg16Imm(regs.D, regs.E);
         case op::LD_inDE_A    : return opLdIndReg(regs.DE(), regs.A);
         //case op::INC_DE       : return 1;
         //case op::INC_D        : return 1;
@@ -116,7 +116,7 @@ uint8_t CPU::execute(uint8_t opcode, bool& ok)
 
         // 0x2*
         //case op::JR_NZ_e8     : return 1;
-        case op::LD_HL_n16    : return opLdReg16Imm(Reg16Proxy(regs.H, regs.L));
+        case op::LD_HL_n16    : return opLdReg16Imm(regs.H, regs.L);
         case op::LD_inHLp_A   : return opLdIndIncA();
         //case op::INC_HL       : return 1;
         //case op::INC_H        : return 1;
@@ -134,7 +134,7 @@ uint8_t CPU::execute(uint8_t opcode, bool& ok)
 
         // 0x3*
         //case op::JR_NC_e8     : return 1;
-        case op::LD_SP_n16    : return opLdSPImm();
+        case op::LD_SP_n16    : return opLdReg16Imm(regs.SP);
         case op::LD_inHLm_A   : return opLdIndDecA();
         //case op::INC_SP       : return 1;
         //case op::INC_inHL     : return 1;
@@ -296,7 +296,7 @@ uint8_t CPU::execute(uint8_t opcode, bool& ok)
 
         // 0xC*
         // case op::RET_NZ       : return 1;
-        case op::POP_BC       : return opPopReg16(Reg16Proxy(regs.B, regs.C));
+        case op::POP_BC       : return opPopReg16(regs.B, regs.C);
         case op::JP_NZ_a16    : return opJpCondImm(!regs.getZ()); // JP NZ,a16
         case op::JP_a16       : return opJpImm(); // JP a16
         // case op::CALL_NZ_a16  : return 1;
@@ -314,7 +314,7 @@ uint8_t CPU::execute(uint8_t opcode, bool& ok)
 
         // 0xD*
         // case op::RET_NC       : return 1;
-        case op::POP_DE       : return opPopReg16(Reg16Proxy(regs.D, regs.E));
+        case op::POP_DE       : return opPopReg16(regs.D, regs.E);
         case op::JP_NC_a16    : return opJpCondImm(!regs.getC()); // JP NC,a16
         // case op:: 0xD3 not implemented
         // case op::CALL_NC_a16  : return 1;
@@ -332,7 +332,7 @@ uint8_t CPU::execute(uint8_t opcode, bool& ok)
 
         // 0xE*
         case op::LDH_ina8_A   : return opLdIndImm8Reg();
-        case op::POP_HL       : return opPopReg16(Reg16Proxy(regs.H, regs.L));
+        case op::POP_HL       : return opPopReg16(regs.H, regs.L);
         case op::LDH_inC_A    : return opLdIndReg(0xFF00 + regs.C, regs.A); // LD [C],A  (address is 0xff00 + C)
         // case op:: 0xE3 not implemented
         // case op:: 0xE4 not implemented
@@ -350,7 +350,7 @@ uint8_t CPU::execute(uint8_t opcode, bool& ok)
 
         // 0xF*
         case op::LDH_A_ina8   : return opLdRegIndImm8();
-        case op::POP_AF       : return opPopReg16(Reg16Proxy(regs.A, regs.flags));
+        case op::POP_AF       : return opPopReg16(regs.A, regs.flags);
         case op::LDH_A_inC    : return opLdRegInd(regs.A, 0xFF00 + regs.C);  // LD A,[C]  (address is 0xff00 + C)
         // case op::DI           : return 1;
         // case op:: 0xF4 not implemented
@@ -506,26 +506,24 @@ uint8_t CPU::opLdIndIncA()
     return 2;
 }
 
-uint8_t CPU::opLdReg16Imm(Reg16Proxy reg)
+uint8_t CPU::opLdReg16Imm(uint8_t& msb, uint8_t& lsb)
 {
     // load immediate 16-bit value into BC, DE or HL
-    // e.g.: LD BC,n16
-    uint16_t val = mBus.read8(regs.PC++);
-    val |= mBus.read8(regs.PC++) << 8;
-    
-    reg = val;
+    // e.g.: LD BC,n16    
+    lsb = mBus.read8(regs.PC++);
+    msb = mBus.read8(regs.PC++);
 
     return 3;
 }
 
-uint8_t CPU::opLdSPImm()
+uint8_t CPU::opLdReg16Imm(uint16_t& dst)
 {
     // load immediate 16-bit value into SP
-    // LD SP,n16
+    // e.g.: LD SP,n16
     uint16_t val = mBus.read8(regs.PC++);
     val |= mBus.read8(regs.PC++) << 8;
 
-    regs.SP = val;
+    dst = val;
 
     return 3;
 }
@@ -562,12 +560,13 @@ uint8_t CPU::opPushReg16(uint16_t val)
     return 4;
 }
 
-uint8_t CPU::opPopReg16(Reg16Proxy reg)
+uint8_t CPU::opPopReg16(uint8_t& msb, uint8_t& lsb)
 {
     // pop the register onto the stack
     // e.g.: POP BC
 
-    reg = mBus.read16(regs.SP);
+    lsb = mBus.read8(regs.SP);
+    msb = mBus.read8(regs.SP + 1);
     regs.SP += 2;
 
     return 3;

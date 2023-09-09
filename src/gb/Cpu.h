@@ -87,20 +87,6 @@ private:
 };
 
 
-struct Reg16Proxy {
-    Reg16Proxy(uint8_t& msb, uint8_t& lsb)
-        : msb(msb), lsb(lsb)
-    {}
-
-    void operator=(uint16_t val) {
-        msb = val >> 8;
-        lsb = val & 0xff;
-    }
-
-    uint8_t& msb;
-    uint8_t& lsb;
-};
-
 
 
 class CPU {
@@ -140,12 +126,12 @@ private:
     uint8_t opLdIndIncA();
 
     // 16-bit load instructions
-    uint8_t opLdReg16Imm(Reg16Proxy reg);
-    uint8_t opLdSPImm();
+    uint8_t opLdReg16Imm(uint8_t& msb, uint8_t& lsb);
+    uint8_t opLdReg16Imm(uint16_t& dst);
     uint8_t opLdIndImm16Sp();
     uint8_t opLdSpHl();
     uint8_t opPushReg16(uint16_t val);
-    uint8_t opPopReg16(Reg16Proxy reg);
+    uint8_t opPopReg16(uint8_t& msb, uint8_t& lsb);
 
     // 8-bit arithmetic and logical instructions
     uint8_t opAddRegReg(const uint8_t& reg);
