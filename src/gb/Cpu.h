@@ -8,6 +8,54 @@
 
 // the GB uses a CPU similar to the Zilog Z80
 
+struct Flags {
+    // the flags register works as follows:
+    // bit      function
+    // 0..3     unused
+    // 4        carry flag: 1 if carry from last math operation or if A is the smaller value when using the CP instruction
+    // 5        half-carry flag: 1 if carry occurred in the lower nibble in the last math operation
+    // 6        subtract flag: 1 if a subtracion was performed in the last math operation
+    // 7        zero flag: 1 if the result of the last math operation is 0 or if two values match when using the CP instruction
+
+    bool Z;
+    bool N;
+    bool H;
+    bool C;
+
+    uint8_t asU8() const {
+        uint8_t val = 0;
+        
+        if (Z) val |= maskZ;
+        if (N) val |= maskN;
+        if (H) val |= maskH;
+        if (C) val |= maskC;
+
+        return val;
+    }
+
+    void fromU8(uint8_t val) {
+        Z = val & maskZ;
+        N = val & maskN;
+        H = val & maskH;
+        C = val & maskC;
+    }
+
+    operator uint8_t() const { return asU8(); }
+
+    void operator=(uint8_t val) { fromU8(val); }
+
+    bool operator==(const Flags& other) const {
+        return Z == other.Z
+            && N == other.N
+            && H == other.H
+            && C == other.C;
+    }
+
+    static constexpr const uint8_t maskZ = 0b10000000;
+    static constexpr const uint8_t maskN = 0b01000000;
+    static constexpr const uint8_t maskH = 0b00100000;
+    static constexpr const uint8_t maskC = 0b00010000;
+};
 
 
 struct Registers {
@@ -22,14 +70,8 @@ struct Registers {
     // program counter and stack pointer are 16-bit registers
     uint16_t PC, SP;
 
-    // the flags register works as follows:
-    // bit      function
-    // 0..3     unused
-    // 4        carry flag: 1 if carry from last math operation or if A is the smaller value when using the CP instruction
-    // 5        half-carry flag: 1 if carry occurred in the lower nibble in the last math operation
-    // 6        subtract flag: 1 if a subtracion was performed in the last math operation
-    // 7        zero flag: 1 if the result of the last math operation is 0 or if two values match when using the CP instruction
-    uint8_t flags;
+    // flags: Z, N, H and C
+    Flags flags;
 
 
     // Utils --------------------------------------------------------------------------------------
@@ -55,21 +97,6 @@ struct Registers {
         flags = val & 0xff;
     }
 
-    bool getZ() const { return flags & maskZ; }
-    bool getN() const { return flags & maskN; }
-    bool getH() const { return flags & maskH; }
-    bool getC() const { return flags & maskC; }
-
-    void setZ() { flags |= maskZ; }
-    void setN() { flags |= maskN; }
-    void setH() { flags |= maskH; }
-    void setC() { flags |= maskC; }
-
-    void clearZ() { flags &= ~maskZ; }
-    void clearN() { flags &= ~maskN; }
-    void clearH() { flags &= ~maskH; }
-    void clearC() { flags &= ~maskC; }
-
 
     void reset();
 
@@ -77,13 +104,8 @@ struct Registers {
     bool equalSkipPC(const Registers& other);
 
     static constexpr const uint16_t PCinitialValue = 0x0000;
+    static constexpr const uint16_t SPinitialValue = 0x0000;
 
-private:
-
-    static constexpr const uint8_t maskZ = 0b10000000;
-    static constexpr const uint8_t maskN = 0b01000000;
-    static constexpr const uint8_t maskH = 0b00100000;
-    static constexpr const uint8_t maskC = 0b00010000;
 };
 
 
@@ -131,7 +153,18 @@ private:
     uint8_t opLdIndImm16Sp();
     uint8_t opLdSpHl();
     uint8_t opPushReg16(uint16_t val);
-    uint8_t opPopReg16(uint8_t& msb, uint8_t& lsb);
+
+    template<typename T1, typename T2>
+    uint8_t opPopReg16(T1& msb, T2& lsb) {
+        // (this function is templated to work with flags as well)
+        // pop the register onto the stack
+        // e.g.: POP BC
+        lsb = mBus.read8(regs.SP);
+        msb = mBus.read8(regs.SP + 1);
+        regs.SP += 2;
+
+        return 3;
+    }
 
     // 8-bit arithmetic and logical instructions
     uint8_t opAddRegReg(const uint8_t& reg);

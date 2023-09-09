@@ -16,7 +16,7 @@ void Registers::reset()
     H = 0;
     L = 0;
     PC = PCinitialValue;
-    SP = 0;
+    SP = SPinitialValue;
     flags = 0;
 }
 
@@ -297,7 +297,7 @@ uint8_t CPU::execute(uint8_t opcode, bool& ok)
         // 0xC*
         // case op::RET_NZ       : return 1;
         case op::POP_BC       : return opPopReg16(regs.B, regs.C);
-        case op::JP_NZ_a16    : return opJpCondImm(!regs.getZ()); // JP NZ,a16
+        case op::JP_NZ_a16    : return opJpCondImm(!regs.flags.Z); // JP NZ,a16
         case op::JP_a16       : return opJpImm(); // JP a16
         // case op::CALL_NZ_a16  : return 1;
         case op::PUSH_BC      : return opPushReg16(regs.BC());
@@ -305,7 +305,7 @@ uint8_t CPU::execute(uint8_t opcode, bool& ok)
         // case op::RST_00       : return 1;
         // case op::RET_Z        : return 1;
         // case op::RET          : return 1;
-        case op::JP_Z_a16     : return opJpCondImm(regs.getZ()); // JP Z,a16
+        case op::JP_Z_a16     : return opJpCondImm(regs.flags.Z); // JP Z,a16
         // case op::CB_PREFIX    : return 1;
         // case op::CALL_Z_a16   : return 1;
         // case op::CALL_a16     : return 1;
@@ -315,7 +315,7 @@ uint8_t CPU::execute(uint8_t opcode, bool& ok)
         // 0xD*
         // case op::RET_NC       : return 1;
         case op::POP_DE       : return opPopReg16(regs.D, regs.E);
-        case op::JP_NC_a16    : return opJpCondImm(!regs.getC()); // JP NC,a16
+        case op::JP_NC_a16    : return opJpCondImm(!regs.flags.C); // JP NC,a16
         // case op:: 0xD3 not implemented
         // case op::CALL_NC_a16  : return 1;
         case op::PUSH_DE      : return opPushReg16(regs.DE());
@@ -323,7 +323,7 @@ uint8_t CPU::execute(uint8_t opcode, bool& ok)
         // case op::RST_10       : return 1;
         // case op::RET_C        : return 1;
         // case op::RETI         : return 1;
-        case op::JP_C_a16     : return opJpCondImm(regs.getC()); // JP C,a16
+        case op::JP_C_a16     : return opJpCondImm(regs.flags.C); // JP C,a16
         // case op:: 0xDB not implemented
         // case op::CALL_C_a16   : return 1;
         // case op:: 0xDD not implemented
@@ -351,7 +351,7 @@ uint8_t CPU::execute(uint8_t opcode, bool& ok)
         // 0xF*
         case op::LDH_A_ina8   : return opLdRegIndImm8();
         case op::POP_AF       : return opPopReg16(regs.A, regs.flags);
-        case op::LDH_A_inC    : return opLdRegInd(regs.A, 0xFF00 + regs.C);  // LD A,[C]  (address is 0xff00 + C)
+        case op::LDH_A_inC    : return opLdRegInd(regs.A, 0xFF00 + regs.C);  // LD A,[C]  (actual address is 0xff00 + C)
         // case op::DI           : return 1;
         // case op:: 0xF4 not implemented
         case op::PUSH_AF      : return opPushReg16(regs.AF());
@@ -560,19 +560,6 @@ uint8_t CPU::opPushReg16(uint16_t val)
     return 4;
 }
 
-uint8_t CPU::opPopReg16(uint8_t& msb, uint8_t& lsb)
-{
-    // pop the register onto the stack
-    // e.g.: POP BC
-
-    lsb = mBus.read8(regs.SP);
-    msb = mBus.read8(regs.SP + 1);
-    regs.SP += 2;
-
-    return 3;
-}
-
-
 
 
 
@@ -596,10 +583,10 @@ uint8_t CPU::opAddRegReg(const uint8_t& reg)
     regs.A = (uint8_t)res;
 
     // check flags
-    (uint8_t)res == 0 ? regs.setZ() : regs.clearZ();
-    checkHalfCarry(res) ? regs.setH() : regs.clearH();
-    regs.clearN();
-    checkCarry(res) ? regs.setC() : regs.clearC();
+    regs.flags.Z = (uint8_t)res == 0;
+    regs.flags.H = checkHalfCarry(res);
+    regs.flags.N = false;
+    regs.flags.C = checkCarry(res);
 
     return 1;
 }
@@ -614,10 +601,10 @@ uint8_t CPU::opAddInd()
     regs.A = (uint8_t)res;
 
     // check flags
-    (uint8_t)res == 0 ? regs.setZ() : regs.clearZ();
-    checkHalfCarry(res) ? regs.setH() : regs.clearH();
-    regs.clearN();
-    checkCarry(res) ? regs.setC() : regs.clearC();
+    regs.flags.Z = (uint8_t)res == 0;
+    regs.flags.H = checkHalfCarry(res);
+    regs.flags.N = false;
+    regs.flags.C = checkCarry(res);
 
     return 2;
 }
@@ -631,10 +618,10 @@ uint8_t CPU::opAddImm()
     regs.A = (uint8_t)res;
 
     // check flags
-    (uint8_t)res == 0 ? regs.setZ() : regs.clearZ();
-    checkHalfCarry(res) ? regs.setH() : regs.clearH();
-    regs.clearN();
-    checkCarry(res) ? regs.setC() : regs.clearC();
+    regs.flags.Z = (uint8_t)res == 0;
+    regs.flags.H = checkHalfCarry(res);
+    regs.flags.N = false;
+    regs.flags.C = checkCarry(res);
 
     return 2;
 }
@@ -688,10 +675,10 @@ uint8_t CPU::opCpInd()
     uint16_t res = regs.A + compl2(mBus.read8(regs.HL()));
 
     // set N because a subtraction just happened
-    (uint8_t)res == 0 ? regs.setZ() : regs.clearZ();
-    checkHalfCarry(res) ? regs.setH() : regs.clearH();
-    regs.setN();
-    checkCarry(res) ? regs.setC() : regs.clearC();
+    regs.flags.Z = (uint8_t)res == 0;
+    regs.flags.H = checkHalfCarry(res);
+    regs.flags.N = true;
+    regs.flags.C = checkCarry(res);
 
     return 2;
 }

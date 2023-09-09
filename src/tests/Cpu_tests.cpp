@@ -921,8 +921,10 @@ TEST_CASE("CPU test PUSH reg16") {
     TestBus bus;
     CPU cpu(bus);
 
+    // the last nibble of val is zero because when used to set the value of 
+    // the F register the least significant 4 bits are not used and are always 0
     const uint16_t addr = 0x1234;
-    const uint16_t val = 0x4321;
+    const uint16_t val = 0x4320;
     const uint16_t pc = Registers::PCinitialValue;
 
     cpu.regs.SP = addr;
@@ -969,8 +971,10 @@ TEST_CASE("CPU test POP reg16") {
     TestBus bus;
     CPU cpu(bus);
 
+    // the last nibble of val is zero because when used to set the value of 
+    // the F register the least significant 4 bits are not used and are always 0
     const uint16_t addr = 0x1234;
-    const uint16_t val = 0x4321;
+    const uint16_t val = 0x4320;
     const uint16_t pc = Registers::PCinitialValue;
 
     cpu.regs.SP = addr;
@@ -1011,10 +1015,10 @@ TEST_CASE("CPU test POP reg16") {
         // if the value written to AF is 0x4321 the flags will be replaced with 0x21
         // this means that 0x2 will end up in the most significant nibble of the flags
         // so the flags will be z=0, n=0, h=1, c=0
-        CHECK_FALSE(cpu.regs.getZ());
-        CHECK_FALSE(cpu.regs.getN());
-        CHECK(cpu.regs.getH());
-        CHECK_FALSE(cpu.regs.getC());
+        CHECK_FALSE(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.N);
+        CHECK(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.C);
     }
 }
 
@@ -1035,10 +1039,10 @@ TEST_CASE("CPU test ADD A,reg") {
         cpu.step();
         CHECK(cpu.regs.A == 3);
         
-        CHECK_FALSE(cpu.regs.getZ());
-        CHECK_FALSE(cpu.regs.getH());
-        CHECK_FALSE(cpu.regs.getC());
-        CHECK_FALSE(cpu.regs.getN());
+        CHECK_FALSE(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.N);
         
         CHECK(cpu.elapsedCycles() == 1);
     }
@@ -1048,10 +1052,10 @@ TEST_CASE("CPU test ADD A,reg") {
         cpu.step();
         CHECK(cpu.regs.A == 0);
         
-        CHECK(cpu.regs.getZ());
-        CHECK_FALSE(cpu.regs.getH());
-        CHECK_FALSE(cpu.regs.getC());
-        CHECK_FALSE(cpu.regs.getN());
+        CHECK(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.N);
         
         CHECK(cpu.elapsedCycles() == 1);
     }
@@ -1061,10 +1065,10 @@ TEST_CASE("CPU test ADD A,reg") {
         cpu.step();
         CHECK(cpu.regs.A == 1);
         
-        CHECK_FALSE(cpu.regs.getZ());
-        CHECK_FALSE(cpu.regs.getH());
-        CHECK(cpu.regs.getC());
-        CHECK_FALSE(cpu.regs.getN());
+        CHECK_FALSE(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.N);
 
         CHECK(cpu.elapsedCycles() == 1);
     }
@@ -1074,10 +1078,10 @@ TEST_CASE("CPU test ADD A,reg") {
         cpu.step();
         CHECK(cpu.regs.A == 0);
 
-        CHECK(cpu.regs.getZ());
-        CHECK_FALSE(cpu.regs.getH());
-        CHECK(cpu.regs.getC());
-        CHECK_FALSE(cpu.regs.getN());
+        CHECK(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.N);
         
         CHECK(cpu.elapsedCycles() == 1);
     }
@@ -1087,10 +1091,10 @@ TEST_CASE("CPU test ADD A,reg") {
         cpu.step();
         CHECK(cpu.regs.A == 0x10);
 
-        CHECK_FALSE(cpu.regs.getZ());
-        CHECK(cpu.regs.getH());
-        CHECK_FALSE(cpu.regs.getC());
-        CHECK_FALSE(cpu.regs.getN());
+        CHECK_FALSE(cpu.regs.flags.Z);
+        CHECK(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.N);
 
         CHECK(cpu.elapsedCycles() == 1);
     }
@@ -1115,10 +1119,10 @@ TEST_CASE("CPU test ADD A,[HL]") {
         cpu.step();
         CHECK(cpu.regs.A == 3);
         
-        CHECK_FALSE(cpu.regs.getZ());
-        CHECK_FALSE(cpu.regs.getH());
-        CHECK_FALSE(cpu.regs.getC());
-        CHECK_FALSE(cpu.regs.getN());
+        CHECK_FALSE(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.N);
         
         CHECK(cpu.elapsedCycles() == 2);
     }
@@ -1128,10 +1132,10 @@ TEST_CASE("CPU test ADD A,[HL]") {
         cpu.step();
         CHECK(cpu.regs.A == 0);
         
-        CHECK(cpu.regs.getZ());
-        CHECK_FALSE(cpu.regs.getH());
-        CHECK_FALSE(cpu.regs.getC());
-        CHECK_FALSE(cpu.regs.getN());
+        CHECK(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.N);
         
         CHECK(cpu.elapsedCycles() == 2);
     }
@@ -1141,10 +1145,10 @@ TEST_CASE("CPU test ADD A,[HL]") {
         cpu.step();
         CHECK(cpu.regs.A == 1);
         
-        CHECK_FALSE(cpu.regs.getZ());
-        CHECK_FALSE(cpu.regs.getH());
-        CHECK(cpu.regs.getC());
-        CHECK_FALSE(cpu.regs.getN());
+        CHECK_FALSE(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.N);
 
         CHECK(cpu.elapsedCycles() == 2);
     }
@@ -1154,10 +1158,10 @@ TEST_CASE("CPU test ADD A,[HL]") {
         cpu.step();
         CHECK(cpu.regs.A == 0);
 
-        CHECK(cpu.regs.getZ());
-        CHECK_FALSE(cpu.regs.getH());
-        CHECK(cpu.regs.getC());
-        CHECK_FALSE(cpu.regs.getN());
+        CHECK(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.N);
         
         CHECK(cpu.elapsedCycles() == 2);
     }
@@ -1167,10 +1171,10 @@ TEST_CASE("CPU test ADD A,[HL]") {
         cpu.step();
         CHECK(cpu.regs.A == 0x10);
 
-        CHECK_FALSE(cpu.regs.getZ());
-        CHECK(cpu.regs.getH());
-        CHECK_FALSE(cpu.regs.getC());
-        CHECK_FALSE(cpu.regs.getN());
+        CHECK_FALSE(cpu.regs.flags.Z);
+        CHECK(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.N);
 
         CHECK(cpu.elapsedCycles() == 2);
     }
@@ -1191,10 +1195,10 @@ TEST_CASE("CPU test ADD A,n8") {
         cpu.step();
         CHECK(cpu.regs.A == 3);
 
-        CHECK_FALSE(cpu.regs.getZ());
-        CHECK_FALSE(cpu.regs.getH());
-        CHECK_FALSE(cpu.regs.getC());
-        CHECK_FALSE(cpu.regs.getN());
+        CHECK_FALSE(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.N);
 
         CHECK(cpu.elapsedCycles() == 2);
     }
@@ -1204,10 +1208,10 @@ TEST_CASE("CPU test ADD A,n8") {
         cpu.step();
         CHECK(cpu.regs.A == 0);
 
-        CHECK(cpu.regs.getZ());
-        CHECK_FALSE(cpu.regs.getH());
-        CHECK_FALSE(cpu.regs.getC());
-        CHECK_FALSE(cpu.regs.getN());
+        CHECK(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.N);
 
         CHECK(cpu.elapsedCycles() == 2);
     }
@@ -1217,10 +1221,10 @@ TEST_CASE("CPU test ADD A,n8") {
         cpu.step();
         CHECK(cpu.regs.A == 1);
 
-        CHECK_FALSE(cpu.regs.getZ());
-        CHECK_FALSE(cpu.regs.getH());
-        CHECK(cpu.regs.getC());
-        CHECK_FALSE(cpu.regs.getN());
+        CHECK_FALSE(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.N);
 
         CHECK(cpu.elapsedCycles() == 2);
     }
@@ -1230,10 +1234,10 @@ TEST_CASE("CPU test ADD A,n8") {
         cpu.step();
         CHECK(cpu.regs.A == 0);
 
-        CHECK(cpu.regs.getZ());
-        CHECK_FALSE(cpu.regs.getH());
-        CHECK(cpu.regs.getC());
-        CHECK_FALSE(cpu.regs.getN());
+        CHECK(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.N);
 
         CHECK(cpu.elapsedCycles() == 2);
     }
@@ -1243,10 +1247,10 @@ TEST_CASE("CPU test ADD A,n8") {
         cpu.step();
         CHECK(cpu.regs.A == 0x10);
 
-        CHECK_FALSE(cpu.regs.getZ());
-        CHECK(cpu.regs.getH());
-        CHECK_FALSE(cpu.regs.getC());
-        CHECK_FALSE(cpu.regs.getN());
+        CHECK_FALSE(cpu.regs.flags.Z);
+        CHECK(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.N);
 
         CHECK(cpu.elapsedCycles() == 2);
     }
@@ -1277,10 +1281,10 @@ TEST_CASE("CPU test CP A,[HL]") {
         cpu.step();
         CHECK(cpu.regs.A == 0x25);
 
-        CHECK_FALSE(cpu.regs.getZ());
-        CHECK(cpu.regs.getC());
-        CHECK(cpu.regs.getN());
-        CHECK_FALSE(cpu.regs.getH());
+        CHECK_FALSE(cpu.regs.flags.Z);
+        CHECK(cpu.regs.flags.C);
+        CHECK(cpu.regs.flags.N);
+        CHECK_FALSE(cpu.regs.flags.H);
 
         CHECK(cpu.elapsedCycles() == 2);
     }
@@ -1289,10 +1293,10 @@ TEST_CASE("CPU test CP A,[HL]") {
         cpu.step();
         CHECK(cpu.regs.A == 0x20);
 
-        CHECK_FALSE(cpu.regs.getZ());
-        CHECK_FALSE(cpu.regs.getC());
-        CHECK(cpu.regs.getN());
-        CHECK(cpu.regs.getH());
+        CHECK_FALSE(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK(cpu.regs.flags.N);
+        CHECK(cpu.regs.flags.H);
 
         CHECK(cpu.elapsedCycles() == 2);
     }
@@ -1301,10 +1305,10 @@ TEST_CASE("CPU test CP A,[HL]") {
         cpu.step();
         CHECK(cpu.regs.A == 0x23);
 
-        CHECK(cpu.regs.getZ());
-        CHECK(cpu.regs.getC());
-        CHECK(cpu.regs.getN());
-        CHECK_FALSE(cpu.regs.getH());
+        CHECK(cpu.regs.flags.Z);
+        CHECK(cpu.regs.flags.C);
+        CHECK(cpu.regs.flags.N);
+        CHECK_FALSE(cpu.regs.flags.H);
 
         CHECK(cpu.elapsedCycles() == 2);
     }
@@ -1331,7 +1335,7 @@ TEST_CASE("CPU test conditional jumps JP C/Z/NC/NZ, a16") {
     }
     SUBCASE("Test JP C,a16 branch taken") {
         bus.write8(pc, op::JP_C_a16);
-        cpu.regs.setC();
+        cpu.regs.flags.C = true;
         cpu.step();
         CHECK(cpu.regs.PC == addr);
         CHECK(cpu.elapsedCycles() == 4);
@@ -1344,14 +1348,14 @@ TEST_CASE("CPU test conditional jumps JP C/Z/NC/NZ, a16") {
     }
     SUBCASE("Test JP Z,a16 branch taken") {
         bus.write8(pc, op::JP_Z_a16);
-        cpu.regs.setZ();
+        cpu.regs.flags.Z = true;
         cpu.step();
         CHECK(cpu.regs.PC == addr);
         CHECK(cpu.elapsedCycles() == 4);
     }
     SUBCASE("Test JP NC,a16 branch not taken") {
         bus.write8(pc, op::JP_NC_a16);
-        cpu.regs.setC();
+        cpu.regs.flags.C = true;
         cpu.step();
         CHECK(cpu.regs.PC == pc + 3);
         CHECK(cpu.elapsedCycles() == 3);
@@ -1364,7 +1368,7 @@ TEST_CASE("CPU test conditional jumps JP C/Z/NC/NZ, a16") {
     }
     SUBCASE("Test JP NZ,a16 branch not taken") {
         bus.write8(pc, op::JP_NZ_a16);
-        cpu.regs.setZ();
+        cpu.regs.flags.Z = true;
         cpu.step();
         CHECK(cpu.regs.PC == pc + 3);
         CHECK(cpu.elapsedCycles() == 3);
