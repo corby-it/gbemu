@@ -1177,6 +1177,82 @@ TEST_CASE("CPU test ADD A,[HL]") {
 }
 
 
+TEST_CASE("CPU test ADD A,n8") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint16_t pc = Registers::PCinitialValue;
+
+    bus.write8(pc, op::ADD_A_n8);
+
+    SUBCASE("Test ADD A,n8 no flags") {
+        cpu.regs.A = 1;
+        bus.write8(pc + 1, 2);
+        cpu.step();
+        CHECK(cpu.regs.A == 3);
+
+        CHECK_FALSE(cpu.regs.getZ());
+        CHECK_FALSE(cpu.regs.getH());
+        CHECK_FALSE(cpu.regs.getC());
+        CHECK_FALSE(cpu.regs.getN());
+
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+    SUBCASE("Test ADD A,n8 zero flag") {
+        cpu.regs.A = 0;
+        bus.write8(pc + 1, 0);
+        cpu.step();
+        CHECK(cpu.regs.A == 0);
+
+        CHECK(cpu.regs.getZ());
+        CHECK_FALSE(cpu.regs.getH());
+        CHECK_FALSE(cpu.regs.getC());
+        CHECK_FALSE(cpu.regs.getN());
+
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+    SUBCASE("Test ADD A,n8 carry flag") {
+        cpu.regs.A = 255;
+        bus.write8(pc + 1, 2);
+        cpu.step();
+        CHECK(cpu.regs.A == 1);
+
+        CHECK_FALSE(cpu.regs.getZ());
+        CHECK_FALSE(cpu.regs.getH());
+        CHECK(cpu.regs.getC());
+        CHECK_FALSE(cpu.regs.getN());
+
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+    SUBCASE("Test ADD A,n8 zero and carry flags") {
+        cpu.regs.A = 255;
+        bus.write8(pc + 1, 1);
+        cpu.step();
+        CHECK(cpu.regs.A == 0);
+
+        CHECK(cpu.regs.getZ());
+        CHECK_FALSE(cpu.regs.getH());
+        CHECK(cpu.regs.getC());
+        CHECK_FALSE(cpu.regs.getN());
+
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+    SUBCASE("Test ADD A,n8 half-carry flag") {
+        cpu.regs.A = 0x0f;
+        bus.write8(pc + 1, 1);
+        cpu.step();
+        CHECK(cpu.regs.A == 0x10);
+
+        CHECK_FALSE(cpu.regs.getZ());
+        CHECK(cpu.regs.getH());
+        CHECK_FALSE(cpu.regs.getC());
+        CHECK_FALSE(cpu.regs.getN());
+
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+}
+
+
 
 TEST_CASE("CPU test CP A,[HL]") {
     TestBus bus;

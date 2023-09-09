@@ -301,7 +301,7 @@ uint8_t CPU::execute(uint8_t opcode, bool& ok)
         case op::JP_a16       : return opJpImm(); // JP a16
         // case op::CALL_NZ_a16  : return 1;
         case op::PUSH_BC      : return opPushReg16(regs.BC());
-        // case op::ADD_A_n8     : return 1;
+        case op::ADD_A_n8     : return opAddImm();
         // case op::RST_00       : return 1;
         // case op::RET_Z        : return 1;
         // case op::RET          : return 1;
@@ -596,14 +596,10 @@ uint8_t CPU::opAddRegReg(const uint8_t& reg)
     regs.A = (uint8_t)res;
 
     // check flags
+    (uint8_t)res == 0 ? regs.setZ() : regs.clearZ();
+    checkHalfCarry(res) ? regs.setH() : regs.clearH();
     regs.clearN();
-
-    if(checkCarry(res))
-        regs.setC();
-    if(checkHalfCarry(res))
-        regs.setH();
-    if((uint8_t)res == 0)
-        regs.setZ();
+    checkCarry(res) ? regs.setC() : regs.clearC();
 
     return 1;
 }
@@ -618,17 +614,32 @@ uint8_t CPU::opAddInd()
     regs.A = (uint8_t)res;
 
     // check flags
+    (uint8_t)res == 0 ? regs.setZ() : regs.clearZ();
+    checkHalfCarry(res) ? regs.setH() : regs.clearH();
     regs.clearN();
-
-    if(checkCarry(res))
-        regs.setC();
-    if(checkHalfCarry(res))
-        regs.setH();
-    if((uint8_t)res == 0)
-        regs.setZ();
+    checkCarry(res) ? regs.setC() : regs.clearC();
 
     return 2;
 }
+
+uint8_t CPU::opAddImm()
+{
+    // ADD A,n8
+    // 2 cycles
+    uint16_t res = regs.A + mBus.read8(regs.PC++);
+
+    regs.A = (uint8_t)res;
+
+    // check flags
+    (uint8_t)res == 0 ? regs.setZ() : regs.clearZ();
+    checkHalfCarry(res) ? regs.setH() : regs.clearH();
+    regs.clearN();
+    checkCarry(res) ? regs.setC() : regs.clearC();
+
+    return 2;
+}
+
+
 
 uint8_t CPU::opJpImm()
 {
@@ -677,14 +688,10 @@ uint8_t CPU::opCpInd()
     uint16_t res = regs.A + compl2(mBus.read8(regs.HL()));
 
     // set N because a subtraction just happened
+    (uint8_t)res == 0 ? regs.setZ() : regs.clearZ();
+    checkHalfCarry(res) ? regs.setH() : regs.clearH();
     regs.setN();
-
-    if((uint8_t)res == 0)
-        regs.setZ();
-    if(checkCarry(res))
-        regs.setC();
-    if(checkHalfCarry(res))
-        regs.setH();
+    checkCarry(res) ? regs.setC() : regs.clearC();
 
     return 2;
 }

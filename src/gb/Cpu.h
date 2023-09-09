@@ -136,6 +136,7 @@ private:
     // 8-bit arithmetic and logical instructions
     uint8_t opAddRegReg(const uint8_t& reg);
     uint8_t opAddInd();
+    uint8_t opAddImm();
     
     uint8_t opJpImm();
     uint8_t opJpInd();
