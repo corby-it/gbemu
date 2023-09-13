@@ -223,22 +223,22 @@ uint8_t CPU::execute(uint8_t opcode, bool& ok)
         case op::LD_A_A       : return opLdRegReg(regs.A, regs.A); // LD A,A
 
         // 0x8*
-        case op::ADD_A_B      : return opAddRegReg(regs.B); // ADD A,B
-        case op::ADD_A_C      : return opAddRegReg(regs.C); // ADD A,C
-        case op::ADD_A_D      : return opAddRegReg(regs.D); // ADD A,D
-        case op::ADD_A_E      : return opAddRegReg(regs.E); // ADD A,E
-        case op::ADD_A_H      : return opAddRegReg(regs.H); // ADD A,H
-        case op::ADD_A_L      : return opAddRegReg(regs.L); // ADD A,L
+        case op::ADD_A_B      : return opAddReg(regs.B); // ADD A,B
+        case op::ADD_A_C      : return opAddReg(regs.C); // ADD A,C
+        case op::ADD_A_D      : return opAddReg(regs.D); // ADD A,D
+        case op::ADD_A_E      : return opAddReg(regs.E); // ADD A,E
+        case op::ADD_A_H      : return opAddReg(regs.H); // ADD A,H
+        case op::ADD_A_L      : return opAddReg(regs.L); // ADD A,L
         case op::ADD_A_inHL   : return opAddInd(); // ADD A,[HL]
-        case op::ADD_A_A      : return opAddRegReg(regs.A); // ADD A,A
-        //case op::ADC_A_B      : return 1;
-        //case op::ADC_A_C      : return 1;
-        //case op::ADC_A_D      : return 1;
-        //case op::ADC_A_E      : return 1;
-        //case op::ADC_A_H      : return 1;
-        //case op::ADC_A_L      : return 1;
-        //case op::ADC_A_inHL   : return 1;
-        //case op::ADC_A_A      : return 1;
+        case op::ADD_A_A      : return opAddReg(regs.A); // ADD A,A
+        case op::ADC_A_B      : return opAdcReg(regs.B);
+        case op::ADC_A_C      : return opAdcReg(regs.C);
+        case op::ADC_A_D      : return opAdcReg(regs.D);
+        case op::ADC_A_E      : return opAdcReg(regs.E);
+        case op::ADC_A_H      : return opAdcReg(regs.H);
+        case op::ADC_A_L      : return opAdcReg(regs.L);
+        case op::ADC_A_inHL   : return opAdcInd();
+        case op::ADC_A_A      : return opAdcReg(regs.A);
 
         // 0x9*
         //case op::SUB_A_B      : return 1;
@@ -309,7 +309,7 @@ uint8_t CPU::execute(uint8_t opcode, bool& ok)
         // case op::CB_PREFIX    : return 1;
         // case op::CALL_Z_a16   : return 1;
         // case op::CALL_a16     : return 1;
-        // case op::ADC_A_n8     : return 1;
+        case op::ADC_A_n8     : return opAdcImm();
         // case op::RST_08       : return 1;
 
         // 0xD*
@@ -566,7 +566,7 @@ uint8_t CPU::opPushReg16(uint16_t val)
 
 
 
-uint8_t CPU::opAddRegReg(const uint8_t& reg)
+uint8_t CPU::opAddReg(const uint8_t& reg)
 {
     // opcodes 0x80..0x85
     // addition between registers, sum A and another register, store the result in A
@@ -574,9 +574,10 @@ uint8_t CPU::opAddRegReg(const uint8_t& reg)
     // 0x80: ADD A,B
     // 0x81: ADD A,C
     // 0x82: ADD A,D
-    // 0x83: ADD A,D
-    // 0x84: ADD A,D
-    // 0x85: ADD A,D
+    // 0x83: ADD A,E
+    // 0x84: ADD A,H
+    // 0x85: ADD A,L
+    // 0x87: ADD A,A
     // 1 cycle required
 
     uint16_t res = regs.A + reg;
@@ -614,6 +615,67 @@ uint8_t CPU::opAddImm()
     // ADD A,n8
     // 2 cycles
     uint16_t res = regs.A + mBus.read8(regs.PC++);
+
+    regs.A = (uint8_t)res;
+
+    // check flags
+    regs.flags.Z = (uint8_t)res == 0;
+    regs.flags.H = checkHalfCarry(res);
+    regs.flags.N = false;
+    regs.flags.C = checkCarry(res);
+
+    return 2;
+}
+
+uint8_t CPU::opAdcReg(const uint8_t& reg)
+{
+    // addition between registers and carry:
+    // sum A, the carry flag and another register, store the result in A
+    // and set the appropriate flags
+    // ADC A,A
+    // ADC A,B
+    // ADC A,C
+    // ADC A,D
+    // ADC A,E
+    // ADC A,H
+    // ADC A,L
+    // 1 cycle required
+
+    uint16_t res = regs.A + reg + regs.flags.C;
+    regs.A = (uint8_t)res;
+
+    // check flags
+    regs.flags.Z = (uint8_t)res == 0;
+    regs.flags.H = checkHalfCarry(res);
+    regs.flags.N = false;
+    regs.flags.C = checkCarry(res);
+
+    return 1;
+}
+
+uint8_t CPU::opAdcInd()
+{
+    // ADC A,[HL]
+    // A = A + carry flag + mem[HL], 2 cycles
+    uint16_t addr = regs.HL();
+    uint16_t res = regs.A + mBus.read8(addr) + regs.flags.C;
+
+    regs.A = (uint8_t)res;
+
+    // check flags
+    regs.flags.Z = (uint8_t)res == 0;
+    regs.flags.H = checkHalfCarry(res);
+    regs.flags.N = false;
+    regs.flags.C = checkCarry(res);
+
+    return 2;
+}
+
+uint8_t CPU::opAdcImm()
+{
+    // ADC A,n8
+    // 2 cycles
+    uint16_t res = regs.A + mBus.read8(regs.PC++) + regs.flags.C;
 
     regs.A = (uint8_t)res;
 

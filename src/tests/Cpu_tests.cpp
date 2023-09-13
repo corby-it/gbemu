@@ -1257,6 +1257,298 @@ TEST_CASE("CPU test ADD A,n8") {
 }
 
 
+TEST_CASE("CPU test ADC A,reg") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint16_t pc = Registers::PCinitialValue;
+
+    // we use register B for the test, all the other registers use the same code
+    bus.write8(pc, op::ADC_A_B);
+
+    SUBCASE("Test ADC A,B no flags") {
+        cpu.regs.A = 1;
+        cpu.regs.B = 2;
+        cpu.regs.flags.C = 0;
+        cpu.step();
+        CHECK(cpu.regs.A == 3);
+
+        CHECK_FALSE(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 1);
+    }
+    SUBCASE("Test ADC A,B +carry, no flags") {
+        cpu.regs.A = 1;
+        cpu.regs.B = 2;
+        cpu.regs.flags.C = 1;
+        cpu.step();
+        CHECK(cpu.regs.A == 4);
+
+        CHECK_FALSE(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 1);
+    }
+    SUBCASE("Test ADC A,B zero flag") {
+        cpu.regs.A = 0;
+        cpu.regs.B = 0;
+        cpu.regs.flags.C = 0;
+        cpu.step();
+        CHECK(cpu.regs.A == 0);
+
+        CHECK(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 1);
+    }
+    SUBCASE("Test ADC A,B +carry, carry flag") {
+        cpu.regs.A = 255;
+        cpu.regs.B = 1;
+        cpu.regs.flags.C = 1;
+        cpu.step();
+        CHECK(cpu.regs.A == 1);
+
+        CHECK_FALSE(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 1);
+    }
+    SUBCASE("Test ADC A,B +carry, zero and carry flags") {
+        cpu.regs.A = 254;
+        cpu.regs.B = 1;
+        cpu.regs.flags.C = 1;
+        cpu.step();
+        CHECK(cpu.regs.A == 0);
+
+        CHECK(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 1);
+    }
+    SUBCASE("Test ADC A,B half-carry flag") {
+        cpu.regs.A = 0x0e;
+        cpu.regs.B = 1;
+        cpu.regs.flags.C = 1;
+        cpu.step();
+        CHECK(cpu.regs.A == 0x10);
+
+        CHECK_FALSE(cpu.regs.flags.Z);
+        CHECK(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 1);
+    }
+}
+
+
+
+TEST_CASE("CPU test ADC A,[HL]") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint16_t addr = 0x1234;
+    const uint16_t pc = Registers::PCinitialValue;
+
+    cpu.regs.setHL(addr);
+
+    bus.write8(pc, op::ADC_A_inHL);
+
+    SUBCASE("Test ADC A,[HL] no flags") {
+        cpu.regs.A = 1;
+        bus.write8(addr, 2);
+        cpu.regs.flags.C = 0;
+        cpu.step();
+        CHECK(cpu.regs.A == 3);
+
+        CHECK_FALSE(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+    SUBCASE("Test ADC A,[HL] +carry, no flags") {
+        cpu.regs.A = 1;
+        bus.write8(addr, 2);
+        cpu.regs.flags.C = 1;
+        cpu.step();
+        CHECK(cpu.regs.A == 4);
+
+        CHECK_FALSE(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+    SUBCASE("Test ADC A,[HL] zero flag") {
+        cpu.regs.A = 0;
+        bus.write8(addr, 0);
+        cpu.regs.flags.C = 0;
+        cpu.step();
+        CHECK(cpu.regs.A == 0);
+        
+        CHECK(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+    SUBCASE("Test ADC A,[HL] carry flag") {
+        cpu.regs.A = 255;
+        bus.write8(addr, 1);
+        cpu.regs.flags.C = 1;
+        cpu.step();
+        CHECK(cpu.regs.A == 1);
+
+        CHECK_FALSE(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+    SUBCASE("Test ADC A,[HL] zero and carry flags") {
+        cpu.regs.A = 254;
+        bus.write8(addr, 1);
+        cpu.regs.flags.C = 1;
+        cpu.step();
+        CHECK(cpu.regs.A == 0);
+
+        CHECK(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+    SUBCASE("Test ADC A,[HL] half-carry flag") {
+        cpu.regs.A = 0x0e;
+        bus.write8(addr, 1);
+        cpu.regs.flags.C = 1;
+        cpu.step();
+        CHECK(cpu.regs.A == 0x10);
+
+        CHECK_FALSE(cpu.regs.flags.Z);
+        CHECK(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+}
+
+
+TEST_CASE("CPU test ADC A,n8") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint16_t pc = Registers::PCinitialValue;
+
+    bus.write8(pc, op::ADC_A_n8);
+
+    SUBCASE("Test ADC A,n8 no flags") {
+        cpu.regs.A = 1;
+        bus.write8(pc + 1, 2);
+        cpu.regs.flags.C = 0;
+        cpu.step();
+        CHECK(cpu.regs.A == 3);
+
+        CHECK_FALSE(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+    SUBCASE("Test ADC A,n8 +carry, no flags") {
+        cpu.regs.A = 1;
+        bus.write8(pc + 1, 2);
+        cpu.regs.flags.C = 1;
+        cpu.step();
+        CHECK(cpu.regs.A == 4);
+
+        CHECK_FALSE(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+    SUBCASE("Test ADC A,n8 zero flag") {
+        cpu.regs.A = 0;
+        bus.write8(pc + 1, 0);
+        cpu.regs.flags.C = 0;
+        cpu.step();
+        CHECK(cpu.regs.A == 0);
+
+        CHECK(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+    SUBCASE("Test ADC A,n8 carry flag") {
+        cpu.regs.A = 255;
+        bus.write8(pc + 1, 1);
+        cpu.regs.flags.C = 1;
+        cpu.step();
+        CHECK(cpu.regs.A == 1);
+
+        CHECK_FALSE(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+    SUBCASE("Test ADC A,n8 zero and carry flags") {
+        cpu.regs.A = 254;
+        bus.write8(pc + 1, 1);
+        cpu.regs.flags.C = 1;
+        cpu.step();
+        CHECK(cpu.regs.A == 0);
+
+        CHECK(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+    SUBCASE("Test ADC A,n8 half-carry flag") {
+        cpu.regs.A = 0x0e;
+        bus.write8(pc + 1, 1);
+        cpu.regs.flags.C = 1;
+        cpu.step();
+        CHECK(cpu.regs.A == 0x10);
+
+        CHECK_FALSE(cpu.regs.flags.Z);
+        CHECK(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+}
+
+
+
+
 
 TEST_CASE("CPU test CP A,[HL]") {
     TestBus bus;
