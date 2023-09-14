@@ -241,14 +241,14 @@ uint8_t CPU::execute(uint8_t opcode, bool& ok)
         case op::ADC_A_A      : return opAdcReg(regs.A);
 
         // 0x9*
-        //case op::SUB_A_B      : return 1;
-        //case op::SUB_A_C      : return 1;
-        //case op::SUB_A_D      : return 1;
-        //case op::SUB_A_E      : return 1;
-        //case op::SUB_A_H      : return 1;
-        //case op::SUB_A_L      : return 1;
-        //case op::SUB_A_inHL   : return 1;
-        //case op::SUB_A_A      : return 1;
+        case op::SUB_A_B      : return opSubReg(regs.B);
+        case op::SUB_A_C      : return opSubReg(regs.C);
+        case op::SUB_A_D      : return opSubReg(regs.D);
+        case op::SUB_A_E      : return opSubReg(regs.E);
+        case op::SUB_A_H      : return opSubReg(regs.H);
+        case op::SUB_A_L      : return opSubReg(regs.L);
+        case op::SUB_A_inHL   : return opSubInd();
+        case op::SUB_A_A      : return opSubReg(regs.A);
         //case op::SBC_A_B      : return 1;
         //case op::SBC_A_C      : return 1;
         //case op::SBC_A_D      : return 1;
@@ -319,7 +319,7 @@ uint8_t CPU::execute(uint8_t opcode, bool& ok)
         // case op:: 0xD3 not implemented
         // case op::CALL_NC_a16  : return 1;
         case op::PUSH_DE      : return opPushReg16(regs.DE());
-        // case op::SUB_A_n8     : return 1;
+        case op::SUB_A_n8     : return opSubImm();
         // case op::RST_10       : return 1;
         // case op::RET_C        : return 1;
         // case op::RETI         : return 1;
@@ -584,7 +584,7 @@ uint8_t CPU::opAddReg(const uint8_t& reg)
 
     // check flags
     regs.flags.Z = (uint8_t)res == 0;
-    regs.flags.H = checkHalfCarry(regs.A, reg);
+    regs.flags.H = checkHalfCarryAdd(regs.A, reg);
     regs.flags.N = false;
     regs.flags.C = checkCarry(res);
 
@@ -604,7 +604,7 @@ uint8_t CPU::opAddInd()
 
     // check flags
     regs.flags.Z = (uint8_t)res == 0;
-    regs.flags.H = checkHalfCarry(regs.A, rhs);
+    regs.flags.H = checkHalfCarryAdd(regs.A, rhs);
     regs.flags.N = false;
     regs.flags.C = checkCarry(res);
 
@@ -622,7 +622,7 @@ uint8_t CPU::opAddImm()
 
     // check flags
     regs.flags.Z = (uint8_t)res == 0;
-    regs.flags.H = checkHalfCarry(regs.A, rhs);
+    regs.flags.H = checkHalfCarryAdd(regs.A, rhs);
     regs.flags.N = false;
     regs.flags.C = checkCarry(res);
 
@@ -649,7 +649,7 @@ uint8_t CPU::opAdcReg(const uint8_t& reg)
 
     // check flags
     regs.flags.Z = (uint8_t)res == 0;
-    regs.flags.H = checkHalfCarry(regs.A, reg, regs.flags.C);
+    regs.flags.H = checkHalfCarryAdd(regs.A, reg, regs.flags.C);
     regs.flags.N = false;
     regs.flags.C = checkCarry(res);
     
@@ -668,7 +668,7 @@ uint8_t CPU::opAdcInd()
 
     // check flags
     regs.flags.Z = (uint8_t)res == 0;
-    regs.flags.H = checkHalfCarry(regs.A, rhs, regs.flags.C);
+    regs.flags.H = checkHalfCarryAdd(regs.A, rhs, regs.flags.C);
     regs.flags.N = false;
     regs.flags.C = checkCarry(res);
 
@@ -686,8 +686,65 @@ uint8_t CPU::opAdcImm()
 
     // check flags
     regs.flags.Z = (uint8_t)res == 0;
-    regs.flags.H = checkHalfCarry(regs.A, rhs, regs.flags.C);
+    regs.flags.H = checkHalfCarryAdd(regs.A, rhs, regs.flags.C);
     regs.flags.N = false;
+    regs.flags.C = checkCarry(res);
+
+    regs.A = (uint8_t)res;
+
+    return 2;
+}
+
+uint8_t CPU::opSubReg(const uint8_t& reg)
+{
+    // SUB A,reg
+    // it performs A = A - reg
+    // all flags are updated accordingly
+    auto rhs = compl2(reg);
+    uint16_t res = regs.A + rhs;
+
+    // set N because a subtraction just happened
+    regs.flags.Z = (uint8_t)res == 0;
+    regs.flags.H = checkHalfCarryAdd(regs.A, rhs);
+    regs.flags.N = true;
+    regs.flags.C = checkCarry(res);
+
+    regs.A = (uint8_t)res;
+
+    return 1;
+}
+
+uint8_t CPU::opSubInd()
+{
+    // SUB A,[HL]
+    // it performs A = A - mem[HL]
+    // all flags are updated accordingly
+    auto rhs = compl2(mBus.read8(regs.HL()));
+    uint16_t res = regs.A + rhs;
+
+    // set N because a subtraction just happened
+    regs.flags.Z = (uint8_t)res == 0;
+    regs.flags.H = checkHalfCarryAdd(regs.A, rhs);
+    regs.flags.N = true;
+    regs.flags.C = checkCarry(res);
+
+    regs.A = (uint8_t)res;
+
+    return 2;
+}
+
+uint8_t CPU::opSubImm()
+{
+    // SUB A,n8
+    // it performs A = A - val
+    // all flags are updated accordingly
+    auto rhs = compl2(mBus.read8(regs.PC++));
+    uint16_t res = regs.A + rhs;
+
+    // set N because a subtraction just happened
+    regs.flags.Z = (uint8_t)res == 0;
+    regs.flags.H = checkHalfCarryAdd(regs.A, rhs);
+    regs.flags.N = true;
     regs.flags.C = checkCarry(res);
 
     regs.A = (uint8_t)res;
@@ -746,7 +803,7 @@ uint8_t CPU::opCpInd()
 
     // set N because a subtraction just happened
     regs.flags.Z = (uint8_t)res == 0;
-    regs.flags.H = checkHalfCarry(regs.A, rhs);
+    regs.flags.H = checkHalfCarryAdd(regs.A, rhs);
     regs.flags.N = true;
     regs.flags.C = checkCarry(res);
 

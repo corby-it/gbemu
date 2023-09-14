@@ -174,6 +174,10 @@ private:
     uint8_t opAdcReg(const uint8_t& reg);
     uint8_t opAdcInd();
     uint8_t opAdcImm();
+
+    uint8_t opSubReg(const uint8_t& reg);
+    uint8_t opSubInd();
+    uint8_t opSubImm();
     
     uint8_t opJpImm();
     uint8_t opJpInd();
@@ -188,8 +192,12 @@ private:
     
     bool checkCarry(uint16_t mathRes) { return mathRes & 0xff00; }
 
-    bool checkHalfCarry(uint8_t lhs, uint8_t rhs, bool carry = false) {
+    bool checkHalfCarryAdd(uint8_t lhs, uint8_t rhs, bool carry = false) {
         return ((lhs & 0x0f) + (rhs & 0x0f) + carry) & 0x10;
+    }
+
+    bool checkHalfCarrySub(uint8_t lhs, uint8_t rhs, bool carry = false) {
+        return ((lhs & 0x0f) + (rhs & 0x0f) + compl2(carry)) & 0x10;
     }
 
     // Members ------------------------------------------------------------------------------------
