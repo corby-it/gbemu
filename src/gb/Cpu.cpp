@@ -581,13 +581,14 @@ uint8_t CPU::opAddReg(const uint8_t& reg)
     // 1 cycle required
 
     uint16_t res = regs.A + reg;
-    regs.A = (uint8_t)res;
 
     // check flags
     regs.flags.Z = (uint8_t)res == 0;
-    regs.flags.H = checkHalfCarry(res);
+    regs.flags.H = checkHalfCarry(regs.A, reg);
     regs.flags.N = false;
     regs.flags.C = checkCarry(res);
+
+    regs.A = (uint8_t)res;
 
     return 1;
 }
@@ -597,16 +598,18 @@ uint8_t CPU::opAddInd()
     // ADD A,[HL]
     // A = A + mem[HL], 2 cycles
     uint16_t addr = regs.HL();
-    uint16_t res = regs.A + mBus.read8(addr);
-    
-    regs.A = (uint8_t)res;
+    auto rhs = mBus.read8(addr);
+    uint16_t res = regs.A + rhs;
+
 
     // check flags
     regs.flags.Z = (uint8_t)res == 0;
-    regs.flags.H = checkHalfCarry(res);
+    regs.flags.H = checkHalfCarry(regs.A, rhs);
     regs.flags.N = false;
     regs.flags.C = checkCarry(res);
 
+    regs.A = (uint8_t)res;
+    
     return 2;
 }
 
@@ -614,16 +617,17 @@ uint8_t CPU::opAddImm()
 {
     // ADD A,n8
     // 2 cycles
-    uint16_t res = regs.A + mBus.read8(regs.PC++);
-
-    regs.A = (uint8_t)res;
+    auto rhs = mBus.read8(regs.PC++);
+    uint16_t res = regs.A + rhs;
 
     // check flags
     regs.flags.Z = (uint8_t)res == 0;
-    regs.flags.H = checkHalfCarry(res);
+    regs.flags.H = checkHalfCarry(regs.A, rhs);
     regs.flags.N = false;
     regs.flags.C = checkCarry(res);
 
+    regs.A = (uint8_t)res;
+    
     return 2;
 }
 
@@ -642,13 +646,14 @@ uint8_t CPU::opAdcReg(const uint8_t& reg)
     // 1 cycle required
 
     uint16_t res = regs.A + reg + regs.flags.C;
-    regs.A = (uint8_t)res;
 
     // check flags
     regs.flags.Z = (uint8_t)res == 0;
-    regs.flags.H = checkHalfCarry(res);
+    regs.flags.H = checkHalfCarry(regs.A, reg, regs.flags.C);
     regs.flags.N = false;
     regs.flags.C = checkCarry(res);
+    
+    regs.A = (uint8_t)res;
 
     return 1;
 }
@@ -658,15 +663,16 @@ uint8_t CPU::opAdcInd()
     // ADC A,[HL]
     // A = A + carry flag + mem[HL], 2 cycles
     uint16_t addr = regs.HL();
-    uint16_t res = regs.A + mBus.read8(addr) + regs.flags.C;
-
-    regs.A = (uint8_t)res;
+    auto rhs = mBus.read8(addr);
+    uint16_t res = regs.A + rhs + regs.flags.C;
 
     // check flags
     regs.flags.Z = (uint8_t)res == 0;
-    regs.flags.H = checkHalfCarry(res);
+    regs.flags.H = checkHalfCarry(regs.A, rhs, regs.flags.C);
     regs.flags.N = false;
     regs.flags.C = checkCarry(res);
+
+    regs.A = (uint8_t)res;
 
     return 2;
 }
@@ -675,15 +681,16 @@ uint8_t CPU::opAdcImm()
 {
     // ADC A,n8
     // 2 cycles
-    uint16_t res = regs.A + mBus.read8(regs.PC++) + regs.flags.C;
-
-    regs.A = (uint8_t)res;
+    auto rhs = mBus.read8(regs.PC++);
+    uint16_t res = regs.A + rhs + regs.flags.C;
 
     // check flags
     regs.flags.Z = (uint8_t)res == 0;
-    regs.flags.H = checkHalfCarry(res);
+    regs.flags.H = checkHalfCarry(regs.A, rhs, regs.flags.C);
     regs.flags.N = false;
     regs.flags.C = checkCarry(res);
+
+    regs.A = (uint8_t)res;
 
     return 2;
 }
@@ -734,11 +741,12 @@ uint8_t CPU::opCpInd()
     // CP A,[HL]
     // compares A with the value in mem[HL], it performs A - mem[HL]
     // but the result is not stored, all flags are updated accordingly
-    uint16_t res = regs.A + compl2(mBus.read8(regs.HL()));
+    auto rhs = compl2(mBus.read8(regs.HL()));
+    uint16_t res = regs.A + rhs;
 
     // set N because a subtraction just happened
     regs.flags.Z = (uint8_t)res == 0;
-    regs.flags.H = checkHalfCarry(res);
+    regs.flags.H = checkHalfCarry(regs.A, rhs);
     regs.flags.N = true;
     regs.flags.C = checkCarry(res);
 

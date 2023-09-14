@@ -1066,7 +1066,7 @@ TEST_CASE("CPU test ADD A,reg") {
         CHECK(cpu.regs.A == 1);
         
         CHECK_FALSE(cpu.regs.flags.Z);
-        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK(cpu.regs.flags.H);
         CHECK(cpu.regs.flags.C);
         CHECK_FALSE(cpu.regs.flags.N);
 
@@ -1079,7 +1079,7 @@ TEST_CASE("CPU test ADD A,reg") {
         CHECK(cpu.regs.A == 0);
 
         CHECK(cpu.regs.flags.Z);
-        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK(cpu.regs.flags.H);
         CHECK(cpu.regs.flags.C);
         CHECK_FALSE(cpu.regs.flags.N);
         
@@ -1146,7 +1146,7 @@ TEST_CASE("CPU test ADD A,[HL]") {
         CHECK(cpu.regs.A == 1);
         
         CHECK_FALSE(cpu.regs.flags.Z);
-        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK(cpu.regs.flags.H);
         CHECK(cpu.regs.flags.C);
         CHECK_FALSE(cpu.regs.flags.N);
 
@@ -1159,7 +1159,7 @@ TEST_CASE("CPU test ADD A,[HL]") {
         CHECK(cpu.regs.A == 0);
 
         CHECK(cpu.regs.flags.Z);
-        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK(cpu.regs.flags.H);
         CHECK(cpu.regs.flags.C);
         CHECK_FALSE(cpu.regs.flags.N);
         
@@ -1222,7 +1222,7 @@ TEST_CASE("CPU test ADD A,n8") {
         CHECK(cpu.regs.A == 1);
 
         CHECK_FALSE(cpu.regs.flags.Z);
-        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK(cpu.regs.flags.H);
         CHECK(cpu.regs.flags.C);
         CHECK_FALSE(cpu.regs.flags.N);
 
@@ -1235,7 +1235,7 @@ TEST_CASE("CPU test ADD A,n8") {
         CHECK(cpu.regs.A == 0);
 
         CHECK(cpu.regs.flags.Z);
-        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK(cpu.regs.flags.H);
         CHECK(cpu.regs.flags.C);
         CHECK_FALSE(cpu.regs.flags.N);
 
@@ -1316,7 +1316,7 @@ TEST_CASE("CPU test ADC A,reg") {
         CHECK(cpu.regs.A == 1);
 
         CHECK_FALSE(cpu.regs.flags.Z);
-        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK(cpu.regs.flags.H);
         CHECK(cpu.regs.flags.C);
         CHECK_FALSE(cpu.regs.flags.N);
 
@@ -1330,7 +1330,7 @@ TEST_CASE("CPU test ADC A,reg") {
         CHECK(cpu.regs.A == 0);
 
         CHECK(cpu.regs.flags.Z);
-        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK(cpu.regs.flags.H);
         CHECK(cpu.regs.flags.C);
         CHECK_FALSE(cpu.regs.flags.N);
 
@@ -1415,7 +1415,7 @@ TEST_CASE("CPU test ADC A,[HL]") {
         CHECK(cpu.regs.A == 1);
 
         CHECK_FALSE(cpu.regs.flags.Z);
-        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK(cpu.regs.flags.H);
         CHECK(cpu.regs.flags.C);
         CHECK_FALSE(cpu.regs.flags.N);
 
@@ -1429,7 +1429,7 @@ TEST_CASE("CPU test ADC A,[HL]") {
         CHECK(cpu.regs.A == 0);
 
         CHECK(cpu.regs.flags.Z);
-        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK(cpu.regs.flags.H);
         CHECK(cpu.regs.flags.C);
         CHECK_FALSE(cpu.regs.flags.N);
 
@@ -1510,7 +1510,7 @@ TEST_CASE("CPU test ADC A,n8") {
         CHECK(cpu.regs.A == 1);
 
         CHECK_FALSE(cpu.regs.flags.Z);
-        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK(cpu.regs.flags.H);
         CHECK(cpu.regs.flags.C);
         CHECK_FALSE(cpu.regs.flags.N);
 
@@ -1524,7 +1524,7 @@ TEST_CASE("CPU test ADC A,n8") {
         CHECK(cpu.regs.A == 0);
 
         CHECK(cpu.regs.flags.Z);
-        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK(cpu.regs.flags.H);
         CHECK(cpu.regs.flags.C);
         CHECK_FALSE(cpu.regs.flags.N);
 
@@ -1564,7 +1564,7 @@ TEST_CASE("CPU test CP A,[HL]") {
     // To perform the subtraction CP just sums A and the compl2 of mem[HL],
     // this results in a few cases:
     // - flag N is always set because a subtraction has been performed
-    // - when A == mem[HL] we will have Z and C set but not H
+    // - when A == mem[HL] we will have Z, C and H all set
     // - when A > mem[HL] we will have C set but not Z, H depends on the numbers
     // - when A < mem[HL] both C and Z won't be set
 
@@ -1576,7 +1576,7 @@ TEST_CASE("CPU test CP A,[HL]") {
         CHECK_FALSE(cpu.regs.flags.Z);
         CHECK(cpu.regs.flags.C);
         CHECK(cpu.regs.flags.N);
-        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK(cpu.regs.flags.H);
 
         CHECK(cpu.elapsedCycles() == 2);
     }
@@ -1588,11 +1588,11 @@ TEST_CASE("CPU test CP A,[HL]") {
         CHECK_FALSE(cpu.regs.flags.Z);
         CHECK_FALSE(cpu.regs.flags.C);
         CHECK(cpu.regs.flags.N);
-        CHECK(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.H);
 
         CHECK(cpu.elapsedCycles() == 2);
     }
-    SUBCASE("Test CP A,[HL] zero and carry flag") {
+    SUBCASE("Test CP A,[HL] zero, carry and half-carry flags") {
         cpu.regs.A = 0x23;
         cpu.step();
         CHECK(cpu.regs.A == 0x23);
@@ -1600,7 +1600,7 @@ TEST_CASE("CPU test CP A,[HL]") {
         CHECK(cpu.regs.flags.Z);
         CHECK(cpu.regs.flags.C);
         CHECK(cpu.regs.flags.N);
-        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK(cpu.regs.flags.H);
 
         CHECK(cpu.elapsedCycles() == 2);
     }

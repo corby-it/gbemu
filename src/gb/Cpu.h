@@ -185,8 +185,12 @@ private:
     
     // Utils --------------------------------------------------------------------------------------
     uint8_t compl2(uint8_t val) { return ~val + 1;}
+    
     bool checkCarry(uint16_t mathRes) { return mathRes & 0xff00; }
-    bool checkHalfCarry(uint16_t mathRes) { return mathRes & 0x0010; }
+
+    bool checkHalfCarry(uint8_t lhs, uint8_t rhs, bool carry = false) {
+        return ((lhs & 0x0f) + (rhs & 0x0f) + carry) & 0x10;
+    }
 
     // Members ------------------------------------------------------------------------------------
 
