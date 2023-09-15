@@ -249,14 +249,14 @@ uint8_t CPU::execute(uint8_t opcode, bool& ok)
         case op::SUB_A_L      : return opSubReg(regs.L);
         case op::SUB_A_inHL   : return opSubInd();
         case op::SUB_A_A      : return opSubReg(regs.A);
-        //case op::SBC_A_B      : return 1;
-        //case op::SBC_A_C      : return 1;
-        //case op::SBC_A_D      : return 1;
-        //case op::SBC_A_E      : return 1;
-        //case op::SBC_A_H      : return 1;
-        //case op::SBC_A_L      : return 1;
-        //case op::SBC_A_inHL   : return 1;
-        //case op::SBC_A_A      : return 1;
+        case op::SBC_A_B      : return opSbcReg(regs.B);
+        case op::SBC_A_C      : return opSbcReg(regs.C);
+        case op::SBC_A_D      : return opSbcReg(regs.D);
+        case op::SBC_A_E      : return opSbcReg(regs.E);
+        case op::SBC_A_H      : return opSbcReg(regs.H);
+        case op::SBC_A_L      : return opSbcReg(regs.L);
+        case op::SBC_A_inHL   : return opSbcInd();
+        case op::SBC_A_A      : return opSbcReg(regs.A);
 
         // 0xA*
         //case op::AND_A_B      : return 1;
@@ -327,7 +327,7 @@ uint8_t CPU::execute(uint8_t opcode, bool& ok)
         // case op:: 0xDB not implemented
         // case op::CALL_C_a16   : return 1;
         // case op:: 0xDD not implemented
-        // case op::SBC_A_n8     : return 1;
+        case op::SBC_A_n8     : return opSbcImm();
         // case op::RST_18       : return 1;
 
         // 0xE*
@@ -564,9 +564,22 @@ uint8_t CPU::opPushReg16(uint16_t val)
 
 
 
+uint8_t CPU::opAdd8Common(uint8_t rhs, uint8_t cycles)
+{
+    uint16_t res = regs.A + rhs;
 
+    // check flags
+    regs.flags.Z = (uint8_t)res == 0;
+    regs.flags.H = checkHalfCarry(regs.A, rhs);
+    regs.flags.N = false;
+    regs.flags.C = checkCarry(res);
 
-uint8_t CPU::opAddReg(const uint8_t& reg)
+    regs.A = (uint8_t)res;
+
+    return cycles;
+}
+
+uint8_t CPU::opAddReg(uint8_t reg)
 {
     // opcodes 0x80..0x85
     // addition between registers, sum A and another register, store the result in A
@@ -579,59 +592,43 @@ uint8_t CPU::opAddReg(const uint8_t& reg)
     // 0x85: ADD A,L
     // 0x87: ADD A,A
     // 1 cycle required
-
-    uint16_t res = regs.A + reg;
-
-    // check flags
-    regs.flags.Z = (uint8_t)res == 0;
-    regs.flags.H = checkHalfCarryAdd(regs.A, reg);
-    regs.flags.N = false;
-    regs.flags.C = checkCarry(res);
-
-    regs.A = (uint8_t)res;
-
-    return 1;
+    return opAdd8Common(reg, 1);
 }
 
 uint8_t CPU::opAddInd()
 {
     // ADD A,[HL]
     // A = A + mem[HL], 2 cycles
-    uint16_t addr = regs.HL();
-    auto rhs = mBus.read8(addr);
-    uint16_t res = regs.A + rhs;
-
-
-    // check flags
-    regs.flags.Z = (uint8_t)res == 0;
-    regs.flags.H = checkHalfCarryAdd(regs.A, rhs);
-    regs.flags.N = false;
-    regs.flags.C = checkCarry(res);
-
-    regs.A = (uint8_t)res;
-    
-    return 2;
+  
+    return opAdd8Common(mBus.read8(regs.HL()), 2);
 }
 
 uint8_t CPU::opAddImm()
 {
     // ADD A,n8
     // 2 cycles
-    auto rhs = mBus.read8(regs.PC++);
-    uint16_t res = regs.A + rhs;
+
+    return opAdd8Common(mBus.read8(regs.PC++), 2);
+}
+
+
+
+uint8_t CPU::opAdcCommon(uint8_t rhs, uint8_t cycles)
+{
+    uint16_t res = regs.A + rhs + regs.flags.C;
 
     // check flags
     regs.flags.Z = (uint8_t)res == 0;
-    regs.flags.H = checkHalfCarryAdd(regs.A, rhs);
+    regs.flags.H = checkHalfCarry(regs.A, rhs, regs.flags.C);
     regs.flags.N = false;
     regs.flags.C = checkCarry(res);
 
     regs.A = (uint8_t)res;
-    
-    return 2;
+
+    return cycles;
 }
 
-uint8_t CPU::opAdcReg(const uint8_t& reg)
+uint8_t CPU::opAdcReg(uint8_t reg)
 {
     // addition between registers and carry:
     // sum A, the carry flag and another register, store the result in A
@@ -645,73 +642,50 @@ uint8_t CPU::opAdcReg(const uint8_t& reg)
     // ADC A,L
     // 1 cycle required
 
-    uint16_t res = regs.A + reg + regs.flags.C;
-
-    // check flags
-    regs.flags.Z = (uint8_t)res == 0;
-    regs.flags.H = checkHalfCarryAdd(regs.A, reg, regs.flags.C);
-    regs.flags.N = false;
-    regs.flags.C = checkCarry(res);
-    
-    regs.A = (uint8_t)res;
-
-    return 1;
+    return opAdcCommon(reg, 1);
 }
 
 uint8_t CPU::opAdcInd()
 {
     // ADC A,[HL]
     // A = A + carry flag + mem[HL], 2 cycles
-    uint16_t addr = regs.HL();
-    auto rhs = mBus.read8(addr);
-    uint16_t res = regs.A + rhs + regs.flags.C;
-
-    // check flags
-    regs.flags.Z = (uint8_t)res == 0;
-    regs.flags.H = checkHalfCarryAdd(regs.A, rhs, regs.flags.C);
-    regs.flags.N = false;
-    regs.flags.C = checkCarry(res);
-
-    regs.A = (uint8_t)res;
-
-    return 2;
+    
+    return opAdcCommon(mBus.read8(regs.HL()), 2);
 }
 
 uint8_t CPU::opAdcImm()
 {
     // ADC A,n8
     // 2 cycles
-    auto rhs = mBus.read8(regs.PC++);
-    uint16_t res = regs.A + rhs + regs.flags.C;
+    
+    return opAdcCommon(mBus.read8(regs.PC++), 2);
+}
 
-    // check flags
+
+
+uint8_t CPU::opSubCommon(uint8_t rhs, uint8_t cycles)
+{
+    // generic subtraction, lhs is always reg A
+    int16_t res = regs.A - rhs;
+
+    // set N because a subtraction just happened
     regs.flags.Z = (uint8_t)res == 0;
-    regs.flags.H = checkHalfCarryAdd(regs.A, rhs, regs.flags.C);
-    regs.flags.N = false;
-    regs.flags.C = checkCarry(res);
+    regs.flags.H = checkHalfBorrow(regs.A, rhs);
+    regs.flags.N = true;
+    regs.flags.C = checkBorrow(regs.A, rhs);
 
     regs.A = (uint8_t)res;
 
-    return 2;
+    return cycles;
 }
 
-uint8_t CPU::opSubReg(const uint8_t& reg)
+uint8_t CPU::opSubReg(uint8_t reg)
 {
     // SUB A,reg
     // it performs A = A - reg
     // all flags are updated accordingly
-    auto rhs = compl2(reg);
-    uint16_t res = regs.A + rhs;
 
-    // set N because a subtraction just happened
-    regs.flags.Z = (uint8_t)res == 0;
-    regs.flags.H = checkHalfCarryAdd(regs.A, rhs);
-    regs.flags.N = true;
-    regs.flags.C = checkCarry(res);
-
-    regs.A = (uint8_t)res;
-
-    return 1;
+    return opSubCommon(reg, 1);
 }
 
 uint8_t CPU::opSubInd()
@@ -719,18 +693,8 @@ uint8_t CPU::opSubInd()
     // SUB A,[HL]
     // it performs A = A - mem[HL]
     // all flags are updated accordingly
-    auto rhs = compl2(mBus.read8(regs.HL()));
-    uint16_t res = regs.A + rhs;
-
-    // set N because a subtraction just happened
-    regs.flags.Z = (uint8_t)res == 0;
-    regs.flags.H = checkHalfCarryAdd(regs.A, rhs);
-    regs.flags.N = true;
-    regs.flags.C = checkCarry(res);
-
-    regs.A = (uint8_t)res;
-
-    return 2;
+    
+    return opSubCommon(mBus.read8(regs.HL()), 2);
 }
 
 uint8_t CPU::opSubImm()
@@ -738,18 +702,48 @@ uint8_t CPU::opSubImm()
     // SUB A,n8
     // it performs A = A - val
     // all flags are updated accordingly
-    auto rhs = compl2(mBus.read8(regs.PC++));
-    uint16_t res = regs.A + rhs;
+
+    return opSubCommon(mBus.read8(regs.PC++), 2);
+}
+
+uint8_t CPU::opSbcCommon(uint8_t rhs, uint8_t cycles)
+{
+    // in SBC we subtract an operand from reg A and we also subtract 1 if
+    // the C flag is active, the result is stored in A
+    // e.g.: SBC A,0x12  -->  A = A - 0x12 - carry
+
+    int16_t res = regs.A - (rhs + regs.flags.C);
 
     // set N because a subtraction just happened
     regs.flags.Z = (uint8_t)res == 0;
-    regs.flags.H = checkHalfCarryAdd(regs.A, rhs);
+    regs.flags.H = checkHalfBorrow(regs.A, rhs, regs.flags.C);
     regs.flags.N = true;
-    regs.flags.C = checkCarry(res);
+    regs.flags.C = checkBorrow(regs.A, rhs);
 
     regs.A = (uint8_t)res;
 
-    return 2;
+    return cycles;
+}
+
+uint8_t CPU::opSbcReg(uint8_t reg)
+{
+    // SBC A,reg
+
+    return opSbcCommon(reg, 1);
+}
+
+uint8_t CPU::opSbcInd()
+{
+    // SBC A,[HL]
+
+    return opSbcCommon(mBus.read8(regs.HL()), 2);
+}
+
+uint8_t CPU::opSbcImm()
+{
+    // SBC A,n8
+
+    return opSbcCommon(mBus.read8(regs.PC++), 2);
 }
 
 
@@ -803,7 +797,7 @@ uint8_t CPU::opCpInd()
 
     // set N because a subtraction just happened
     regs.flags.Z = (uint8_t)res == 0;
-    regs.flags.H = checkHalfCarryAdd(regs.A, rhs);
+    regs.flags.H = checkHalfCarry(regs.A, rhs);
     regs.flags.N = true;
     regs.flags.C = checkCarry(res);
 

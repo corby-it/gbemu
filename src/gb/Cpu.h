@@ -167,17 +167,25 @@ private:
     }
 
     // 8-bit arithmetic and logical instructions
-    uint8_t opAddReg(const uint8_t& reg);
+    uint8_t opAdd8Common(uint8_t rhs, uint8_t cycles);
+    uint8_t opAddReg(uint8_t reg);
     uint8_t opAddInd();
     uint8_t opAddImm();
 
-    uint8_t opAdcReg(const uint8_t& reg);
+    uint8_t opAdcCommon(uint8_t rhs, uint8_t cycles);
+    uint8_t opAdcReg(uint8_t reg);
     uint8_t opAdcInd();
     uint8_t opAdcImm();
 
-    uint8_t opSubReg(const uint8_t& reg);
+    uint8_t opSubCommon(uint8_t rhs, uint8_t cycles);
+    uint8_t opSubReg(uint8_t reg);
     uint8_t opSubInd();
     uint8_t opSubImm();
+
+    uint8_t opSbcCommon(uint8_t rhs, uint8_t cycles);
+    uint8_t opSbcReg(uint8_t reg);
+    uint8_t opSbcInd();
+    uint8_t opSbcImm();
     
     uint8_t opJpImm();
     uint8_t opJpInd();
@@ -188,17 +196,26 @@ private:
 
     
     // Utils --------------------------------------------------------------------------------------
-    uint8_t compl2(uint8_t val) { return ~val + 1;}
-    
-    bool checkCarry(uint16_t mathRes) { return mathRes & 0xff00; }
-
-    bool checkHalfCarryAdd(uint8_t lhs, uint8_t rhs, bool carry = false) {
-        return ((lhs & 0x0f) + (rhs & 0x0f) + carry) & 0x10;
+    uint8_t compl2(uint8_t val) {
+        return ~val + 1;
     }
 
-    bool checkHalfCarrySub(uint8_t lhs, uint8_t rhs, bool carry = false) {
-        return ((lhs & 0x0f) + (rhs & 0x0f) + compl2(carry)) & 0x10;
+    bool checkCarry(uint16_t mathRes) {
+        return mathRes & 0xff00;
     }
+
+    bool checkHalfCarry(uint8_t lhs, uint8_t rhs, bool carry = false) {
+        return ((lhs & 0x0f) + (rhs & 0x0f) + carry) > 0x0f;
+    }
+
+    bool checkBorrow(uint8_t lhs, uint8_t rhs) {
+        return lhs < rhs;
+    }
+
+    bool checkHalfBorrow(uint8_t lhs, uint8_t rhs, bool carry = false) {
+        return (lhs & 0x0f) < (rhs & 0x0f) + carry;
+    }
+
 
     // Members ------------------------------------------------------------------------------------
 

@@ -1109,75 +1109,24 @@ TEST_CASE("CPU test ADD A,[HL]") {
     const uint16_t addr = 0x1234;
     const uint16_t pc = Registers::PCinitialValue;
 
-    cpu.regs.setHL(addr);
+    // here we only check if the correct value pointed by HL in memory is 
+    // actually used, flags are already checked in the ADD A,reg and the code is the same
 
     bus.write8(pc, op::ADD_A_inHL);
+    bus.write8(addr, 2);
+    cpu.regs.setHL(addr);
 
-    SUBCASE("Test ADD A,[HL] no flags") {
-        cpu.regs.A = 1;
-        bus.write8(addr, 2);
-        cpu.step();
-        CHECK(cpu.regs.A == 3);
-        
-        CHECK_FALSE(cpu.regs.flags.Z);
-        CHECK_FALSE(cpu.regs.flags.H);
-        CHECK_FALSE(cpu.regs.flags.C);
-        CHECK_FALSE(cpu.regs.flags.N);
-        
-        CHECK(cpu.elapsedCycles() == 2);
-    }
-    SUBCASE("Test ADD A,[HL] zero flag") {
-        cpu.regs.A = 0;
-        bus.write8(addr, 0);
-        cpu.step();
-        CHECK(cpu.regs.A == 0);
-        
-        CHECK(cpu.regs.flags.Z);
-        CHECK_FALSE(cpu.regs.flags.H);
-        CHECK_FALSE(cpu.regs.flags.C);
-        CHECK_FALSE(cpu.regs.flags.N);
-        
-        CHECK(cpu.elapsedCycles() == 2);
-    }
-    SUBCASE("Test ADD A,[HL] carry and half-carry flags") {
-        cpu.regs.A = 255;
-        bus.write8(addr, 2);
-        cpu.step();
-        CHECK(cpu.regs.A == 1);
-        
-        CHECK_FALSE(cpu.regs.flags.Z);
-        CHECK(cpu.regs.flags.H);
-        CHECK(cpu.regs.flags.C);
-        CHECK_FALSE(cpu.regs.flags.N);
+    cpu.regs.A = 1;
+    cpu.step();
 
-        CHECK(cpu.elapsedCycles() == 2);
-    }
-    SUBCASE("Test ADD A,[HL] zero, carry and half-carry flags") {
-        cpu.regs.A = 255;
-        bus.write8(addr, 1);
-        cpu.step();
-        CHECK(cpu.regs.A == 0);
+    CHECK(cpu.regs.A == 3);
 
-        CHECK(cpu.regs.flags.Z);
-        CHECK(cpu.regs.flags.H);
-        CHECK(cpu.regs.flags.C);
-        CHECK_FALSE(cpu.regs.flags.N);
-        
-        CHECK(cpu.elapsedCycles() == 2);
-    }
-    SUBCASE("Test ADD A,[HL] half-carry flag") {
-        cpu.regs.A = 0x0f;
-        bus.write8(addr, 1);
-        cpu.step();
-        CHECK(cpu.regs.A == 0x10);
+    CHECK_FALSE(cpu.regs.flags.Z);
+    CHECK_FALSE(cpu.regs.flags.H);
+    CHECK_FALSE(cpu.regs.flags.C);
+    CHECK_FALSE(cpu.regs.flags.N);
 
-        CHECK_FALSE(cpu.regs.flags.Z);
-        CHECK(cpu.regs.flags.H);
-        CHECK_FALSE(cpu.regs.flags.C);
-        CHECK_FALSE(cpu.regs.flags.N);
-
-        CHECK(cpu.elapsedCycles() == 2);
-    }
+    CHECK(cpu.elapsedCycles() == 2);
 }
 
 
@@ -1186,74 +1135,24 @@ TEST_CASE("CPU test ADD A,n8") {
     CPU cpu(bus);
 
     const uint16_t pc = Registers::PCinitialValue;
+    
+    // here we only check if the correct immediate value is actually used, flags are 
+    // already checked in the ADD A,reg and the code is the same
 
     bus.write8(pc, op::ADD_A_n8);
+    bus.write8(pc + 1, 2);
+    cpu.regs.A = 1;
+    
+    cpu.step();
+    
+    CHECK(cpu.regs.A == 3);
 
-    SUBCASE("Test ADD A,n8 no flags") {
-        cpu.regs.A = 1;
-        bus.write8(pc + 1, 2);
-        cpu.step();
-        CHECK(cpu.regs.A == 3);
+    CHECK_FALSE(cpu.regs.flags.Z);
+    CHECK_FALSE(cpu.regs.flags.H);
+    CHECK_FALSE(cpu.regs.flags.C);
+    CHECK_FALSE(cpu.regs.flags.N);
 
-        CHECK_FALSE(cpu.regs.flags.Z);
-        CHECK_FALSE(cpu.regs.flags.H);
-        CHECK_FALSE(cpu.regs.flags.C);
-        CHECK_FALSE(cpu.regs.flags.N);
-
-        CHECK(cpu.elapsedCycles() == 2);
-    }
-    SUBCASE("Test ADD A,n8 zero flag") {
-        cpu.regs.A = 0;
-        bus.write8(pc + 1, 0);
-        cpu.step();
-        CHECK(cpu.regs.A == 0);
-
-        CHECK(cpu.regs.flags.Z);
-        CHECK_FALSE(cpu.regs.flags.H);
-        CHECK_FALSE(cpu.regs.flags.C);
-        CHECK_FALSE(cpu.regs.flags.N);
-
-        CHECK(cpu.elapsedCycles() == 2);
-    }
-    SUBCASE("Test ADD A,n8 carry and half-carry flags") {
-        cpu.regs.A = 255;
-        bus.write8(pc + 1, 2);
-        cpu.step();
-        CHECK(cpu.regs.A == 1);
-
-        CHECK_FALSE(cpu.regs.flags.Z);
-        CHECK(cpu.regs.flags.H);
-        CHECK(cpu.regs.flags.C);
-        CHECK_FALSE(cpu.regs.flags.N);
-
-        CHECK(cpu.elapsedCycles() == 2);
-    }
-    SUBCASE("Test ADD A,n8 zero, carry and half-carry flags") {
-        cpu.regs.A = 255;
-        bus.write8(pc + 1, 1);
-        cpu.step();
-        CHECK(cpu.regs.A == 0);
-
-        CHECK(cpu.regs.flags.Z);
-        CHECK(cpu.regs.flags.H);
-        CHECK(cpu.regs.flags.C);
-        CHECK_FALSE(cpu.regs.flags.N);
-
-        CHECK(cpu.elapsedCycles() == 2);
-    }
-    SUBCASE("Test ADD A,n8 half-carry flag") {
-        cpu.regs.A = 0x0f;
-        bus.write8(pc + 1, 1);
-        cpu.step();
-        CHECK(cpu.regs.A == 0x10);
-
-        CHECK_FALSE(cpu.regs.flags.Z);
-        CHECK(cpu.regs.flags.H);
-        CHECK_FALSE(cpu.regs.flags.C);
-        CHECK_FALSE(cpu.regs.flags.N);
-
-        CHECK(cpu.elapsedCycles() == 2);
-    }
+    CHECK(cpu.elapsedCycles() == 2);
 }
 
 
@@ -1361,94 +1260,26 @@ TEST_CASE("CPU test ADC A,[HL]") {
     const uint16_t addr = 0x1234;
     const uint16_t pc = Registers::PCinitialValue;
 
+    // here we only check if the correct value pointed by HL in memory is 
+    // actually used, flags are already checked in the ADD A,reg and the code is the same
+
     cpu.regs.setHL(addr);
 
     bus.write8(pc, op::ADC_A_inHL);
+    bus.write8(addr, 2);
+    cpu.regs.A = 1;
+    cpu.regs.flags.C = 0;
+    
+    cpu.step();
+    
+    CHECK(cpu.regs.A == 3);
 
-    SUBCASE("Test ADC A,[HL] no flags") {
-        cpu.regs.A = 1;
-        bus.write8(addr, 2);
-        cpu.regs.flags.C = 0;
-        cpu.step();
-        CHECK(cpu.regs.A == 3);
+    CHECK_FALSE(cpu.regs.flags.Z);
+    CHECK_FALSE(cpu.regs.flags.H);
+    CHECK_FALSE(cpu.regs.flags.C);
+    CHECK_FALSE(cpu.regs.flags.N);
 
-        CHECK_FALSE(cpu.regs.flags.Z);
-        CHECK_FALSE(cpu.regs.flags.H);
-        CHECK_FALSE(cpu.regs.flags.C);
-        CHECK_FALSE(cpu.regs.flags.N);
-
-        CHECK(cpu.elapsedCycles() == 2);
-    }
-    SUBCASE("Test ADC A,[HL] +carry, no flags") {
-        cpu.regs.A = 1;
-        bus.write8(addr, 2);
-        cpu.regs.flags.C = 1;
-        cpu.step();
-        CHECK(cpu.regs.A == 4);
-
-        CHECK_FALSE(cpu.regs.flags.Z);
-        CHECK_FALSE(cpu.regs.flags.H);
-        CHECK_FALSE(cpu.regs.flags.C);
-        CHECK_FALSE(cpu.regs.flags.N);
-
-        CHECK(cpu.elapsedCycles() == 2);
-    }
-    SUBCASE("Test ADC A,[HL] zero flag") {
-        cpu.regs.A = 0;
-        bus.write8(addr, 0);
-        cpu.regs.flags.C = 0;
-        cpu.step();
-        CHECK(cpu.regs.A == 0);
-        
-        CHECK(cpu.regs.flags.Z);
-        CHECK_FALSE(cpu.regs.flags.H);
-        CHECK_FALSE(cpu.regs.flags.C);
-        CHECK_FALSE(cpu.regs.flags.N);
-
-        CHECK(cpu.elapsedCycles() == 2);
-    }
-    SUBCASE("Test ADC A,[HL] carry and half-carry flag") {
-        cpu.regs.A = 255;
-        bus.write8(addr, 1);
-        cpu.regs.flags.C = 1;
-        cpu.step();
-        CHECK(cpu.regs.A == 1);
-
-        CHECK_FALSE(cpu.regs.flags.Z);
-        CHECK(cpu.regs.flags.H);
-        CHECK(cpu.regs.flags.C);
-        CHECK_FALSE(cpu.regs.flags.N);
-
-        CHECK(cpu.elapsedCycles() == 2);
-    }
-    SUBCASE("Test ADC A,[HL] zero, carry and half-carry flags") {
-        cpu.regs.A = 254;
-        bus.write8(addr, 1);
-        cpu.regs.flags.C = 1;
-        cpu.step();
-        CHECK(cpu.regs.A == 0);
-
-        CHECK(cpu.regs.flags.Z);
-        CHECK(cpu.regs.flags.H);
-        CHECK(cpu.regs.flags.C);
-        CHECK_FALSE(cpu.regs.flags.N);
-
-        CHECK(cpu.elapsedCycles() == 2);
-    }
-    SUBCASE("Test ADC A,[HL] half-carry flag") {
-        cpu.regs.A = 0x0e;
-        bus.write8(addr, 1);
-        cpu.regs.flags.C = 1;
-        cpu.step();
-        CHECK(cpu.regs.A == 0x10);
-
-        CHECK_FALSE(cpu.regs.flags.Z);
-        CHECK(cpu.regs.flags.H);
-        CHECK_FALSE(cpu.regs.flags.C);
-        CHECK_FALSE(cpu.regs.flags.N);
-
-        CHECK(cpu.elapsedCycles() == 2);
-    }
+    CHECK(cpu.elapsedCycles() == 2);
 }
 
 
@@ -1458,92 +1289,24 @@ TEST_CASE("CPU test ADC A,n8") {
 
     const uint16_t pc = Registers::PCinitialValue;
 
+    // here we only check if the correct immediate value is actually used, flags are 
+    // already checked in the ADD A,reg and the code is the same
+
     bus.write8(pc, op::ADC_A_n8);
+    bus.write8(pc + 1, 2);
+    cpu.regs.A = 1;
+    cpu.regs.flags.C = 0;
+    
+    cpu.step();
+    
+    CHECK(cpu.regs.A == 3);
 
-    SUBCASE("Test ADC A,n8 no flags") {
-        cpu.regs.A = 1;
-        bus.write8(pc + 1, 2);
-        cpu.regs.flags.C = 0;
-        cpu.step();
-        CHECK(cpu.regs.A == 3);
+    CHECK_FALSE(cpu.regs.flags.Z);
+    CHECK_FALSE(cpu.regs.flags.H);
+    CHECK_FALSE(cpu.regs.flags.C);
+    CHECK_FALSE(cpu.regs.flags.N);
 
-        CHECK_FALSE(cpu.regs.flags.Z);
-        CHECK_FALSE(cpu.regs.flags.H);
-        CHECK_FALSE(cpu.regs.flags.C);
-        CHECK_FALSE(cpu.regs.flags.N);
-
-        CHECK(cpu.elapsedCycles() == 2);
-    }
-    SUBCASE("Test ADC A,n8 +carry, no flags") {
-        cpu.regs.A = 1;
-        bus.write8(pc + 1, 2);
-        cpu.regs.flags.C = 1;
-        cpu.step();
-        CHECK(cpu.regs.A == 4);
-
-        CHECK_FALSE(cpu.regs.flags.Z);
-        CHECK_FALSE(cpu.regs.flags.H);
-        CHECK_FALSE(cpu.regs.flags.C);
-        CHECK_FALSE(cpu.regs.flags.N);
-
-        CHECK(cpu.elapsedCycles() == 2);
-    }
-    SUBCASE("Test ADC A,n8 zero flag") {
-        cpu.regs.A = 0;
-        bus.write8(pc + 1, 0);
-        cpu.regs.flags.C = 0;
-        cpu.step();
-        CHECK(cpu.regs.A == 0);
-
-        CHECK(cpu.regs.flags.Z);
-        CHECK_FALSE(cpu.regs.flags.H);
-        CHECK_FALSE(cpu.regs.flags.C);
-        CHECK_FALSE(cpu.regs.flags.N);
-
-        CHECK(cpu.elapsedCycles() == 2);
-    }
-    SUBCASE("Test ADC A,n8 carry and half-carry flags") {
-        cpu.regs.A = 255;
-        bus.write8(pc + 1, 1);
-        cpu.regs.flags.C = 1;
-        cpu.step();
-        CHECK(cpu.regs.A == 1);
-
-        CHECK_FALSE(cpu.regs.flags.Z);
-        CHECK(cpu.regs.flags.H);
-        CHECK(cpu.regs.flags.C);
-        CHECK_FALSE(cpu.regs.flags.N);
-
-        CHECK(cpu.elapsedCycles() == 2);
-    }
-    SUBCASE("Test ADC A,n8 zero, carry and half-carry flags") {
-        cpu.regs.A = 254;
-        bus.write8(pc + 1, 1);
-        cpu.regs.flags.C = 1;
-        cpu.step();
-        CHECK(cpu.regs.A == 0);
-
-        CHECK(cpu.regs.flags.Z);
-        CHECK(cpu.regs.flags.H);
-        CHECK(cpu.regs.flags.C);
-        CHECK_FALSE(cpu.regs.flags.N);
-
-        CHECK(cpu.elapsedCycles() == 2);
-    }
-    SUBCASE("Test ADC A,n8 half-carry flag") {
-        cpu.regs.A = 0x0e;
-        bus.write8(pc + 1, 1);
-        cpu.regs.flags.C = 1;
-        cpu.step();
-        CHECK(cpu.regs.A == 0x10);
-
-        CHECK_FALSE(cpu.regs.flags.Z);
-        CHECK(cpu.regs.flags.H);
-        CHECK_FALSE(cpu.regs.flags.C);
-        CHECK_FALSE(cpu.regs.flags.N);
-
-        CHECK(cpu.elapsedCycles() == 2);
-    }
+    CHECK(cpu.elapsedCycles() == 2);
 }
 
 
@@ -1556,61 +1319,61 @@ TEST_CASE("CPU test SUB A,reg") {
     bus.write8(pc, op::SUB_A_B);
     cpu.regs.B = 0x23;
 
-    // To perform the subtraction SUB just sums A and the compl2 of the other operand,
-    // this results in a few cases:
+    // To perform the subtraction SUB subtracts the other operand from A, the result is stored in A and
+    // the flags are set as follows:
     // - flag N is always set because a subtraction has been performed
-    // - when A == rhs we will have Z, C and H all set
-    // - when A > rhs we will have C set but not Z, H depends on the numbers
-    // - when A < rhs both C and Z won't be set
+    // - flag Z is set only if the result is zero
+    // - flag C is set only if we need to borrow from bit 7 (that is, if A < val)
+    // - flag N is set only if we need to borrow from bit 3 (that is, if the lower nibble of A is lower than
+    //      the lower nibble of the value)
 
     // we use register B, the code is the same for the other registers
 
-    SUBCASE("Test SUB A,B carry flag") {
-        cpu.regs.A = 0x31;
-        cpu.step();
-        CHECK(cpu.regs.A == 0x0E);
-
-        CHECK_FALSE(cpu.regs.flags.Z);
-        CHECK(cpu.regs.flags.C);
-        CHECK(cpu.regs.flags.N);
-        CHECK_FALSE(cpu.regs.flags.H);
-
-        CHECK(cpu.elapsedCycles() == 1);
-    }
-
-    SUBCASE("Test SUB A,B carry and half-carry flags") {
+    SUBCASE("Test SUB A,B no flags") {
         cpu.regs.A = 0x25;
         cpu.step();
         CHECK(cpu.regs.A == 0x02);
 
         CHECK_FALSE(cpu.regs.flags.Z);
-        CHECK(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.H);
         CHECK(cpu.regs.flags.N);
-        CHECK(cpu.regs.flags.H);
 
         CHECK(cpu.elapsedCycles() == 1);
     }
     SUBCASE("Test SUB A,B half-carry flag") {
+        cpu.regs.A = 0x31;
+        cpu.step();
+        CHECK(cpu.regs.A == 0x0E);
+
+        CHECK_FALSE(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK(cpu.regs.flags.H);
+        CHECK(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 1);
+    }
+    SUBCASE("Test SUB A,B carry and half-carry flag") {
         cpu.regs.A = 0x20;
         cpu.step();
         CHECK(cpu.regs.A == 0xFD);
 
         CHECK_FALSE(cpu.regs.flags.Z);
-        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK(cpu.regs.flags.C);
+        CHECK(cpu.regs.flags.H);
         CHECK(cpu.regs.flags.N);
-        CHECK_FALSE(cpu.regs.flags.H);
 
         CHECK(cpu.elapsedCycles() == 1);
     }
-    SUBCASE("Test SUB A,B zero, carry and half-carry flags") {
+    SUBCASE("Test SUB A,B zero flag") {
         cpu.regs.A = 0x23;
         cpu.step();
         CHECK(cpu.regs.A == 0);
 
         CHECK(cpu.regs.flags.Z);
-        CHECK(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.H);
         CHECK(cpu.regs.flags.N);
-        CHECK(cpu.regs.flags.H);
 
         CHECK(cpu.elapsedCycles() == 1);
     }
@@ -1624,61 +1387,25 @@ TEST_CASE("CPU test SUB A,[HL]") {
     const uint16_t addr = 0x1234;
     const uint16_t pc = Registers::PCinitialValue;
 
+    // see the SUB A,reg tests for an explanation of the expected results,
+    // here we only check that the correct value pointed by HL in memory is used
+    // flags are already checked in SUB A,reg and the code for the actual subtraction is the same
+
     bus.write8(pc, op::SUB_A_inHL);
     bus.write8(addr, 0x23);
     cpu.regs.setHL(addr);
+    cpu.regs.A = 0x25;
 
-    // see the SUB A,reg tests for an explanation of the expected results
+    cpu.step();
 
-    SUBCASE("Test SUB A,[HL] carry flag") {
-        cpu.regs.A = 0x31;
-        cpu.step();
-        CHECK(cpu.regs.A == 0x0E);
+    CHECK(cpu.regs.A == 0x02);
 
-        CHECK_FALSE(cpu.regs.flags.Z);
-        CHECK(cpu.regs.flags.C);
-        CHECK(cpu.regs.flags.N);
-        CHECK_FALSE(cpu.regs.flags.H);
+    CHECK_FALSE(cpu.regs.flags.Z);
+    CHECK_FALSE(cpu.regs.flags.C);
+    CHECK_FALSE(cpu.regs.flags.H);
+    CHECK(cpu.regs.flags.N);
 
-        CHECK(cpu.elapsedCycles() == 2);
-    }
-
-    SUBCASE("Test SUB A,[HL] carry and half-carry flags") {
-        cpu.regs.A = 0x25;
-        cpu.step();
-        CHECK(cpu.regs.A == 0x02);
-
-        CHECK_FALSE(cpu.regs.flags.Z);
-        CHECK(cpu.regs.flags.C);
-        CHECK(cpu.regs.flags.N);
-        CHECK(cpu.regs.flags.H);
-
-        CHECK(cpu.elapsedCycles() == 2);
-    }
-    SUBCASE("Test SUB A,[HL] half-carry flag") {
-        cpu.regs.A = 0x20;
-        cpu.step();
-        CHECK(cpu.regs.A == 0xFD);
-
-        CHECK_FALSE(cpu.regs.flags.Z);
-        CHECK_FALSE(cpu.regs.flags.C);
-        CHECK(cpu.regs.flags.N);
-        CHECK_FALSE(cpu.regs.flags.H);
-
-        CHECK(cpu.elapsedCycles() == 2);
-    }
-    SUBCASE("Test SUB A,[HL] zero, carry and half-carry flags") {
-        cpu.regs.A = 0x23;
-        cpu.step();
-        CHECK(cpu.regs.A == 0);
-
-        CHECK(cpu.regs.flags.Z);
-        CHECK(cpu.regs.flags.C);
-        CHECK(cpu.regs.flags.N);
-        CHECK(cpu.regs.flags.H);
-
-        CHECK(cpu.elapsedCycles() == 2);
-    }
+    CHECK(cpu.elapsedCycles() == 2);
 }
 
 
@@ -1686,62 +1413,26 @@ TEST_CASE("CPU test SUB A,n8") {
     TestBus bus;
     CPU cpu(bus);
 
+    // see the SUB A,reg tests for an explanation of the expected results,
+    // here we only check that the correct immediate value is used, flags are already checked 
+    // in SUB A,reg and the code for the actual subtraction is the same
+
     const uint16_t pc = Registers::PCinitialValue;
 
     bus.write8(pc, op::SUB_A_n8);
     bus.write8(pc + 1, 0x23);
+    cpu.regs.A = 0x25;
 
-    // see the SUB A,reg tests for an explanation of the expected results
+    cpu.step();
 
-    SUBCASE("Test SUB A,n8 carry flag") {
-        cpu.regs.A = 0x31;
-        cpu.step();
-        CHECK(cpu.regs.A == 0x0E);
+    CHECK(cpu.regs.A == 0x02);
 
-        CHECK_FALSE(cpu.regs.flags.Z);
-        CHECK(cpu.regs.flags.C);
-        CHECK(cpu.regs.flags.N);
-        CHECK_FALSE(cpu.regs.flags.H);
+    CHECK_FALSE(cpu.regs.flags.Z);
+    CHECK_FALSE(cpu.regs.flags.C);
+    CHECK_FALSE(cpu.regs.flags.H);
+    CHECK(cpu.regs.flags.N);
 
-        CHECK(cpu.elapsedCycles() == 2);
-    }
-
-    SUBCASE("Test SUB A,n8 carry and half-carry flags") {
-        cpu.regs.A = 0x25;
-        cpu.step();
-        CHECK(cpu.regs.A == 0x02);
-
-        CHECK_FALSE(cpu.regs.flags.Z);
-        CHECK(cpu.regs.flags.C);
-        CHECK(cpu.regs.flags.N);
-        CHECK(cpu.regs.flags.H);
-
-        CHECK(cpu.elapsedCycles() == 2);
-    }
-    SUBCASE("Test SUB A,n8 half-carry flag") {
-        cpu.regs.A = 0x20;
-        cpu.step();
-        CHECK(cpu.regs.A == 0xFD);
-
-        CHECK_FALSE(cpu.regs.flags.Z);
-        CHECK_FALSE(cpu.regs.flags.C);
-        CHECK(cpu.regs.flags.N);
-        CHECK_FALSE(cpu.regs.flags.H);
-
-        CHECK(cpu.elapsedCycles() == 2);
-    }
-    SUBCASE("Test SUB A,n8 zero, carry and half-carry flags") {
-        cpu.regs.A = 0x23;
-        cpu.step();
-        CHECK(cpu.regs.A == 0);
-
-        CHECK(cpu.regs.flags.Z);
-        CHECK(cpu.regs.flags.C);
-        CHECK(cpu.regs.flags.N);
-        CHECK(cpu.regs.flags.H);
-
-        CHECK(cpu.elapsedCycles() == 2);
-    }
+    CHECK(cpu.elapsedCycles() == 2);
 }
 
 
@@ -1755,56 +1446,112 @@ TEST_CASE("CPU test SBC A,reg") {
     cpu.regs.B = 0x23;
 
 
-    SUBCASE("Test SBC A,B carry flag") {
+    SUBCASE("Test SBC A,B half-carry flag") {
         cpu.regs.A = 0x31;
         cpu.regs.flags.C = 1;
         cpu.step();
-        CHECK(cpu.regs.A == 0x0E);
-
-        CHECK_FALSE(cpu.regs.flags.Z);
-        CHECK(cpu.regs.flags.C);
-        CHECK(cpu.regs.flags.N);
-        CHECK_FALSE(cpu.regs.flags.H);
-
-        CHECK(cpu.elapsedCycles() == 1);
-    }
-
-    SUBCASE("Test SUB A,B carry and half-carry flags") {
-        cpu.regs.A = 0x25;
-        cpu.step();
-        CHECK(cpu.regs.A == 0x02);
-
-        CHECK_FALSE(cpu.regs.flags.Z);
-        CHECK(cpu.regs.flags.C);
-        CHECK(cpu.regs.flags.N);
-        CHECK(cpu.regs.flags.H);
-
-        CHECK(cpu.elapsedCycles() == 1);
-    }
-    SUBCASE("Test SUB A,B half-carry flag") {
-        cpu.regs.A = 0x20;
-        cpu.step();
-        CHECK(cpu.regs.A == 0xFD);
+        CHECK(cpu.regs.A == 0x0D);
 
         CHECK_FALSE(cpu.regs.flags.Z);
         CHECK_FALSE(cpu.regs.flags.C);
+        CHECK(cpu.regs.flags.H);
         CHECK(cpu.regs.flags.N);
-        CHECK_FALSE(cpu.regs.flags.H);
 
         CHECK(cpu.elapsedCycles() == 1);
     }
-    SUBCASE("Test SUB A,B zero, carry and half-carry flags") {
-        cpu.regs.A = 0x23;
+    SUBCASE("Test SBC A,B no flags") {
+        cpu.regs.A = 0x25;
+        cpu.regs.flags.C = 1;
+        cpu.step();
+        CHECK(cpu.regs.A == 0x01);
+
+        CHECK_FALSE(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 1);
+    }
+    SUBCASE("Test SBC A,B carry and half-carry flags") {
+        cpu.regs.A = 0x20;
+        cpu.regs.flags.C = 1;
+        cpu.step();
+        CHECK(cpu.regs.A == 0xFC);
+
+        CHECK_FALSE(cpu.regs.flags.Z);
+        CHECK(cpu.regs.flags.C);
+        CHECK(cpu.regs.flags.H);
+        CHECK(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 1);
+    }
+    SUBCASE("Test SBC A,B zero flag") {
+        cpu.regs.A = 0x24;
+        cpu.regs.flags.C = 1;
         cpu.step();
         CHECK(cpu.regs.A == 0);
 
         CHECK(cpu.regs.flags.Z);
-        CHECK(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.H);
         CHECK(cpu.regs.flags.N);
-        CHECK(cpu.regs.flags.H);
 
         CHECK(cpu.elapsedCycles() == 1);
     }
+}
+
+
+TEST_CASE("CPU test SBC A,[HL]") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint16_t pc = Registers::PCinitialValue;
+    
+    // see the SUB A,reg tests for an explanation of the expected results,
+    // here we only check that the correct value pointed by HL in memory is used
+    // flags are already checked in SBC A,reg and the code for the actual subtraction is the same
+
+    uint16_t addr = 0x1234;
+    bus.write8(pc, op::SBC_A_inHL);
+    bus.write8(addr, 0x23);
+    cpu.regs.setHL(addr);
+    cpu.regs.A = 0x31;
+    cpu.regs.flags.C = 1;
+
+    cpu.step();
+
+    CHECK(cpu.regs.A == 0x0D);
+
+    CHECK_FALSE(cpu.regs.flags.Z);
+    CHECK_FALSE(cpu.regs.flags.C);
+    CHECK(cpu.regs.flags.H);
+    CHECK(cpu.regs.flags.N);
+
+    CHECK(cpu.elapsedCycles() == 2);
+}
+
+
+TEST_CASE("CPU test SBC A,n8") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint16_t pc = Registers::PCinitialValue;
+
+    bus.write8(pc, op::SBC_A_n8);
+    bus.write8(pc + 1, 0x23);
+    cpu.regs.A = 0x31;
+    cpu.regs.flags.C = 1;
+
+    cpu.step();
+
+    CHECK(cpu.regs.A == 0x0D);
+
+    CHECK_FALSE(cpu.regs.flags.Z);
+    CHECK_FALSE(cpu.regs.flags.C);
+    CHECK(cpu.regs.flags.H);
+    CHECK(cpu.regs.flags.N);
+
+    CHECK(cpu.elapsedCycles() == 2);
 }
 
 
