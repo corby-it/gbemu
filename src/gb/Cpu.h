@@ -186,11 +186,30 @@ private:
     uint8_t opSbcReg(uint8_t reg);
     uint8_t opSbcInd();
     uint8_t opSbcImm();
+
+    uint8_t opAndCommon(uint8_t rhs, uint8_t cycles);
+    uint8_t opAndReg(uint8_t reg);
+    uint8_t opAndInd();
+    uint8_t opAndImm();
+
+    uint8_t opOrCommon(uint8_t rhs, uint8_t cycles);
+    uint8_t opOrReg(uint8_t reg);
+    uint8_t opOrInd();
+    uint8_t opOrImm();
+
+    uint8_t opXorCommon(uint8_t rhs, uint8_t cycles);
+    uint8_t opXorReg(uint8_t reg);
+    uint8_t opXorInd();
+    uint8_t opXorImm();
+    
+    uint8_t opCpCommon(uint8_t rhs, uint8_t cycles);
+    uint8_t opCpReg(uint8_t reg);
+    uint8_t opCpInd();
+    uint8_t opCpImm();
     
     uint8_t opJpImm();
     uint8_t opJpInd();
     uint8_t opJpCondImm(bool cond);
-    uint8_t opCpInd();
 
 
 

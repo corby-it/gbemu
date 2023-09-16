@@ -259,40 +259,40 @@ uint8_t CPU::execute(uint8_t opcode, bool& ok)
         case op::SBC_A_A      : return opSbcReg(regs.A);
 
         // 0xA*
-        //case op::AND_A_B      : return 1;
-        //case op::AND_A_C      : return 1;
-        //case op::AND_A_D      : return 1;
-        //case op::AND_A_E      : return 1;
-        //case op::AND_A_H      : return 1;
-        //case op::AND_A_L      : return 1;
-        //case op::AND_A_inHL   : return 1;
-        //case op::AND_A_A      : return 1;
-        //case op::XOR_A_B      : return 1;
-        //case op::XOR_A_C      : return 1;
-        //case op::XOR_A_D      : return 1;
-        //case op::XOR_A_E      : return 1;
-        //case op::XOR_A_H      : return 1;
-        //case op::XOR_A_L      : return 1;
-        //case op::XOR_A_inHL   : return 1;
-        //case op::XOR_A_A      : return 1;
+        case op::AND_A_B      : return opAndReg(regs.B);
+        case op::AND_A_C      : return opAndReg(regs.C);
+        case op::AND_A_D      : return opAndReg(regs.D);
+        case op::AND_A_E      : return opAndReg(regs.E);
+        case op::AND_A_H      : return opAndReg(regs.H);
+        case op::AND_A_L      : return opAndReg(regs.L);
+        case op::AND_A_inHL   : return opAndInd();
+        case op::AND_A_A      : return opAndReg(regs.A);
+        case op::XOR_A_B      : return opXorReg(regs.B);
+        case op::XOR_A_C      : return opXorReg(regs.C);
+        case op::XOR_A_D      : return opXorReg(regs.D);
+        case op::XOR_A_E      : return opXorReg(regs.E);
+        case op::XOR_A_H      : return opXorReg(regs.H);
+        case op::XOR_A_L      : return opXorReg(regs.L);
+        case op::XOR_A_inHL   : return opXorInd();
+        case op::XOR_A_A      : return opXorReg(regs.A);
 
         // 0xB*
-        //case op::OR_A_B       : return 1;
-        //case op::OR_A_C       : return 1;
-        //case op::OR_A_D       : return 1;
-        //case op::OR_A_E       : return 1;
-        //case op::OR_A_H       : return 1;
-        //case op::OR_A_L       : return 1;
-        //case op::OR_A_inHL    : return 1;
-        //case op::OR_A_A       : return 1;
-        //case op::CP_A_B       : return 1;
-        //case op::CP_A_C       : return 1;
-        //case op::CP_A_D       : return 1;
-        //case op::CP_A_E       : return 1;
-        //case op::CP_A_H       : return 1;
-        //case op::CP_A_L       : return 1;
+        case op::OR_A_B       : return opOrReg(regs.B);
+        case op::OR_A_C       : return opOrReg(regs.C);
+        case op::OR_A_D       : return opOrReg(regs.D);
+        case op::OR_A_E       : return opOrReg(regs.E);
+        case op::OR_A_H       : return opOrReg(regs.H);
+        case op::OR_A_L       : return opOrReg(regs.L);
+        case op::OR_A_inHL    : return opOrInd();
+        case op::OR_A_A       : return opOrReg(regs.A);
+        case op::CP_A_B       : return opCpReg(regs.B);
+        case op::CP_A_C       : return opCpReg(regs.C);
+        case op::CP_A_D       : return opCpReg(regs.D);
+        case op::CP_A_E       : return opCpReg(regs.E);
+        case op::CP_A_H       : return opCpReg(regs.H);
+        case op::CP_A_L       : return opCpReg(regs.L);
         case op::CP_A_inHL    : return opCpInd(); // CP A,[HL]
-        //case op::CP_A_A       : return 1;
+        case op::CP_A_A       : return opCpReg(regs.A);
 
         // 0xC*
         // case op::RET_NZ       : return 1;
@@ -337,7 +337,7 @@ uint8_t CPU::execute(uint8_t opcode, bool& ok)
         // case op:: 0xE3 not implemented
         // case op:: 0xE4 not implemented
         case op::PUSH_HL      : return opPushReg16(regs.HL());
-        // case op::AND_A_n8     : return 1;
+        case op::AND_A_n8     : return opAndImm();
         // case op::RST_20       : return 1;
         // case op::ADD_SP_e8    : return 1;
         case op::JP_HL        : return opJpInd(); // JP HL
@@ -345,7 +345,7 @@ uint8_t CPU::execute(uint8_t opcode, bool& ok)
         // case op:: 0xEB not implemented
         // case op:: 0xEC not implemented
         // case op:: 0xED not implemented
-        // case op::XOR_A_n8     : return 1;
+        case op::XOR_A_n8     : return opXorImm();
         // case op::RST_28       : return 1;
 
         // 0xF*
@@ -355,7 +355,7 @@ uint8_t CPU::execute(uint8_t opcode, bool& ok)
         // case op::DI           : return 1;
         // case op:: 0xF4 not implemented
         case op::PUSH_AF      : return opPushReg16(regs.AF());
-        // case op::OR_A_n8      : return 1;
+        case op::OR_A_n8      : return opOrImm();
         // case op::RST_30       : return 1;
         // case op::LD_HL_SPpe8  : return 1;
         case op::LD_SP_HL     : return opLdSpHl();
@@ -363,7 +363,7 @@ uint8_t CPU::execute(uint8_t opcode, bool& ok)
         // case op::EI           : return 1;
         // case op:: 0xFB not implemented
         // case op:: 0xFC not implemented
-        // case op::CP_A_n8      : return 1;
+        case op::CP_A_n8      : return opCpImm();
         // case op::RST_38       : return 1;
 
         default:
@@ -747,6 +747,157 @@ uint8_t CPU::opSbcImm()
 }
 
 
+uint8_t CPU::opAndCommon(uint8_t rhs, uint8_t cycles)
+{
+    // perform a bitwise AND between A and another operand, the 
+    // result is stored in A
+    // e.g.: A = A & rhs
+
+    regs.A &= rhs;
+
+    // H is always 1, C and N are always 0, Z depends on the result
+    regs.flags.Z = regs.A == 0;
+    regs.flags.H = true;
+    regs.flags.N = false;
+    regs.flags.C = false;
+
+    return cycles;
+}
+
+uint8_t CPU::opAndReg(uint8_t reg)
+{
+    // AND A,reg
+    // 1 cycle
+    return opAndCommon(reg, 1);
+}
+
+uint8_t CPU::opAndInd()
+{
+    // AND A,[HL]
+    // 2 cycles
+    return opAndCommon(mBus.read8(regs.HL()), 2);
+}
+
+uint8_t CPU::opAndImm()
+{
+    // AND A,n8
+    // 2 cycles
+    return opAndCommon(mBus.read8(regs.PC++), 2);
+}
+
+uint8_t CPU::opOrCommon(uint8_t rhs, uint8_t cycles)
+{
+    // perform a bitwise OR between A and another operand, the 
+    // result is stored in A
+    // e.g.: A = A | rhs
+
+    regs.A |= rhs;
+
+    // H, C and N are always 0, Z depends on the result
+    regs.flags.Z = regs.A == 0;
+    regs.flags.H = false;
+    regs.flags.N = false;
+    regs.flags.C = false;
+
+    return cycles;
+}
+
+uint8_t CPU::opOrReg(uint8_t reg)
+{
+    // OR A,reg
+    // 1 cycle
+    return opOrCommon(reg, 1);
+}
+
+uint8_t CPU::opOrInd()
+{
+    // OR A,[HL]
+    // 2 cycles
+    return opOrCommon(mBus.read8(regs.HL()), 2);
+}
+
+uint8_t CPU::opOrImm()
+{
+    // OR A,n8
+    // 2 cycles
+    return opOrCommon(mBus.read8(regs.PC++), 2);
+}
+
+uint8_t CPU::opXorCommon(uint8_t rhs, uint8_t cycles)
+{
+    // perform a bitwise XOR between A and another operand, the 
+    // result is stored in A
+    // e.g.: A = A ^ rhs
+
+    regs.A ^= rhs;
+
+    // H, C and N are always 0, Z depends on the result
+    regs.flags.Z = regs.A == 0;
+    regs.flags.H = false;
+    regs.flags.N = false;
+    regs.flags.C = false;
+
+    return cycles;
+}
+
+uint8_t CPU::opXorReg(uint8_t reg)
+{
+    // XOR A,reg
+    // 1 cycle
+    return opXorCommon(reg, 1);
+}
+
+uint8_t CPU::opXorInd()
+{
+    // XOR A,[HL]
+    // 2 cycles
+    return opXorCommon(mBus.read8(regs.HL()), 2);
+}
+
+uint8_t CPU::opXorImm()
+{
+    // XOR A,n8
+    // 2 cycles
+    return opXorCommon(mBus.read8(regs.PC++), 2);
+}
+
+uint8_t CPU::opCpCommon(uint8_t rhs, uint8_t cycles)
+{
+    // CP A,val
+    // compares A with another value, it performs A - value
+    // but the result is not stored, all flags are updated accordingly
+
+    // set N because a subtraction just happened
+    regs.flags.Z = regs.A == rhs;
+    regs.flags.H = checkHalfBorrow(regs.A, rhs);
+    regs.flags.N = true;
+    regs.flags.C = checkBorrow(regs.A, rhs);
+
+    return cycles;
+}
+
+uint8_t CPU::opCpReg(uint8_t reg)
+{
+    // CP A,reg
+    // 1 cycle
+    return opCpCommon(reg, 1);
+}
+
+uint8_t CPU::opCpInd()
+{
+    // CP A,[HL]
+    // 2 cycles
+    return opCpCommon(mBus.read8(regs.HL()), 2);
+}
+
+uint8_t CPU::opCpImm()
+{
+    // CP A,n8
+    // 2 cycles
+    return opCpCommon(mBus.read8(regs.PC++), 2);
+}
+
+
 
 uint8_t CPU::opJpImm()
 {
@@ -787,21 +938,5 @@ uint8_t CPU::opJpCondImm(bool cond)
     }
 }
 
-uint8_t CPU::opCpInd() 
-{
-    // CP A,[HL]
-    // compares A with the value in mem[HL], it performs A - mem[HL]
-    // but the result is not stored, all flags are updated accordingly
-    auto rhs = compl2(mBus.read8(regs.HL()));
-    uint16_t res = regs.A + rhs;
-
-    // set N because a subtraction just happened
-    regs.flags.Z = (uint8_t)res == 0;
-    regs.flags.H = checkHalfCarry(regs.A, rhs);
-    regs.flags.N = true;
-    regs.flags.C = checkCarry(res);
-
-    return 2;
-}
 
 

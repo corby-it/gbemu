@@ -1556,7 +1556,425 @@ TEST_CASE("CPU test SBC A,n8") {
 
 
 
+TEST_CASE("CPU test AND A,reg") {
+    TestBus bus;
+    CPU cpu(bus);
 
+    const uint16_t pc = Registers::PCinitialValue;
+
+    bus.write8(pc, op::AND_A_B);
+    cpu.regs.B = 0x23;
+
+    // when using the AND instruction the Z flag depend on the result of the 
+    // operation while N is always 0, C is always 0 and N is always 1
+
+    SUBCASE("Test AND A,B no flags") {
+        cpu.regs.A = 0x31;
+        cpu.step();
+        CHECK(cpu.regs.A == 0x21);
+
+        CHECK_FALSE(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 1);
+    }
+    SUBCASE("Test AND A,B zero flag") {
+        cpu.regs.A = 0x0;
+        cpu.step();
+        CHECK(cpu.regs.A == 0x0);
+
+        CHECK(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 1);
+    }
+}
+
+TEST_CASE("CPU test AND A,[HL]") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint16_t pc = Registers::PCinitialValue;
+
+    uint16_t addr = 0x1234;
+    bus.write8(pc, op::AND_A_inHL);
+    bus.write8(addr, 0x23);
+    cpu.regs.setHL(addr);
+
+    // when using the AND instruction the Z flag depend on the result of the 
+    // operation while N is always 0, C is always 0 and N is always 1
+
+    SUBCASE("Test AND A,[HL] no flags") {
+        cpu.regs.A = 0x31;
+        cpu.step();
+        CHECK(cpu.regs.A == 0x21);
+
+        CHECK_FALSE(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+    SUBCASE("Test AND A,[HL] zero flag") {
+        cpu.regs.A = 0x0;
+        cpu.step();
+        CHECK(cpu.regs.A == 0x0);
+
+        CHECK(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+}
+
+TEST_CASE("CPU test AND A,n8") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint16_t pc = Registers::PCinitialValue;
+
+    bus.write8(pc, op::AND_A_n8);
+    bus.write8(pc + 1, 0x23);
+
+    // when using the AND instruction the Z flag depend on the result of the 
+    // operation while N is always 0, C is always 0 and N is always 1
+
+    SUBCASE("Test AND A,n8 no flags") {
+        cpu.regs.A = 0x31;
+        cpu.step();
+        CHECK(cpu.regs.A == 0x21);
+
+        CHECK_FALSE(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+    SUBCASE("Test AND A,n8 zero flag") {
+        cpu.regs.A = 0x0;
+        cpu.step();
+        CHECK(cpu.regs.A == 0x0);
+
+        CHECK(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+}
+
+
+TEST_CASE("CPU test OR A,reg") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint16_t pc = Registers::PCinitialValue;
+
+    bus.write8(pc, op::OR_A_B);
+
+    // when using the OR instruction the Z flag depend on the result of the 
+    // operation while all other flags are always 0
+
+    SUBCASE("Test OR A,B no flags") {
+        cpu.regs.B = 0x23;
+        cpu.regs.A = 0x31;
+        cpu.step();
+        CHECK(cpu.regs.A == 0x33);
+
+        CHECK_FALSE(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 1);
+    }
+    SUBCASE("Test OR A,B zero flag") {
+        cpu.regs.B = 0x0;
+        cpu.regs.A = 0x0;
+        cpu.step();
+        CHECK(cpu.regs.A == 0x0);
+
+        CHECK(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 1);
+    }
+}
+
+TEST_CASE("CPU test OR A,[HL]") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint16_t pc = Registers::PCinitialValue;
+
+    uint16_t addr = 0x1234;
+    bus.write8(pc, op::OR_A_inHL);
+    cpu.regs.setHL(addr);
+
+    // when using the OR instruction the Z flag depend on the result of the 
+    // operation while all other flags are always 0
+
+    SUBCASE("Test OR A,[HL] no flags") {
+        bus.write8(addr, 0x23);
+        cpu.regs.A = 0x31;
+        cpu.step();
+        CHECK(cpu.regs.A == 0x33);
+
+        CHECK_FALSE(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+    SUBCASE("Test OR A,[HL] zero flag") {
+        bus.write8(addr, 0x00);
+        cpu.regs.A = 0x0;
+        cpu.step();
+        CHECK(cpu.regs.A == 0x0);
+
+        CHECK(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+}
+
+TEST_CASE("CPU test OR A,n8") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint16_t pc = Registers::PCinitialValue;
+
+    bus.write8(pc, op::OR_A_n8);
+
+    // when using the OR instruction the Z flag depend on the result of the 
+    // operation while all other flags are always 0
+
+    SUBCASE("Test OR A,n8 no flags") {
+        bus.write8(pc + 1, 0x23);
+        cpu.regs.A = 0x31;
+        cpu.step();
+        CHECK(cpu.regs.A == 0x33);
+
+        CHECK_FALSE(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+    SUBCASE("Test OR A,n8 zero flag") {
+        bus.write8(pc + 1, 0);
+        cpu.regs.A = 0;
+        cpu.step();
+        CHECK(cpu.regs.A == 0x0);
+
+        CHECK(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+}
+
+
+
+TEST_CASE("CPU test XOR A,reg") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint16_t pc = Registers::PCinitialValue;
+
+    bus.write8(pc, op::XOR_A_B);
+
+    // when using the XOR instruction the Z flag depend on the result of the 
+    // operation while all other flags are always 0
+
+    SUBCASE("Test XOR A,B no flags") {
+        cpu.regs.B = 0x23;
+        cpu.regs.A = 0x31;
+        cpu.step();
+        CHECK(cpu.regs.A == 0x12);
+
+        CHECK_FALSE(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 1);
+    }
+    SUBCASE("Test XOR A,B zero flag") {
+        cpu.regs.B = 0x32;
+        cpu.regs.A = 0x32;
+        cpu.step();
+        CHECK(cpu.regs.A == 0x0);
+
+        CHECK(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 1);
+    }
+}
+
+TEST_CASE("CPU test XOR A,[HL]") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint16_t pc = Registers::PCinitialValue;
+
+    uint16_t addr = 0x1234;
+    bus.write8(pc, op::XOR_A_inHL);
+    cpu.regs.setHL(addr);
+
+    // when using the XOR instruction the Z flag depend on the result of the 
+    // operation while all other flags are always 0
+
+    SUBCASE("Test XOR A,[HL] no flags") {
+        bus.write8(addr, 0x23);
+        cpu.regs.A = 0x31;
+        cpu.step();
+        CHECK(cpu.regs.A == 0x12);
+
+        CHECK_FALSE(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+    SUBCASE("Test XOR A,[HL] zero flag") {
+        bus.write8(addr, 0x32);
+        cpu.regs.A = 0x32;
+        cpu.step();
+        CHECK(cpu.regs.A == 0x0);
+
+        CHECK(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+}
+
+TEST_CASE("CPU test XOR A,n8") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint16_t pc = Registers::PCinitialValue;
+
+    bus.write8(pc, op::XOR_A_n8);
+
+    // when using the XOR instruction the Z flag depend on the result of the 
+    // operation while all other flags are always 0
+
+    SUBCASE("Test XOR A,n8 no flags") {
+        bus.write8(pc + 1, 0x23);
+        cpu.regs.A = 0x31;
+        cpu.step();
+        CHECK(cpu.regs.A == 0x12);
+
+        CHECK_FALSE(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+    SUBCASE("Test XOR A,n8 zero flag") {
+        bus.write8(pc + 1, 0x32);
+        cpu.regs.A = 0x32;
+        cpu.step();
+        CHECK(cpu.regs.A == 0x0);
+
+        CHECK(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+}
+
+
+TEST_CASE("CPU test CP A,reg") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint16_t pc = Registers::PCinitialValue;
+
+    bus.write8(pc, op::CP_A_B);
+    cpu.regs.B = 0x23;
+
+    // CP simply performs a subtraction and doesn't store the result,
+    // see the SUB A,reg tests for an explanation of the expected results
+
+    SUBCASE("Test CP A,B no flags") {
+        cpu.regs.A = 0x25;
+        cpu.step();
+        CHECK(cpu.regs.A == 0x25);
+
+        CHECK_FALSE(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 1);
+    }
+    SUBCASE("Test CP A,B half-carry flag") {
+        cpu.regs.A = 0x31;
+        cpu.step();
+        CHECK(cpu.regs.A == 0x31);
+
+        CHECK_FALSE(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK(cpu.regs.flags.H);
+        CHECK(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 1);
+    }
+    SUBCASE("Test CP A,B carry and half-carry flag") {
+        cpu.regs.A = 0x20;
+        cpu.step();
+        CHECK(cpu.regs.A == 0x20);
+
+        CHECK_FALSE(cpu.regs.flags.Z);
+        CHECK(cpu.regs.flags.C);
+        CHECK(cpu.regs.flags.H);
+        CHECK(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 1);
+    }
+    SUBCASE("Test CP A,B zero flag") {
+        cpu.regs.A = 0x23;
+        cpu.step();
+        CHECK(cpu.regs.A == 0x23);
+
+        CHECK(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 1);
+    }
+}
 
 TEST_CASE("CPU test CP A,[HL]") {
     TestBus bus;
@@ -1569,42 +1987,44 @@ TEST_CASE("CPU test CP A,[HL]") {
     bus.write8(pc, op::CP_A_inHL);
     bus.write8(addr, 0x23);
 
-    // CP simply performs a subtraction and doesn't store the result,
-    // see the SUB A,reg tests for an explanation of the expected results
+    // this works just like CP A,reg
+    // here we only check if the right value is used
 
-    SUBCASE("Test CP A,[HL] carry flag") {
-        cpu.regs.A = 0x25;
-        cpu.step();
-        CHECK(cpu.regs.A == 0x25);
-
-        CHECK_FALSE(cpu.regs.flags.Z);
-        CHECK(cpu.regs.flags.C);
-        CHECK(cpu.regs.flags.N);
-        CHECK(cpu.regs.flags.H);
-
-        CHECK(cpu.elapsedCycles() == 2);
-    }
-    SUBCASE("Test CP A,[HL] half-carry flag") {
-        cpu.regs.A = 0x20;
-        cpu.step();
-        CHECK(cpu.regs.A == 0x20);
-
-        CHECK_FALSE(cpu.regs.flags.Z);
-        CHECK_FALSE(cpu.regs.flags.C);
-        CHECK(cpu.regs.flags.N);
-        CHECK_FALSE(cpu.regs.flags.H);
-
-        CHECK(cpu.elapsedCycles() == 2);
-    }
-    SUBCASE("Test CP A,[HL] zero, carry and half-carry flags") {
+    SUBCASE("Test CP A,[HL] zero flag") {
         cpu.regs.A = 0x23;
         cpu.step();
         CHECK(cpu.regs.A == 0x23);
 
         CHECK(cpu.regs.flags.Z);
-        CHECK(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.H);
         CHECK(cpu.regs.flags.N);
-        CHECK(cpu.regs.flags.H);
+
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+}
+
+TEST_CASE("CPU test CP A,n8") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint16_t pc = Registers::PCinitialValue;
+
+    bus.write8(pc, op::CP_A_n8);
+    bus.write8(pc + 1, 0x23);
+
+    // this works just like CP A,reg
+    // here we only check if the right value is used
+
+    SUBCASE("Test CP A,n8 zero flag") {
+        cpu.regs.A = 0x23;
+        cpu.step();
+        CHECK(cpu.regs.A == 0x23);
+
+        CHECK(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK(cpu.regs.flags.N);
 
         CHECK(cpu.elapsedCycles() == 2);
     }
