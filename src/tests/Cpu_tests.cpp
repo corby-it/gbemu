@@ -2032,6 +2032,312 @@ TEST_CASE("CPU test CP A,n8") {
 
 
 
+TEST_CASE("CPU test INC reg 8-bit") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint16_t pc = Registers::PCinitialValue;
+
+    bus.write8(pc, op::INC_A);
+
+    // we use reg A, the code is the same for the other registers
+    // the carry flag is never set 
+
+    SUBCASE("Test INC A no flags") {
+        cpu.regs.A = 0x01;
+        cpu.step();
+        CHECK(cpu.regs.A == 0x02);
+
+        CHECK_FALSE(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 1);
+    }
+    SUBCASE("Test INC A half carry flag") {
+        cpu.regs.A = 0x0f;
+        cpu.step();
+        CHECK(cpu.regs.A == 0x10);
+
+        CHECK_FALSE(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 1);
+    }
+    SUBCASE("Test INC A carry, half-carry and zero flags") {
+        cpu.regs.A = 0xff;
+        cpu.step();
+        CHECK(cpu.regs.A == 0x00);
+
+        CHECK(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 1);
+    }
+}
+
+TEST_CASE("CPU test INC [HL]") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint16_t pc = Registers::PCinitialValue;
+    uint16_t addr = 0x1234;
+
+    bus.write8(pc, op::INC_inHL);
+    bus.write8(addr, 0x20);
+    cpu.regs.setHL(addr);
+
+    cpu.step();
+
+    CHECK(bus.read8(addr) == 0x21);
+
+    CHECK_FALSE(cpu.regs.flags.Z);
+    CHECK_FALSE(cpu.regs.flags.C);
+    CHECK_FALSE(cpu.regs.flags.H);
+    CHECK_FALSE(cpu.regs.flags.N);
+
+    CHECK(cpu.elapsedCycles() == 3);
+}
+
+
+
+TEST_CASE("CPU test DEC reg 8-bit") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint16_t pc = Registers::PCinitialValue;
+
+    bus.write8(pc, op::DEC_A);
+
+    // we use reg A, the code is the same for the other registers
+    // the carry flag is never set
+
+    SUBCASE("Test DEC A no flags") {
+        cpu.regs.A = 0x03;
+        cpu.step();
+        CHECK(cpu.regs.A == 0x02);
+
+        CHECK_FALSE(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 1);
+    }
+    SUBCASE("Test DEC A half carry flag") {
+        cpu.regs.A = 0x10;
+        cpu.step();
+        CHECK(cpu.regs.A == 0x0f);
+
+        CHECK_FALSE(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK(cpu.regs.flags.H);
+        CHECK(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 1);
+    }
+    SUBCASE("Test DEC A zero flag") {
+        cpu.regs.A = 0x01;
+        cpu.step();
+        CHECK(cpu.regs.A == 0x00);
+
+        CHECK(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 1);
+    }
+}
+
+TEST_CASE("CPU test DEC [HL]") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint16_t pc = Registers::PCinitialValue;
+    uint16_t addr = 0x1234;
+
+    bus.write8(pc, op::DEC_inHL);
+    bus.write8(addr, 0x32);
+    cpu.regs.setHL(addr);
+
+    cpu.step();
+
+    CHECK(bus.read8(addr) == 0x31);
+
+    CHECK_FALSE(cpu.regs.flags.Z);
+    CHECK_FALSE(cpu.regs.flags.C);
+    CHECK_FALSE(cpu.regs.flags.H);
+    CHECK(cpu.regs.flags.N);
+
+    CHECK(cpu.elapsedCycles() == 3);
+}
+
+
+
+TEST_CASE("CPU test CCF") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint16_t pc = Registers::PCinitialValue;
+
+    // flip the C flag and clear H and N, Z is unchanged
+
+    bus.write8(pc, op::CCF);
+    cpu.regs.flags.C = 1;
+
+    cpu.step();
+
+    CHECK_FALSE(cpu.regs.flags.C);
+    CHECK_FALSE(cpu.regs.flags.H);
+    CHECK_FALSE(cpu.regs.flags.N);
+
+    CHECK(cpu.elapsedCycles() == 1);
+}
+
+TEST_CASE("CPU test SCF") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint16_t pc = Registers::PCinitialValue;
+
+    // set the C flag and clear H and N, Z is unchanged
+
+    bus.write8(pc, op::SCF);
+    cpu.regs.flags.C = 0;
+
+    cpu.step();
+
+    CHECK(cpu.regs.flags.C);
+    CHECK_FALSE(cpu.regs.flags.H);
+    CHECK_FALSE(cpu.regs.flags.N);
+
+    CHECK(cpu.elapsedCycles() == 1);
+}
+
+TEST_CASE("CPU test CPL") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint16_t pc = Registers::PCinitialValue;
+
+    // flips all bits of reg A and sets H and N
+
+    bus.write8(pc, op::CPL);
+    cpu.regs.A = 0x12;
+
+    cpu.step();
+
+    CHECK(cpu.regs.A == 0xED);
+
+    CHECK(cpu.regs.flags.H);
+    CHECK(cpu.regs.flags.N);
+
+    CHECK(cpu.elapsedCycles() == 1);
+}
+
+
+TEST_CASE("CPU test DAA") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint16_t pc = Registers::PCinitialValue;
+
+    // DAA stands for "Decimal Adjust Accumulator", it's used to turn the accumulator A
+    // into a valid BCD representation of its value.
+
+    // instead of working with BCD values directly, additions and subtractions can be performed 
+    // in binary as usual and the result can be converted to BCD afterward, for example:
+    // 1001 + 1000  = 10001
+    // 9    + 8     = 17
+    // to convert 17 in binary to 1 and 7 (10001 -> 0001 0111) in BCD one can add 6.
+    // since we are working with base-16 values, adding 6 is another way of saying that we are 
+    // doing a mod-10 operation on the digit.
+
+    // see https://en.wikipedia.org/wiki/Binary-coded_decimal "Operations with BCD" for 
+    // a more detailed explanation.
+
+    SUBCASE("Test ADD A,B then DAA") {
+        // we want to do 45 + 38 = 83 in decimal
+        // so we do 0x45 + 0x38 = 0x7D in hex
+        // to convert 0x7D to 0x83 we have to add 6
+        // 
+        // 0x45     0100 0101 +
+        // 0x38     0011 1000 =
+        //          -----------
+        // 0x7D     0111 1101 +
+        // 0x06     0000 0110 =
+        //          -----------
+        // 0x83     1000 0111
+
+
+        bus.write8(pc, op::ADD_A_B);
+        bus.write8(pc + 1, op::DAA);
+
+        cpu.regs.A = 0x45;
+        cpu.regs.B = 0x38;
+
+        // perform ADD A,B
+        cpu.step();
+        CHECK(cpu.regs.A == 0x7D);
+        CHECK_FALSE(cpu.regs.flags.N);
+        CHECK(cpu.elapsedCycles() == 1);
+
+        // perform DAA
+        cpu.step();
+        CHECK(cpu.regs.A == 0x83);
+        CHECK_FALSE(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.H); // H is always false
+        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+
+    SUBCASE("Test SUB A,B then DAA") {
+        // we want to do 83 - 38 = 45 in decimal
+        // so we do 0x83 - 0x38 = 0x4B in hex
+        // to convert 0x4B to 0x45 we have to subtract 6
+        // that is, sum the 2 complement of 6 which is 0xFA
+        // 
+        // 0x83     1000 0011 -
+        // 0x38     0011 1000 =
+        //          -----------
+        // 0x4B     0100 1011 +
+        // 0xFA     1111 1010 =
+        //          -----------
+        // 0x45     0100 0101 (+carry)
+
+
+        bus.write8(pc, op::SUB_A_B);
+        bus.write8(pc + 1, op::DAA);
+
+        cpu.regs.A = 0x83;
+        cpu.regs.B = 0x38;
+
+        // perform SUB A,B
+        cpu.step();
+        CHECK(cpu.regs.A == 0x4B);
+        CHECK(cpu.regs.flags.N);
+        CHECK(cpu.elapsedCycles() == 1);
+
+        // perform DAA
+        cpu.step();
+        CHECK(cpu.regs.A == 0x45);
+        CHECK_FALSE(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.H); // H is always false
+        CHECK(cpu.regs.flags.C);
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+}
+
+
+
+
+
 
 TEST_CASE("CPU test conditional jumps JP C/Z/NC/NZ, a16") {
     TestBus bus;

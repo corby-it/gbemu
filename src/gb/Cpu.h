@@ -206,6 +206,17 @@ private:
     uint8_t opCpReg(uint8_t reg);
     uint8_t opCpInd();
     uint8_t opCpImm();
+
+    uint8_t opIncReg(uint8_t& reg);
+    uint8_t opIncInd();
+
+    uint8_t opDecReg(uint8_t& reg);
+    uint8_t opDecInd();
+
+    uint8_t opCcf();
+    uint8_t opScf();
+    uint8_t opCpl();
+    uint8_t opDaa();
     
     uint8_t opJpImm();
     uint8_t opJpInd();
@@ -217,6 +228,14 @@ private:
     // Utils --------------------------------------------------------------------------------------
     uint8_t compl2(uint8_t val) {
         return ~val + 1;
+    }
+
+    uint8_t hnib(uint8_t val) {
+        return val >> 4;
+    }
+
+    uint8_t lnib(uint8_t val) {
+        return val & 0x0F;
     }
 
     bool checkCarry(uint16_t mathRes) {
