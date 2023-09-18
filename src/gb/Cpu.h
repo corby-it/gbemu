@@ -218,6 +218,14 @@ private:
     uint8_t opCpl();
     uint8_t opDaa();
 
+    uint8_t opAddReg16(uint16_t rhs);
+    uint8_t opAddSpImm();
+
+    uint8_t opIncReg16(uint8_t& msb, uint8_t& lsb);
+    uint8_t opDecReg16(uint8_t& msb, uint8_t& lsb);
+    uint8_t opIncSp();
+    uint8_t opDecSp();
+    
     uint8_t opRlca();
     uint8_t opRla();
     uint8_t opRrca();
@@ -243,8 +251,16 @@ private:
         return val & 0x0F;
     }
 
-    bool checkCarry(uint16_t mathRes) {
-        return mathRes & 0xff00;
+    bool checkCarry(uint16_t lhs, uint16_t rhs, bool carry = false) {
+        return (lhs & 0x00ff) + (rhs & 0x00ff) + carry > 0x00ff;
+    }
+
+    bool checkCarry16(uint32_t lhs, uint32_t rhs) {
+        return (lhs & 0x0000ffff) + (rhs & 0x0000ffff) > 0x0000ffff;
+    }
+
+    bool checkHalfCarry16(uint16_t lhs, uint16_t rhs) {
+        return (lhs & 0x0fff) + (rhs & 0x0fff) > 0x0fff;
     }
 
     bool checkHalfCarry(uint8_t lhs, uint8_t rhs, bool carry = false) {

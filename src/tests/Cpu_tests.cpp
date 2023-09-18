@@ -2335,6 +2335,201 @@ TEST_CASE("CPU test DAA") {
 }
 
 
+TEST_CASE("CPU test ADD HL,reg16") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint16_t pc = Registers::PCinitialValue;
+
+    bus.write8(pc, op::ADD_HL_BC);
+    cpu.regs.setBC(0x0333);
+
+    // we use BC, when using other registers the code is the same
+    // Z flag is not used by this instruction, only C and H are updated and N is always false
+
+    SUBCASE("Test ADD HL,BC no flags") {
+        cpu.regs.setHL(0x0444);
+        cpu.step();
+        
+        CHECK(cpu.regs.HL() == 0x0777);
+
+        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+    SUBCASE("Test ADD HL,BC half-carry flag") {
+        cpu.regs.setHL(0x0f44);
+        cpu.step();
+
+        CHECK(cpu.regs.HL() == 0x1277);
+
+        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+    SUBCASE("Test ADD HL,BC carry and half-carry flags") {
+        cpu.regs.setHL(0xff44);
+        cpu.step();
+
+        CHECK(cpu.regs.HL() == 0x0277);
+
+        CHECK(cpu.regs.flags.C);
+        CHECK(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+}
+
+
+TEST_CASE("CPU test ADD SP,e8") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint16_t pc = Registers::PCinitialValue;
+
+    bus.write8(pc, op::ADD_SP_e8);
+
+    // the immediate value is considered to be a signed value
+    // only C and H are updated, Z and N is always false
+
+    SUBCASE("Test ADD SP,e8 no flags") {
+        cpu.regs.SP = 0x0333;
+        bus.write8(pc + 1, 0x22);
+        cpu.step();
+
+        CHECK(cpu.regs.SP == 0x0355);
+
+        CHECK_FALSE(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 4);
+    }
+    SUBCASE("Test ADD SP,e8 half-carry flag") {
+        cpu.regs.SP = 0x002E;
+        bus.write8(pc + 1, 0x13);
+        cpu.step();
+
+        CHECK(cpu.regs.SP == 0x0041);
+
+        CHECK_FALSE(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 4);
+    }
+    SUBCASE("Test ADD SP,e8 carry flag") {
+        cpu.regs.SP = 0x00EE;
+        bus.write8(pc + 1, 0x31);
+        cpu.step();
+
+        CHECK(cpu.regs.SP == 0x011F);
+
+        CHECK_FALSE(cpu.regs.flags.Z);
+        CHECK(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 4);
+    }
+    SUBCASE("Test ADD SP,e8 negative value") {
+        cpu.regs.SP = 0x00EE;
+        bus.write8(pc + 1, (uint8_t)-10);
+        cpu.step();
+
+        CHECK(cpu.regs.SP == 0x00E4);
+
+        // in this case both C and H should be set because it's like adding 
+        // FFF6 to SP (00EE) so both carry and half-carry are true
+        CHECK_FALSE(cpu.regs.flags.Z);
+        CHECK(cpu.regs.flags.C);
+        CHECK(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 4);
+    }
+}
+
+
+TEST_CASE("CPU test INC/DEC reg 16-bit") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint16_t pc = Registers::PCinitialValue;
+
+    SUBCASE("Test INC BC") {
+        bus.write8(pc, op::INC_BC);
+        cpu.regs.setBC(0x0333);
+        cpu.step();
+
+        CHECK(cpu.regs.BC() == 0x0334);
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+    SUBCASE("Test INC DE") {
+        bus.write8(pc, op::INC_DE);
+        cpu.regs.setDE(0x0333);
+        cpu.step();
+
+        CHECK(cpu.regs.DE() == 0x0334);
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+    SUBCASE("Test INC HL") {
+        bus.write8(pc, op::INC_HL);
+        cpu.regs.setHL(0x0333);
+        cpu.step();
+
+        CHECK(cpu.regs.HL() == 0x0334);
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+    SUBCASE("Test INC SP") {
+        bus.write8(pc, op::INC_SP);
+        cpu.regs.SP = 0x0333;
+        cpu.step();
+
+        CHECK(cpu.regs.SP == 0x0334);
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+    SUBCASE("Test DEC BC") {
+        bus.write8(pc, op::DEC_BC);
+        cpu.regs.setBC(0x0333);
+        cpu.step();
+
+        CHECK(cpu.regs.BC() == 0x0332);
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+    SUBCASE("Test DEC DE") {
+        bus.write8(pc, op::DEC_DE);
+        cpu.regs.setDE(0x0333);
+        cpu.step();
+
+        CHECK(cpu.regs.DE() == 0x0332);
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+    SUBCASE("Test DEC HL") {
+        bus.write8(pc, op::DEC_HL);
+        cpu.regs.setHL(0x0333);
+        cpu.step();
+
+        CHECK(cpu.regs.HL() == 0x0332);
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+    SUBCASE("Test DEC SP") {
+        bus.write8(pc, op::DEC_SP);
+        cpu.regs.SP = 0x0333;
+        cpu.step();
+
+        CHECK(cpu.regs.SP == 0x0332);
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+}
+
 
 
 TEST_CASE("CPU test RLCA") {
