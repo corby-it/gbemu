@@ -217,6 +217,11 @@ private:
     uint8_t opScf();
     uint8_t opCpl();
     uint8_t opDaa();
+
+    uint8_t opRlca();
+    uint8_t opRla();
+    uint8_t opRrca();
+    uint8_t opRra();
     
     uint8_t opJpImm();
     uint8_t opJpInd();

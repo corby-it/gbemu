@@ -2337,6 +2337,174 @@ TEST_CASE("CPU test DAA") {
 
 
 
+TEST_CASE("CPU test RLCA") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint16_t pc = Registers::PCinitialValue;
+
+    // Rotate A left, bit 7 of A goes into the carry flag as well 
+    // as coming back into bit 0 of A
+    // the other flags are all reset
+
+    bus.write8(pc, op::RLCA);
+
+    SUBCASE("Test RLCA with bit 7 == 0") {
+        cpu.regs.A = 0x74;
+        cpu.step();
+
+        CHECK(cpu.regs.A == 0xE8);
+
+        CHECK_FALSE(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 1);
+    }
+    SUBCASE("Test RLCA with bit 7 == 1") {
+        cpu.regs.A = 0xF4;
+        cpu.step();
+
+        CHECK(cpu.regs.A == 0xE9);
+
+        CHECK_FALSE(cpu.regs.flags.Z);
+        CHECK(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 1);
+    }
+}
+
+
+TEST_CASE("CPU test RLA") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint16_t pc = Registers::PCinitialValue;
+
+    // Rotate A left, bit 7 of A goes into the carry flag and the previous
+    // value of C comes back into bit 0 of A
+    // the other flags are all reset
+
+    bus.write8(pc, op::RLA);
+
+    SUBCASE("Test RCA with bit 7 == 1 an C == 0") {
+        cpu.regs.A = 0xF4;
+        cpu.regs.flags.C = false;
+        cpu.step();
+
+        CHECK(cpu.regs.A == 0xE8);
+
+        CHECK_FALSE(cpu.regs.flags.Z);
+        CHECK(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 1);
+    }
+    SUBCASE("Test RCA with bit 7 == 0 an C == 1") {
+        cpu.regs.A = 0x74;
+        cpu.regs.flags.C = true;
+        cpu.step();
+
+        CHECK(cpu.regs.A == 0xE9);
+
+        CHECK_FALSE(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 1);
+    }
+}
+
+
+TEST_CASE("CPU test RRCA") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint16_t pc = Registers::PCinitialValue;
+
+    // Rotate A right, bit 0 of A goes into the C flag as well 
+    // as coming back into A from the left
+    // the other flags are all reset
+
+    bus.write8(pc, op::RRCA);
+
+    SUBCASE("Test RRCA with bit 0 == 0") {
+        cpu.regs.A = 0x7E;
+        cpu.step();
+
+        CHECK(cpu.regs.A == 0x3F);
+
+        CHECK_FALSE(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 1);
+    }
+    SUBCASE("Test RRCA with bit 0 == 1") {
+        cpu.regs.A = 0x7B;
+        cpu.step();
+
+        CHECK(cpu.regs.A == 0xBD);
+
+        CHECK_FALSE(cpu.regs.flags.Z);
+        CHECK(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 1);
+    }
+}
+
+
+TEST_CASE("CPU test RRA") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint16_t pc = Registers::PCinitialValue;
+
+    // Rotate A right, bit 0 of A goes into the C flag and the previous
+    // value of C comes back into bit 7 of A
+    // the other flags are all reset
+
+    bus.write8(pc, op::RRA);
+
+    SUBCASE("Test RRA with bit 0 == 1 an C == 0") {
+        cpu.regs.A = 0x23;
+        cpu.regs.flags.C = false;
+        cpu.step();
+
+        CHECK(cpu.regs.A == 0x11);
+
+        CHECK_FALSE(cpu.regs.flags.Z);
+        CHECK(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 1);
+    }
+    SUBCASE("Test RRA with bit 0 == 0 an C == 1") {
+        cpu.regs.A = 0x32;
+        cpu.regs.flags.C = true;
+        cpu.step();
+
+        CHECK(cpu.regs.A == 0x99);
+
+        CHECK_FALSE(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 1);
+    }
+}
+
+
 
 
 TEST_CASE("CPU test conditional jumps JP C/Z/NC/NZ, a16") {

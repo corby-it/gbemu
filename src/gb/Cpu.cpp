@@ -86,7 +86,7 @@ uint8_t CPU::execute(uint8_t opcode, bool& ok)
     case op::INC_B: return opIncReg(regs.B);
     case op::DEC_B: return opDecReg(regs.B);
     case op::LD_B_n8: return opLdRegImm(regs.B); // LD B,n8
-        //case op::RLCA         : return 1;
+    case op::RLCA: return opRlca();
     case op::LD_ina16_SP: return opLdIndImm16Sp();
         //case op::ADD_HL_BC    : return 1;
     case op::LD_A_inBC: return opLdRegInd(regs.A, regs.BC());
@@ -94,7 +94,7 @@ uint8_t CPU::execute(uint8_t opcode, bool& ok)
     case op::INC_C: return opIncReg(regs.C);
     case op::DEC_C: return opDecReg(regs.C);
     case op::LD_C_n8: return opLdRegImm(regs.C); // LD C,n8
-        //case op::RRCA         : return 1;
+    case op::RRCA: return opRrca();
 
         // 0x1*
         //case op::STOP_n8      : return 1;
@@ -104,7 +104,7 @@ uint8_t CPU::execute(uint8_t opcode, bool& ok)
     case op::INC_D: return opIncReg(regs.D);
     case op::DEC_D: return opDecReg(regs.D);
     case op::LD_D_n8: return opLdRegImm(regs.D); // LD D,n8
-        //case op::RLA          : return 1;
+    case op::RLA: return opRla();
         //case op::JR_e8        : return 1;
         //case op::ADD_HL_DE    : return 1;
     case op::LD_A_inDE: return opLdRegInd(regs.A, regs.DE());
@@ -112,7 +112,7 @@ uint8_t CPU::execute(uint8_t opcode, bool& ok)
     case op::INC_E: return opIncReg(regs.E);
     case op::DEC_E: return opDecReg(regs.E);
     case op::LD_E_n8: return opLdRegImm(regs.E); // LD E,n8
-        //case op::RRA          : return 1;
+    case op::RRA: return opRra();
 
         // 0x2*
         //case op::JR_NZ_e8     : return 1;
@@ -1079,6 +1079,83 @@ uint8_t CPU::opDaa()
     regs.flags.H = false;
 
     regs.A = (uint8_t)res;
+
+    return 1;
+}
+
+uint8_t CPU::opRlca()
+{
+    // RLCA 
+    // Rotate A left, bit 7 of A goes into the carry flag as well 
+    // as coming back into bit 0 of A
+    // the other flags are all reset
+    // 1 cycle
+
+    bool bit7 = regs.A & 0x80;
+
+    regs.A = (regs.A << 1) | (uint8_t)bit7;
+    
+    regs.flags.C = bit7;
+    regs.flags.Z = false;
+    regs.flags.H = false;
+    regs.flags.N = false;
+
+    return 1;
+}
+
+uint8_t CPU::opRla()
+{
+    // RLA
+    // Rotate A left, bit 7 of A goes into the carry flag and the previous
+    // value of C comes back into bit 0 of A
+    // the other flags are all reset
+
+    bool bit7 = regs.A & 0x80;
+
+    regs.A = (regs.A << 1) | (uint8_t)regs.flags.C;
+
+    regs.flags.C = bit7;
+    regs.flags.Z = false;
+    regs.flags.H = false;
+    regs.flags.N = false;
+
+    return 1;
+}
+
+uint8_t CPU::opRrca()
+{
+    // RRCA
+    // Rotate A right, bit 0 of A goes into the C flag as well 
+    // as coming back into A from the left
+    // the other flags are all reset
+
+    bool bit0 = regs.A & 0x01;
+
+    regs.A = (regs.A >> 1) | (bit0 ? 0x80 : 0x00);
+
+    regs.flags.C = bit0;
+    regs.flags.Z = false;
+    regs.flags.H = false;
+    regs.flags.N = false;
+
+    return 1;
+}
+
+uint8_t CPU::opRra()
+{
+    // RRA
+    // Rotate A right, bit 0 of A goes into the C flag and the previous
+    // value of C comes back into bit 7 of A
+    // the other flags are all reset
+
+    bool bit0 = regs.A & 0x01;
+
+    regs.A = (regs.A >> 1) | (regs.flags.C ? 0x80 : 0x00);
+
+    regs.flags.C = bit0;
+    regs.flags.Z = false;
+    regs.flags.H = false;
+    regs.flags.N = false;
 
     return 1;
 }
