@@ -130,7 +130,8 @@ public:
 
 private:
 
-    uint8_t execute(uint8_t opcode, bool& err);
+    uint8_t execute(uint8_t opcode, bool& ok);
+    uint8_t executeCb(bool& ok);
 
     // 8-bit load instructions
     uint8_t opLdRegImm(uint8_t& dst);
@@ -230,7 +231,17 @@ private:
     uint8_t opRla();
     uint8_t opRrca();
     uint8_t opRra();
-    
+
+    uint8_t opCbRlcReg(uint8_t& reg);
+    uint8_t opCbRlcInd();
+    uint8_t opCbRlReg(uint8_t& reg);
+    uint8_t opCbRlInd();
+
+    uint8_t opCbRrcReg(uint8_t& reg);
+    uint8_t opCbRrcInd();
+    uint8_t opCbRrReg(uint8_t& reg);
+    uint8_t opCbRrInd();
+
     uint8_t opJpImm();
     uint8_t opJpInd();
     uint8_t opJpCondImm(bool cond);

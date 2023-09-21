@@ -306,7 +306,7 @@ uint8_t CPU::execute(uint8_t opcode, bool& ok)
         // case op::RET_Z        : return 1;
         // case op::RET          : return 1;
     case op::JP_Z_a16: return opJpCondImm(regs.flags.Z); // JP Z,a16
-        // case op::CB_PREFIX    : return 1;
+    case op::CB_PREFIX: return executeCb(ok);
         // case op::CALL_Z_a16   : return 1;
         // case op::CALL_a16     : return 1;
     case op::ADC_A_n8: return opAdcImm();
@@ -370,6 +370,307 @@ uint8_t CPU::execute(uint8_t opcode, bool& ok)
         // unrecognized opcode
         ok = false;
         return 1;
+    }
+}
+
+uint8_t CPU::executeCb(bool& ok)
+{
+    // to correctly execute one of the instructions prefixed with CB we 
+    // have to read another byte from PC to get the actual opcode
+    uint8_t cbOpcode = mBus.read8(regs.PC++);
+
+    switch (cbOpcode) {
+        // 0x0*
+        case op_cb::RLC_B        : return opCbRlcReg(regs.B);
+        case op_cb::RLC_C        : return opCbRlcReg(regs.C);
+        case op_cb::RLC_D        : return opCbRlcReg(regs.D);
+        case op_cb::RLC_E        : return opCbRlcReg(regs.E);
+        case op_cb::RLC_H        : return opCbRlcReg(regs.H);
+        case op_cb::RLC_L        : return opCbRlcReg(regs.L);
+        case op_cb::RLC_inHL     : return opCbRlcInd();
+        case op_cb::RLC_A        : return opCbRlcReg(regs.A);
+        case op_cb::RRC_B        : return opCbRrcReg(regs.B);
+        case op_cb::RRC_C        : return opCbRrcReg(regs.C);
+        case op_cb::RRC_D        : return opCbRrcReg(regs.D);
+        case op_cb::RRC_E        : return opCbRrcReg(regs.E);
+        case op_cb::RRC_H        : return opCbRrcReg(regs.H);
+        case op_cb::RRC_L        : return opCbRrcReg(regs.L);
+        case op_cb::RRC_inHL     : return opCbRrcInd();
+        case op_cb::RRC_A        : return opCbRrcReg(regs.A);
+
+        // 0x1*
+        case op_cb::RL_B         : return opCbRlReg(regs.B);
+        case op_cb::RL_C         : return opCbRlReg(regs.C);
+        case op_cb::RL_D         : return opCbRlReg(regs.D);
+        case op_cb::RL_E         : return opCbRlReg(regs.E);
+        case op_cb::RL_H         : return opCbRlReg(regs.H);
+        case op_cb::RL_L         : return opCbRlReg(regs.L);
+        case op_cb::RL_inHL      : return opCbRlInd();
+        case op_cb::RL_A         : return opCbRlReg(regs.A);
+        case op_cb::RR_B         : return opCbRrReg(regs.B);
+        case op_cb::RR_C         : return opCbRrReg(regs.C);
+        case op_cb::RR_D         : return opCbRrReg(regs.D);
+        case op_cb::RR_E         : return opCbRrReg(regs.E);
+        case op_cb::RR_H         : return opCbRrReg(regs.H);
+        case op_cb::RR_L         : return opCbRrReg(regs.L);
+        case op_cb::RR_inHL      : return opCbRrInd();
+        case op_cb::RR_A         : return opCbRrReg(regs.A);
+
+        // 0x2*
+        //case op_cb::SLA_B        : return 1;
+        //case op_cb::SLA_C        : return 1;
+        //case op_cb::SLA_D        : return 1;
+        //case op_cb::SLA_E        : return 1;
+        //case op_cb::SLA_H        : return 1;
+        //case op_cb::SLA_L        : return 1;
+        //case op_cb::SLA_inHL     : return 1;
+        //case op_cb::SLA_A        : return 1;
+        //case op_cb::SRA_B        : return 1;
+        //case op_cb::SRA_C        : return 1;
+        //case op_cb::SRA_D        : return 1;
+        //case op_cb::SRA_E        : return 1;
+        //case op_cb::SRA_H        : return 1;
+        //case op_cb::SRA_L        : return 1;
+        //case op_cb::SRA_inHL     : return 1;
+        //case op_cb::SRA_A        : return 1;
+
+        // 0x3*
+        //case op_cb::SWAP_B       : return 1;
+        //case op_cb::SWAP_C       : return 1;
+        //case op_cb::SWAP_D       : return 1;
+        //case op_cb::SWAP_E       : return 1;
+        //case op_cb::SWAP_H       : return 1;
+        //case op_cb::SWAP_L       : return 1;
+        //case op_cb::SWAP_inHL    : return 1;
+        //case op_cb::SWAP_A       : return 1;
+        //case op_cb::SRL_B        : return 1;
+        //case op_cb::SRL_C        : return 1;
+        //case op_cb::SRL_D        : return 1;
+        //case op_cb::SRL_E        : return 1;
+        //case op_cb::SRL_H        : return 1;
+        //case op_cb::SRL_L        : return 1;
+        //case op_cb::SRL_inHL     : return 1;
+        //case op_cb::SRL_A        : return 1;
+
+        // 0x4*
+        //case op_cb::BIT_0_B      : return 1;
+        //case op_cb::BIT_0_C      : return 1;
+        //case op_cb::BIT_0_D      : return 1;
+        //case op_cb::BIT_0_E      : return 1;
+        //case op_cb::BIT_0_H      : return 1;
+        //case op_cb::BIT_0_L      : return 1;
+        //case op_cb::BIT_0_inHL   : return 1;
+        //case op_cb::BIT_0_A      : return 1;
+        //case op_cb::BIT_1_B      : return 1;
+        //case op_cb::BIT_1_C      : return 1;
+        //case op_cb::BIT_1_D      : return 1;
+        //case op_cb::BIT_1_E      : return 1;
+        //case op_cb::BIT_1_H      : return 1;
+        //case op_cb::BIT_1_L      : return 1;
+        //case op_cb::BIT_1_inHL   : return 1;
+        //case op_cb::BIT_1_A      : return 1;
+
+        // 0x5*
+        //case op_cb::BIT_2_B      : return 1;
+        //case op_cb::BIT_2_C      : return 1;
+        //case op_cb::BIT_2_D      : return 1;
+        //case op_cb::BIT_2_E      : return 1;
+        //case op_cb::BIT_2_H      : return 1;
+        //case op_cb::BIT_2_L      : return 1;
+        //case op_cb::BIT_2_inHL   : return 1;
+        //case op_cb::BIT_2_A      : return 1;
+        //case op_cb::BIT_3_B      : return 1;
+        //case op_cb::BIT_3_C      : return 1;
+        //case op_cb::BIT_3_D      : return 1;
+        //case op_cb::BIT_3_E      : return 1;
+        //case op_cb::BIT_3_H      : return 1;
+        //case op_cb::BIT_3_L      : return 1;
+        //case op_cb::BIT_3_inHL   : return 1;
+        //case op_cb::BIT_3_A      : return 1;
+
+        // 0x6*
+        //case op_cb::BIT_4_B      : return 1;
+        //case op_cb::BIT_4_C      : return 1;
+        //case op_cb::BIT_4_D      : return 1;
+        //case op_cb::BIT_4_E      : return 1;
+        //case op_cb::BIT_4_H      : return 1;
+        //case op_cb::BIT_4_L      : return 1;
+        //case op_cb::BIT_4_inHL   : return 1;
+        //case op_cb::BIT_4_A      : return 1;
+        //case op_cb::BIT_5_B      : return 1;
+        //case op_cb::BIT_5_C      : return 1;
+        //case op_cb::BIT_5_D      : return 1;
+        //case op_cb::BIT_5_E      : return 1;
+        //case op_cb::BIT_5_H      : return 1;
+        //case op_cb::BIT_5_L      : return 1;
+        //case op_cb::BIT_5_inHL   : return 1;
+        //case op_cb::BIT_5_A      : return 1;
+
+        // 0x7*
+        //case op_cb::BIT_6_B      : return 1;
+        //case op_cb::BIT_6_C      : return 1;
+        //case op_cb::BIT_6_D      : return 1;
+        //case op_cb::BIT_6_E      : return 1;
+        //case op_cb::BIT_6_H      : return 1;
+        //case op_cb::BIT_6_L      : return 1;
+        //case op_cb::BIT_6_inHL   : return 1;
+        //case op_cb::BIT_6_A      : return 1;
+        //case op_cb::BIT_7_B      : return 1;
+        //case op_cb::BIT_7_C      : return 1;
+        //case op_cb::BIT_7_D      : return 1;
+        //case op_cb::BIT_7_E      : return 1;
+        //case op_cb::BIT_7_H      : return 1;
+        //case op_cb::BIT_7_L      : return 1;
+        //case op_cb::BIT_7_inHL   : return 1;
+        //case op_cb::BIT_7_A      : return 1;
+
+        // 0x8*
+        //case op_cb::RES_0_B      : return 1;
+        //case op_cb::RES_0_C      : return 1;
+        //case op_cb::RES_0_D      : return 1;
+        //case op_cb::RES_0_E      : return 1;
+        //case op_cb::RES_0_H      : return 1;
+        //case op_cb::RES_0_L      : return 1;
+        //case op_cb::RES_0_inHL   : return 1;
+        //case op_cb::RES_0_A      : return 1;
+        //case op_cb::RES_1_B      : return 1;
+        //case op_cb::RES_1_C      : return 1;
+        //case op_cb::RES_1_D      : return 1;
+        //case op_cb::RES_1_E      : return 1;
+        //case op_cb::RES_1_H      : return 1;
+        //case op_cb::RES_1_L      : return 1;
+        //case op_cb::RES_1_inHL   : return 1;
+        //case op_cb::RES_1_A      : return 1;
+
+        // 0x9*
+        //case op_cb::RES_2_B      : return 1;
+        //case op_cb::RES_2_C      : return 1;
+        //case op_cb::RES_2_D      : return 1;
+        //case op_cb::RES_2_E      : return 1;
+        //case op_cb::RES_2_H      : return 1;
+        //case op_cb::RES_2_L      : return 1;
+        //case op_cb::RES_2_inHL   : return 1;
+        //case op_cb::RES_2_A      : return 1;
+        //case op_cb::RES_3_B      : return 1;
+        //case op_cb::RES_3_C      : return 1;
+        //case op_cb::RES_3_D      : return 1;
+        //case op_cb::RES_3_E      : return 1;
+        //case op_cb::RES_3_H      : return 1;
+        //case op_cb::RES_3_L      : return 1;
+        //case op_cb::RES_3_inHL   : return 1;
+        //case op_cb::RES_3_A      : return 1;
+
+        // 0xA*
+        //case op_cb::RES_4_B      : return 1;
+        //case op_cb::RES_4_C      : return 1;
+        //case op_cb::RES_4_D      : return 1;
+        //case op_cb::RES_4_E      : return 1;
+        //case op_cb::RES_4_H      : return 1;
+        //case op_cb::RES_4_L      : return 1;
+        //case op_cb::RES_4_inHL   : return 1;
+        //case op_cb::RES_4_A      : return 1;
+        //case op_cb::RES_5_B      : return 1;
+        //case op_cb::RES_5_C      : return 1;
+        //case op_cb::RES_5_D      : return 1;
+        //case op_cb::RES_5_E      : return 1;
+        //case op_cb::RES_5_H      : return 1;
+        //case op_cb::RES_5_L      : return 1;
+        //case op_cb::RES_5_inHL   : return 1;
+        //case op_cb::RES_5_A      : return 1;
+
+        // 0xB*
+        //case op_cb::RES_6_B      : return 1;
+        //case op_cb::RES_6_C      : return 1;
+        //case op_cb::RES_6_D      : return 1;
+        //case op_cb::RES_6_E      : return 1;
+        //case op_cb::RES_6_H      : return 1;
+        //case op_cb::RES_6_L      : return 1;
+        //case op_cb::RES_6_inHL   : return 1;
+        //case op_cb::RES_6_A      : return 1;
+        //case op_cb::RES_7_B      : return 1;
+        //case op_cb::RES_7_C      : return 1;
+        //case op_cb::RES_7_D      : return 1;
+        //case op_cb::RES_7_E      : return 1;
+        //case op_cb::RES_7_H      : return 1;
+        //case op_cb::RES_7_L      : return 1;
+        //case op_cb::RES_7_inHL   : return 1;
+        //case op_cb::RES_7_A      : return 1;
+
+        // 0xC*
+        //case op_cb::SET_0_B      : return 1;
+        //case op_cb::SET_0_C      : return 1;
+        //case op_cb::SET_0_D      : return 1;
+        //case op_cb::SET_0_E      : return 1;
+        //case op_cb::SET_0_H      : return 1;
+        //case op_cb::SET_0_L      : return 1;
+        //case op_cb::SET_0_inHL   : return 1;
+        //case op_cb::SET_0_A      : return 1;
+        //case op_cb::SET_1_B      : return 1;
+        //case op_cb::SET_1_C      : return 1;
+        //case op_cb::SET_1_D      : return 1;
+        //case op_cb::SET_1_E      : return 1;
+        //case op_cb::SET_1_H      : return 1;
+        //case op_cb::SET_1_L      : return 1;
+        //case op_cb::SET_1_inHL   : return 1;
+        //case op_cb::SET_1_A      : return 1;
+
+        // 0xD*
+        //case op_cb::SET_2_B      : return 1;
+        //case op_cb::SET_2_C      : return 1;
+        //case op_cb::SET_2_D      : return 1;
+        //case op_cb::SET_2_E      : return 1;
+        //case op_cb::SET_2_H      : return 1;
+        //case op_cb::SET_2_L      : return 1;
+        //case op_cb::SET_2_inHL   : return 1;
+        //case op_cb::SET_2_A      : return 1;
+        //case op_cb::SET_3_B      : return 1;
+        //case op_cb::SET_3_C      : return 1;
+        //case op_cb::SET_3_D      : return 1;
+        //case op_cb::SET_3_E      : return 1;
+        //case op_cb::SET_3_H      : return 1;
+        //case op_cb::SET_3_L      : return 1;
+        //case op_cb::SET_3_inHL   : return 1;
+        //case op_cb::SET_3_A      : return 1;
+
+        // 0xE*
+        //case op_cb::SET_4_B      : return 1;
+        //case op_cb::SET_4_C      : return 1;
+        //case op_cb::SET_4_D      : return 1;
+        //case op_cb::SET_4_E      : return 1;
+        //case op_cb::SET_4_H      : return 1;
+        //case op_cb::SET_4_L      : return 1;
+        //case op_cb::SET_4_inHL   : return 1;
+        //case op_cb::SET_4_A      : return 1;
+        //case op_cb::SET_5_B      : return 1;
+        //case op_cb::SET_5_C      : return 1;
+        //case op_cb::SET_5_D      : return 1;
+        //case op_cb::SET_5_E      : return 1;
+        //case op_cb::SET_5_H      : return 1;
+        //case op_cb::SET_5_L      : return 1;
+        //case op_cb::SET_5_inHL   : return 1;
+        //case op_cb::SET_5_A      : return 1;
+
+        // 0xF*
+        //case op_cb::SET_6_B      : return 1;
+        //case op_cb::SET_6_C      : return 1;
+        //case op_cb::SET_6_D      : return 1;
+        //case op_cb::SET_6_E      : return 1;
+        //case op_cb::SET_6_H      : return 1;
+        //case op_cb::SET_6_L      : return 1;
+        //case op_cb::SET_6_inHL   : return 1;
+        //case op_cb::SET_6_A      : return 1;
+        //case op_cb::SET_7_B      : return 1;
+        //case op_cb::SET_7_C      : return 1;
+        //case op_cb::SET_7_D      : return 1;
+        //case op_cb::SET_7_E      : return 1;
+        //case op_cb::SET_7_H      : return 1;
+        //case op_cb::SET_7_L      : return 1;
+        //case op_cb::SET_7_inHL   : return 1;
+        //case op_cb::SET_7_A      : return 1;
+        default:
+            // unrecognized opcode
+            ok = false;
+            return 1;
     }
 }
 
@@ -1210,7 +1511,7 @@ uint8_t CPU::opRrca()
 
     bool bit0 = regs.A & 0x01;
 
-    regs.A = (regs.A >> 1) | (bit0 ? 0x80 : 0x00);
+    regs.A = (regs.A >> 1) | (bit0 << 7);
 
     regs.flags.C = bit0;
     regs.flags.Z = false;
@@ -1229,7 +1530,7 @@ uint8_t CPU::opRra()
 
     bool bit0 = regs.A & 0x01;
 
-    regs.A = (regs.A >> 1) | (regs.flags.C ? 0x80 : 0x00);
+    regs.A = (regs.A >> 1) | (regs.flags.C << 7);
 
     regs.flags.C = bit0;
     regs.flags.Z = false;
@@ -1237,6 +1538,181 @@ uint8_t CPU::opRra()
     regs.flags.N = false;
 
     return 1;
+}
+
+uint8_t CPU::opCbRlcReg(uint8_t& reg)
+{
+    // RLC reg
+    // Rotate a register to the left, the content of bit 7 goes into flag C 
+    // and into bit 0, flag Z is updated depending on the value of the register
+    // N and H are reset
+    // 2 cycles
+
+    bool bit7 = reg & 0x80;
+
+    reg = (reg << 1) | (uint8_t)bit7;
+
+    regs.flags.C = bit7;
+    regs.flags.Z = reg == 0;
+    regs.flags.H = false;
+    regs.flags.N = false;
+
+    return 2;
+}
+
+uint8_t CPU::opCbRlcInd()
+{
+    // RLC [HL]
+    // Rotate a byte in memory to the left, the content of bit 7 goes into flag C 
+    // and into bit 0, flag Z is updated depending on the value of the byte
+    // N and H are reset
+    // 4 cycles
+
+    auto val = mBus.read8(regs.HL());
+
+    bool bit7 = val & 0x80;
+    
+    val = (val << 1) | (uint8_t)bit7;
+
+    regs.flags.C = bit7;
+    regs.flags.Z = val == 0;
+    regs.flags.H = false;
+    regs.flags.N = false;
+
+    mBus.write8(regs.HL(), val);
+
+    return 4;
+}
+
+uint8_t CPU::opCbRlReg(uint8_t& reg)
+{
+    // RL reg
+    // Rotate a register left, bit 7 of the register goes into the carry flag and the previous
+    // value of C comes back into bit 0 of the register
+    // flag Z is updated depending on the value of the register, N and H are reset
+    // 2 cycles
+
+    bool bit7 = reg & 0x80;
+
+    reg = (reg << 1) | (uint8_t)regs.flags.C;
+
+    regs.flags.C = bit7;
+    regs.flags.Z = reg == 0;
+    regs.flags.H = false;
+    regs.flags.N = false;
+
+    return 2;
+}
+
+uint8_t CPU::opCbRlInd()
+{
+    // RL [HL]
+    // Rotate a byte in memory left, bit 7 of the byte goes into the carry flag and the previous
+    // value of C comes back into bit 0 of the byte
+    // flag Z is updated depending on the value of the byte, N and H are reset
+    // 4 cycles
+
+    auto val = mBus.read8(regs.HL());
+
+    bool bit7 = val & 0x80;
+
+    val = (val << 1) | (uint8_t)regs.flags.C;
+
+    regs.flags.C = bit7;
+    regs.flags.Z = val == 0;
+    regs.flags.H = false;
+    regs.flags.N = false;
+
+    mBus.write8(regs.HL(), val);
+
+    return 4;
+}
+
+uint8_t CPU::opCbRrcReg(uint8_t& reg)
+{
+    // RRC reg
+    // Rotate a register right, bit 0 of A goes into the C flag as well 
+    // as coming back into the register in bit 7
+    // the Z flag depends on the value of the register, H and N are reset
+    // 2 cycles
+
+    bool bit0 = reg & 0x01;
+
+    reg = (reg >> 1) | (bit0 << 7);
+
+    regs.flags.C = bit0;
+    regs.flags.Z = reg == 0;
+    regs.flags.H = false;
+    regs.flags.N = false;
+
+    return 2;
+}
+
+uint8_t CPU::opCbRrcInd()
+{
+    // RRC [HL]
+    // Rotate a byte in memory right, bit 0 of A goes into the C flag as well 
+    // as coming back into the byte in bit 7
+    // the Z flag depends on the value of the byte, H and N are reset
+    // 4 cycles
+
+    auto val = mBus.read8(regs.HL());
+
+    bool bit0 = val & 0x01;
+
+    val = (val >> 1) | (bit0 << 7);
+
+    regs.flags.C = bit0;
+    regs.flags.Z = val == 0;
+    regs.flags.H = false;
+    regs.flags.N = false;
+
+    mBus.write8(regs.HL(), val);
+
+    return 4;
+}
+
+uint8_t CPU::opCbRrReg(uint8_t& reg)
+{
+    // RR reg
+    // Rotate a register right, bit 0 of the register goes into the C flag and the previous
+    // value of C comes back into bit 7 of the register
+    // the Z flag depends on the value of the byte, H and N are reset
+
+    bool bit0 = reg & 0x01;
+
+    reg = (reg >> 1) | (regs.flags.C << 7);
+
+    regs.flags.C = bit0;
+    regs.flags.Z = reg == 0;
+    regs.flags.H = false;
+    regs.flags.N = false;
+
+    return 2;
+}
+
+uint8_t CPU::opCbRrInd()
+{
+    // RR [HL]
+    // Rotate a register right, bit 0 of the register goes into the C flag and the previous
+    // value of C comes back into bit 7 of the register
+    // the Z flag depends on the value of the byte, H and N are reset
+    // 4 cycles
+
+    auto val = mBus.read8(regs.HL());
+
+    bool bit0 = val & 0x01;
+
+    val = (val >> 1) | (regs.flags.C << 7);
+
+    regs.flags.C = bit0;
+    regs.flags.Z = val == 0;
+    regs.flags.H = false;
+    regs.flags.N = false;
+
+    mBus.write8(regs.HL(), val);
+
+    return 4;
 }
 
 
