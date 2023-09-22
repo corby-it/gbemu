@@ -242,6 +242,24 @@ private:
     uint8_t opCbRrReg(uint8_t& reg);
     uint8_t opCbRrInd();
 
+    uint8_t opCbSlaReg(uint8_t& reg);
+    uint8_t opCbSlaInd();
+    uint8_t opCbSraReg(uint8_t& reg);
+    uint8_t opCbSraInd();
+    uint8_t opCbSrlReg(uint8_t& reg);
+    uint8_t opCbSrlInd();
+
+    uint8_t opCbSwapReg(uint8_t& reg);
+    uint8_t opCbSwapInd();
+
+    uint8_t opCbBitReg(uint8_t b, uint8_t& reg);
+    uint8_t opCbBitInd(uint8_t b);
+    uint8_t opCbSetReg(uint8_t b, uint8_t& reg);
+    uint8_t opCbSetInd(uint8_t b);
+    uint8_t opCbResReg(uint8_t b, uint8_t& reg);
+    uint8_t opCbResInd(uint8_t b);
+
+
     uint8_t opJpImm();
     uint8_t opJpInd();
     uint8_t opJpCondImm(bool cond);

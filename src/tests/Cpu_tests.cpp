@@ -3158,6 +3158,616 @@ TEST_CASE("CPU test RR [HL]") {
 }
 
 
+TEST_CASE("CPU test SLA reg") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint16_t pc = Registers::PCinitialValue;
+
+    // shifts the register left, bit 7 of the register goes into the C flag and
+    // 0 enters in bit 0
+    // the Z flag depends on the value of the byte, H and N are reset
+
+    bus.write8(pc, op::CB_PREFIX);
+    bus.write8(pc + 1, op_cb::SLA_A);
+
+    SUBCASE("Test SLA A with bit 7 == 1") {
+        cpu.regs.A = 0xC3;
+        cpu.step();
+
+        CHECK(cpu.regs.A == 0x86);
+
+        CHECK_FALSE(cpu.regs.flags.Z);
+        CHECK(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+    SUBCASE("Test SLA A with bit 7 == 0") {
+        cpu.regs.A = 0x3C;
+        cpu.step();
+
+        CHECK(cpu.regs.A == 0x78);
+
+        CHECK_FALSE(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+    SUBCASE("Test SLA A for Z flag") {
+        cpu.regs.A = 0x80;
+        cpu.step();
+
+        CHECK(cpu.regs.A == 0x00);
+
+        CHECK(cpu.regs.flags.Z);
+        CHECK(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+}
+
+TEST_CASE("CPU test SLA [HL]") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint16_t pc = Registers::PCinitialValue;
+
+    // shifts the byte in memory left, bit 7 of the byte goes into the C flag and
+    // 0 enters in bit 0
+    // the Z flag depends on the value of the byte, H and N are reset
+
+    uint16_t addr = 0x1234;
+    bus.write8(pc, op::CB_PREFIX);
+    bus.write8(pc + 1, op_cb::SLA_inHL);
+    cpu.regs.setHL(addr);
+
+    SUBCASE("Test SLA [HL] with bit 7 == 1") {
+        bus.write8(addr, 0xC3);
+        cpu.step();
+
+        CHECK(bus.read8(addr) == 0x86);
+
+        CHECK_FALSE(cpu.regs.flags.Z);
+        CHECK(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 4);
+    }
+    SUBCASE("Test SLA [HL] with bit 7 == 0") {
+        bus.write8(addr, 0x3C);
+        cpu.step();
+
+        CHECK(bus.read8(addr) == 0x78);
+
+        CHECK_FALSE(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 4);
+    }
+    SUBCASE("Test SLA [HL] for Z flag") {
+        bus.write8(addr, 0x80);
+        cpu.step();
+
+        CHECK(bus.read8(addr) == 0x00);
+
+        CHECK(cpu.regs.flags.Z);
+        CHECK(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 4);
+    }
+}
+
+TEST_CASE("CPU test SRA reg") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint16_t pc = Registers::PCinitialValue;
+
+    // shifts the register right, bit 0 of the register goes into the C flag,
+    // bit 7 is shifted to the right but its value doesn't change
+    // the Z flag depends on the value of the byte, H and N are reset
+
+    bus.write8(pc, op::CB_PREFIX);
+    bus.write8(pc + 1, op_cb::SRA_A);
+
+    SUBCASE("Test SRA A with bit 0 == 1") {
+        cpu.regs.A = 0x93;
+        cpu.step();
+
+        CHECK(cpu.regs.A == 0xC9);
+
+        CHECK_FALSE(cpu.regs.flags.Z);
+        CHECK(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+    SUBCASE("Test SRA A with bit 0 == 0") {
+        cpu.regs.A = 0x96;
+        cpu.step();
+
+        CHECK(cpu.regs.A == 0xCB);
+
+        CHECK_FALSE(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+    SUBCASE("Test SRA A for Z flag") {
+        cpu.regs.A = 0x01;
+        cpu.step();
+
+        CHECK(cpu.regs.A == 0x00);
+
+        CHECK(cpu.regs.flags.Z);
+        CHECK(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+}
+
+TEST_CASE("CPU test SRA [HL]") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint16_t pc = Registers::PCinitialValue;
+
+    // shifts the byte in memory right, bit 0 of the byte goes into the C flag,
+    // bit 7 is shifted to the right but its value doesn't change
+    // the Z flag depends on the value of the byte, H and N are reset
+
+    uint16_t addr = 0x1234;
+    bus.write8(pc, op::CB_PREFIX);
+    bus.write8(pc + 1, op_cb::SRA_inHL);
+    cpu.regs.setHL(addr);
+
+    SUBCASE("Test SRA [HL] with bit 0 == 1") {
+        bus.write8(addr, 0x93);
+        cpu.step();
+
+        CHECK(bus.read8(addr) == 0xC9);
+
+        CHECK_FALSE(cpu.regs.flags.Z);
+        CHECK(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 4);
+    }
+    SUBCASE("Test SRA [HL] with bit 0 == 0") {
+        bus.write8(addr, 0x96);
+        cpu.step();
+
+        CHECK(bus.read8(addr) == 0xCB);
+
+        CHECK_FALSE(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 4);
+    }
+    SUBCASE("Test SRA [HL] for Z flag") {
+        bus.write8(addr, 0x01);
+        cpu.step();
+
+        CHECK(bus.read8(addr) == 0x00);
+
+        CHECK(cpu.regs.flags.Z);
+        CHECK(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 4);
+    }
+}
+
+TEST_CASE("CPU test SRL reg") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint16_t pc = Registers::PCinitialValue;
+
+    // shifts the register right, bit 0 of the register goes into the C flag,
+    // 0 enters in bit 7 of the register
+    // the Z flag depends on the value of the byte, H and N are reset
+
+    bus.write8(pc, op::CB_PREFIX);
+    bus.write8(pc + 1, op_cb::SRL_A);
+
+    SUBCASE("Test SRL A with bit 0 == 1") {
+        cpu.regs.A = 0x93;
+        cpu.step();
+
+        CHECK(cpu.regs.A == 0x49);
+
+        CHECK_FALSE(cpu.regs.flags.Z);
+        CHECK(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+    SUBCASE("Test SRL A with bit 0 == 0") {
+        cpu.regs.A = 0x96;
+        cpu.step();
+
+        CHECK(cpu.regs.A == 0x4B);
+
+        CHECK_FALSE(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+    SUBCASE("Test SRL A for Z flag") {
+        cpu.regs.A = 0x01;
+        cpu.step();
+
+        CHECK(cpu.regs.A == 0x00);
+
+        CHECK(cpu.regs.flags.Z);
+        CHECK(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+}
+
+TEST_CASE("CPU test SRL [HL]") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint16_t pc = Registers::PCinitialValue;
+
+    // shifts the byte in memory right, bit 0 of the byte goes into the C flag,
+    // 0 enters in bit 7 of the byte
+    // the Z flag depends on the value of the byte, H and N are reset
+
+    uint16_t addr = 0x1234;
+    bus.write8(pc, op::CB_PREFIX);
+    bus.write8(pc + 1, op_cb::SRL_inHL);
+    cpu.regs.setHL(addr);
+
+    SUBCASE("Test SRL [HL] with bit 0 == 1") {
+        bus.write8(addr, 0x93);
+        cpu.step();
+
+        CHECK(bus.read8(addr) == 0x49);
+
+        CHECK_FALSE(cpu.regs.flags.Z);
+        CHECK(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 4);
+    }
+    SUBCASE("Test SRL [HL] with bit 0 == 0") {
+        bus.write8(addr, 0x96);
+        cpu.step();
+
+        CHECK(bus.read8(addr) == 0x4B);
+
+        CHECK_FALSE(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 4);
+    }
+    SUBCASE("Test SRL [HL] for Z flag") {
+        bus.write8(addr, 0x01);
+        cpu.step();
+
+        CHECK(bus.read8(addr) == 0x00);
+
+        CHECK(cpu.regs.flags.Z);
+        CHECK(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 4);
+    }
+}
+
+
+TEST_CASE("CPU test SWAP reg") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint16_t pc = Registers::PCinitialValue;
+
+    // swaps the lower 4 bits of the register with the upper 4 bits
+    // the Z flag depends on the value of the byte, C, H and N are reset
+
+    bus.write8(pc, op::CB_PREFIX);
+    bus.write8(pc + 1, op_cb::SWAP_A);
+
+    SUBCASE("Test SWAP A") {
+        cpu.regs.A = 0x93;
+        cpu.step();
+
+        CHECK(cpu.regs.A == 0x39);
+
+        CHECK_FALSE(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+    SUBCASE("Test SWAP A for Z flag") {
+        cpu.regs.A = 0x00;
+        cpu.step();
+
+        CHECK(cpu.regs.A == 0x00);
+
+        CHECK(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+}
+
+TEST_CASE("CPU test SWAP [HL]") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint16_t pc = Registers::PCinitialValue;
+
+    // swaps the lower 4 bits of the byte in memory with the upper 4 bits
+    // the Z flag depends on the value of the byte, C, H and N are reset
+
+    uint16_t addr = 0x1234;
+    bus.write8(pc, op::CB_PREFIX);
+    bus.write8(pc + 1, op_cb::SWAP_inHL);
+    cpu.regs.setHL(addr);
+
+    SUBCASE("Test SWAP [HL]") {
+        bus.write8(addr, 0x93);
+        cpu.step();
+
+        CHECK(bus.read8(addr) == 0x39);
+
+        CHECK_FALSE(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 4);
+    }
+    SUBCASE("Test SWAP [HL] for Z flag") {
+        bus.write8(addr, 0x00);
+        cpu.step();
+
+        CHECK(bus.read8(addr) == 0x00);
+
+        CHECK(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 4);
+    }
+}
+
+
+TEST_CASE("CPU test BIT n,reg") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint16_t pc = Registers::PCinitialValue;
+
+    // copies the complement of the specified bit of the register into Z
+    // e.g.: BIT 2,A with A = 0x22, bit 2 == 0 --> Z = 1
+    // H is always 1, N is always 0, C is unchanged
+
+    bus.write8(pc, op::CB_PREFIX);
+
+    SUBCASE("Test BIT 2,A") {
+        bus.write8(pc + 1, op_cb::BIT_2_A);
+        cpu.regs.A = 0x22;
+        cpu.step();
+
+        CHECK(cpu.regs.flags.Z);
+        CHECK(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+    SUBCASE("Test BIT 4,D") {
+        bus.write8(pc + 1, op_cb::BIT_4_D);
+        cpu.regs.D = 0x36;
+        cpu.step();
+
+        CHECK_FALSE(cpu.regs.flags.Z);
+        CHECK(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+}
+
+TEST_CASE("CPU test BIT n,[HL]") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint16_t pc = Registers::PCinitialValue;
+
+    // copies the complement of the specified bit of the of the byte in memory into Z
+    // H is always 1, N is always 0, C is unchanged
+
+    uint16_t addr = 0x1234;
+    bus.write8(pc, op::CB_PREFIX);
+    cpu.regs.setHL(addr);
+
+    SUBCASE("Test BIT 2,[HL]") {
+        bus.write8(pc + 1, op_cb::BIT_2_inHL);
+        bus.write8(addr, 0x22);
+        cpu.step();
+
+        CHECK(cpu.regs.flags.Z);
+        CHECK(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 3);
+    }
+    SUBCASE("Test BIT 4,[HL]") {
+        bus.write8(pc + 1, op_cb::BIT_4_inHL);
+        bus.write8(addr, 0x36);
+        cpu.step();
+
+        CHECK_FALSE(cpu.regs.flags.Z);
+        CHECK(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.N);
+
+        CHECK(cpu.elapsedCycles() == 3);
+    }
+}
+
+
+TEST_CASE("CPU test SET n,reg") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint16_t pc = Registers::PCinitialValue;
+
+    // sets to 1 the specified bit in register reg
+    // flags are unchanged
+
+    bus.write8(pc, op::CB_PREFIX);
+
+    SUBCASE("Test SET 2,A") {
+        bus.write8(pc + 1, op_cb::SET_2_A);
+        cpu.regs.A = 0x22;
+        cpu.step();
+
+        CHECK(cpu.regs.A == 0x26);
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+    SUBCASE("Test SET 4,D") {
+        bus.write8(pc + 1, op_cb::SET_4_D);
+        cpu.regs.D = 0xE6;
+        cpu.step();
+
+        CHECK(cpu.regs.D == 0xF6);
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+}
+
+TEST_CASE("CPU test SET n,[HL]") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint16_t pc = Registers::PCinitialValue;
+
+    // sets to 1 the specified bit in the byte in memory
+    // flags are unchanged
+
+    uint16_t addr = 0x1234;
+    bus.write8(pc, op::CB_PREFIX);
+    cpu.regs.setHL(addr);
+
+    SUBCASE("Test SET 2,[HL]") {
+        bus.write8(pc + 1, op_cb::SET_2_inHL);
+        bus.write8(addr, 0x22);
+        cpu.step();
+
+        CHECK(bus.read8(addr) == 0x26);
+        CHECK(cpu.elapsedCycles() == 4);
+    }
+    SUBCASE("Test SET 4,[HL]") {
+        bus.write8(pc + 1, op_cb::SET_4_inHL);
+        bus.write8(addr, 0xE6);
+        cpu.step();
+
+        CHECK(bus.read8(addr) == 0xF6);
+        CHECK(cpu.elapsedCycles() == 4);
+    }
+}
+
+TEST_CASE("CPU test RES n,reg") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint16_t pc = Registers::PCinitialValue;
+
+    // resets to 0 the specified bit in register reg
+    // flags are unchanged
+
+    bus.write8(pc, op::CB_PREFIX);
+
+    SUBCASE("Test RES 2,A") {
+        bus.write8(pc + 1, op_cb::RES_2_A);
+        cpu.regs.A = 0x2F;
+        cpu.step();
+
+        CHECK(cpu.regs.A == 0x2B);
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+    SUBCASE("Test RES 4,D") {
+        bus.write8(pc + 1, op_cb::RES_4_D);
+        cpu.regs.D = 0xF6;
+        cpu.step();
+
+        CHECK(cpu.regs.D == 0xE6);
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+}
+
+TEST_CASE("CPU test RES n,[HL]") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint16_t pc = Registers::PCinitialValue;
+
+    // resets to 0 the specified bit in the byte in memory
+    // flags are unchanged
+
+    uint16_t addr = 0x1234;
+    bus.write8(pc, op::CB_PREFIX);
+    cpu.regs.setHL(addr);
+
+    SUBCASE("Test RES 2,[HL]") {
+        bus.write8(pc + 1, op_cb::RES_2_inHL);
+        bus.write8(addr, 0x2F);
+        cpu.step();
+
+        CHECK(bus.read8(addr) == 0x2B);
+        CHECK(cpu.elapsedCycles() == 4);
+    }
+    SUBCASE("Test RES 4,[HL]") {
+        bus.write8(pc + 1, op_cb::RES_4_inHL);
+        bus.write8(addr, 0xF6);
+        cpu.step();
+
+        CHECK(bus.read8(addr) == 0xE6);
+        CHECK(cpu.elapsedCycles() == 4);
+    }
+}
+
+
+
 
 
 
