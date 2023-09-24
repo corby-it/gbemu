@@ -105,7 +105,7 @@ uint8_t CPU::execute(uint8_t opcode, bool& ok)
     case op::DEC_D: return opDecReg(regs.D);
     case op::LD_D_n8: return opLdRegImm(regs.D); // LD D,n8
     case op::RLA: return opRla();
-        //case op::JR_e8        : return 1;
+    case op::JR_e8: return opJrImm();
     case op::ADD_HL_DE: return opAddReg16(regs.DE());
     case op::LD_A_inDE: return opLdRegInd(regs.A, regs.DE());
     case op::DEC_DE: return opDecReg16(regs.D, regs.E);
@@ -115,7 +115,7 @@ uint8_t CPU::execute(uint8_t opcode, bool& ok)
     case op::RRA: return opRra();
 
         // 0x2*
-        //case op::JR_NZ_e8     : return 1;
+    case op::JR_NZ_e8: return opJrCond(!regs.flags.Z);
     case op::LD_HL_n16: return opLdReg16Imm(regs.H, regs.L);
     case op::LD_inHLp_A: return opLdIndIncA();
     case op::INC_HL: return opIncReg16(regs.H, regs.L);
@@ -123,7 +123,7 @@ uint8_t CPU::execute(uint8_t opcode, bool& ok)
     case op::DEC_H: return opDecReg(regs.H);
     case op::LD_H_n8: return opLdRegImm(regs.H); // LD H,n8
     case op::DAA: return opDaa();
-        //case op::JR_Z_e8      : return 1;
+    case op::JR_Z_e8: return opJrCond(regs.flags.Z);
     case op::ADD_HL_HL: return opAddReg16(regs.HL());
     case op::LD_A_inHLp: return opLdAIndInc();
     case op::DEC_HL: return opDecReg16(regs.H, regs.L);
@@ -133,7 +133,7 @@ uint8_t CPU::execute(uint8_t opcode, bool& ok)
     case op::CPL: return opCpl();
 
         // 0x3*
-        //case op::JR_NC_e8     : return 1;
+    case op::JR_NC_e8: return opJrCond(!regs.flags.C);
     case op::LD_SP_n16: return opLdReg16Imm(regs.SP);
     case op::LD_inHLm_A: return opLdIndDecA();
     case op::INC_SP: return opIncSp();
@@ -141,7 +141,7 @@ uint8_t CPU::execute(uint8_t opcode, bool& ok)
     case op::DEC_inHL: return opDecInd();
     case op::LD_inHL_n8: return opLdIndImm();
     case op::SCF: return opScf();
-        //case op::JR_C_e8      : return 1;
+    case op::JR_C_e8: return opJrCond(regs.flags.C);
     case op::ADD_HL_SP: return opAddReg16(regs.SP);
     case op::LD_A_inHLm: return opLdAIndDec();
     case op::DEC_SP: return opDecSp();
@@ -295,76 +295,76 @@ uint8_t CPU::execute(uint8_t opcode, bool& ok)
     case op::CP_A_A: return opCpReg(regs.A);
 
         // 0xC*
-        // case op::RET_NZ       : return 1;
+    case op::RET_NZ: return opRetCond(!regs.flags.Z);
     case op::POP_BC: return opPopReg16(regs.B, regs.C);
-    case op::JP_NZ_a16: return opJpCondImm(!regs.flags.Z); // JP NZ,a16
+    case op::JP_NZ_a16: return opJpCond(!regs.flags.Z); // JP NZ,a16
     case op::JP_a16: return opJpImm(); // JP a16
-        // case op::CALL_NZ_a16  : return 1;
+    case op::CALL_NZ_a16: return opCallCond(!regs.flags.Z);
     case op::PUSH_BC: return opPushReg16(regs.BC());
     case op::ADD_A_n8: return opAddImm();
-        // case op::RST_00       : return 1;
-        // case op::RET_Z        : return 1;
-        // case op::RET          : return 1;
-    case op::JP_Z_a16: return opJpCondImm(regs.flags.Z); // JP Z,a16
+    case op::RST_00: return opRst(0x00);
+    case op::RET_Z: return opRetCond(regs.flags.Z);
+    case op::RET: return opRet();
+    case op::JP_Z_a16: return opJpCond(regs.flags.Z); // JP Z,a16
     case op::CB_PREFIX: return executeCb(ok);
-        // case op::CALL_Z_a16   : return 1;
-        // case op::CALL_a16     : return 1;
+    case op::CALL_Z_a16: return opCallCond(regs.flags.Z);
+    case op::CALL_a16: return opCallImm();
     case op::ADC_A_n8: return opAdcImm();
-        // case op::RST_08       : return 1;
+    case op::RST_08: return opRst(0x08);
 
         // 0xD*
-        // case op::RET_NC       : return 1;
+    case op::RET_NC: return opRetCond(!regs.flags.C);
     case op::POP_DE: return opPopReg16(regs.D, regs.E);
-    case op::JP_NC_a16: return opJpCondImm(!regs.flags.C); // JP NC,a16
-        // case op:: 0xD3 not implemented
-        // case op::CALL_NC_a16  : return 1;
+    case op::JP_NC_a16: return opJpCond(!regs.flags.C); // JP NC,a16
+    // case op:: 0xD3 not implemented
+    case op::CALL_NC_a16: return opCallCond(!regs.flags.C);
     case op::PUSH_DE: return opPushReg16(regs.DE());
     case op::SUB_A_n8: return opSubImm();
-        // case op::RST_10       : return 1;
-        // case op::RET_C        : return 1;
+    case op::RST_10: return opRst(0x10);
+    case op::RET_C: return opRetCond(regs.flags.C);
         // case op::RETI         : return 1;
-    case op::JP_C_a16: return opJpCondImm(regs.flags.C); // JP C,a16
-        // case op:: 0xDB not implemented
-        // case op::CALL_C_a16   : return 1;
-        // case op:: 0xDD not implemented
+    case op::JP_C_a16: return opJpCond(regs.flags.C); // JP C,a16
+    // case op:: 0xDB not implemented
+    case op::CALL_C_a16: return opCallCond(regs.flags.C);
+    // case op:: 0xDD not implemented
     case op::SBC_A_n8: return opSbcImm();
-        // case op::RST_18       : return 1;
+    case op::RST_18: return opRst(0x18);
 
         // 0xE*
     case op::LDH_ina8_A: return opLdIndImm8Reg();
     case op::POP_HL: return opPopReg16(regs.H, regs.L);
     case op::LDH_inC_A: return opLdIndReg(0xFF00 + regs.C, regs.A); // LD [C],A  (address is 0xff00 + C)
-        // case op:: 0xE3 not implemented
-        // case op:: 0xE4 not implemented
+    // case op:: 0xE3 not implemented
+    // case op:: 0xE4 not implemented
     case op::PUSH_HL: return opPushReg16(regs.HL());
     case op::AND_A_n8: return opAndImm();
-        // case op::RST_20       : return 1;
+    case op::RST_20: return opRst(0x20);
     case op::ADD_SP_e8: return opAddSpImm();
-    case op::JP_HL: return opJpInd(); // JP HL
+    case op::JP_HL: return opJpHL(); // JP HL
     case op::LD_ina16_A: return opLdIndImm16Reg();
-        // case op:: 0xEB not implemented
-        // case op:: 0xEC not implemented
-        // case op:: 0xED not implemented
+    // case op:: 0xEB not implemented
+    // case op:: 0xEC not implemented
+    // case op:: 0xED not implemented
     case op::XOR_A_n8: return opXorImm();
-        // case op::RST_28       : return 1;
+    case op::RST_28: return opRst(0x28);
 
         // 0xF*
     case op::LDH_A_ina8: return opLdRegIndImm8();
     case op::POP_AF: return opPopReg16(regs.A, regs.flags);
     case op::LDH_A_inC: return opLdRegInd(regs.A, 0xFF00 + regs.C);  // LD A,[C]  (actual address is 0xff00 + C)
         // case op::DI           : return 1;
-        // case op:: 0xF4 not implemented
+    // case op:: 0xF4 not implemented
     case op::PUSH_AF: return opPushReg16(regs.AF());
     case op::OR_A_n8: return opOrImm();
-        // case op::RST_30       : return 1;
+    case op::RST_30: return opRst(0x30);
         // case op::LD_HL_SPpe8  : return 1;
     case op::LD_SP_HL: return opLdSpHl();
     case op::LD_A_ina16: return opLdRegIndImm16();
         // case op::EI           : return 1;
-        // case op:: 0xFB not implemented
-        // case op:: 0xFC not implemented
+    // case op:: 0xFB not implemented
+    // case op:: 0xFC not implemented
     case op::CP_A_n8: return opCpImm();
-        // case op::RST_38       : return 1;
+    case op::RST_38: return opRst(0x38);
 
     default:
         // unrecognized opcode
@@ -1912,14 +1912,17 @@ uint8_t CPU::opJpImm()
     // immediate unconditional jump, jump to address specified in the instruction 
     // len: 3 bytes
     // cycles: 4
-    uint16_t addr = mBus.read8(regs.PC++);
-    addr |= mBus.read8(regs.PC++) << 8;
+    uint16_t addr = mBus.read16(regs.PC);
+    
+    // the PC is incremented by two to read the address but then it's immediately 
+    // replaced by the new address so we can sksip this
+    // regs.PC += 2;
 
     regs.PC = addr;
     return 4;
 }
 
-uint8_t CPU::opJpInd()
+uint8_t CPU::opJpHL()
 {
     // JP HL
     // unconditional jump, jump to address specified in HL (NOT IN mem[HL]!!)
@@ -1927,21 +1930,136 @@ uint8_t CPU::opJpInd()
     return 1;
 }
 
-uint8_t CPU::opJpCondImm(bool cond)
+uint8_t CPU::opJpCond(bool cond)
 {
     // JP Z,a16
     // immediate conditional jump, jump to address specified in the instruction if condition is true (aka flag is set)
     // len: 3 bytes
     // cycles: 3 if branch not taken, 4 if taken
 
-    uint16_t addr = mBus.read8(regs.PC++);
-    addr |= mBus.read8(regs.PC++) << 8;
     if (cond) {
-        regs.PC = addr;
-        return 4;
+        return opJpImm();
     }
     else {
+        regs.PC += 2; // must read the absolute address anyway
         return 3;
+    }
+}
+
+uint8_t CPU::opJrImm()
+{
+    // JR e8
+    // immediate relative jump, modifies the value of PC using the immediate *signed* value 
+    // 3 cycles 
+
+    int16_t val = (int8_t)mBus.read8(regs.PC++);
+    regs.PC += val;
+
+    return 3;
+}
+
+uint8_t CPU::opJrCond(bool cond)
+{
+    // JR C/Z/NC/NZ,e8
+    // conditional relative jump, modifies the value of PC using the immediate *signed* value 
+    // if the condition is verified
+    // 2 cycles if branch not taken, 3 cycles if taken
+
+    if (cond) {
+        return opJrImm();
+    }
+    else {
+        regs.PC++; // must read the relative address anyway
+        return 2;
+    }
+}
+
+uint8_t CPU::opCallImm()
+{
+    // CALL a16
+    // CALL pushes the current PC to the stack then sets the 
+    // PC to the address read from the instruction
+    // 6 cycles
+
+    // read the new PC address
+    uint16_t newPC = mBus.read16(regs.PC);
+    regs.PC += 2;
+
+    // push the old PC to the stack
+    regs.SP -= 2;
+    mBus.write16(regs.SP, regs.PC);
+
+    // update the current PC
+    regs.PC = newPC;
+
+    return 6;
+}
+
+uint8_t CPU::opCallCond(bool cond)
+{
+    // CALL cond,a16
+    // same as CALL but branching happens only if cond is met
+    // CALL pushes the current PC to the stack then sets the 
+    // PC to the address read from the instruction
+    // 3 cycles if branch not taken, 6 cycles if branch taken
+
+    if (cond) {
+        return opCallImm();
+    }
+    else {
+        regs.PC += 2; // must read the absolute address anyway
+        return 3;
+    }
+}
+
+uint8_t CPU::opRst(uint8_t offset)
+{
+    // RST HH
+    // call to an address in zero-page depending on an offset
+    // acceptabel values for the offset are 0x00, 0x08, 0x10, 0x18, 0x20, 0x28, 0x30 and 0x38
+    // 4 cycles
+    assert(offset % 8 == 0);
+    assert(offset <= 0x38);
+    
+    // read the new PC address
+    uint16_t newPC = offset;
+    
+    // push the old PC to the stack
+    regs.SP -= 2;
+    mBus.write16(regs.SP, regs.PC);
+
+    // update the current PC
+    regs.PC = newPC;
+
+    return 4;
+}
+
+uint8_t CPU::opRet()
+{
+    // RET
+    // RET pops the old PC value from the stack and copies it into PC
+    // 4 cycles
+
+    auto newPC = mBus.read16(regs.SP);
+    regs.SP += 2;
+
+    regs.PC = newPC;
+
+    return 4;
+}
+
+uint8_t CPU::opRetCond(bool cond)
+{
+    // RET C,Z,NC,NZ
+    // like RET but only if the condition is met
+    // 2 cycles if branch not taken, 5 cycles if branch taken
+
+    if (cond) {
+        opRet();
+        return 5;
+    }
+    else {
+        return 2;
     }
 }
 

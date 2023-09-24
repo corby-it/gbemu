@@ -259,10 +259,17 @@ private:
     uint8_t opCbResReg(uint8_t b, uint8_t& reg);
     uint8_t opCbResInd(uint8_t b);
 
-
     uint8_t opJpImm();
-    uint8_t opJpInd();
-    uint8_t opJpCondImm(bool cond);
+    uint8_t opJpHL();
+    uint8_t opJpCond(bool cond);
+    uint8_t opJrImm();
+    uint8_t opJrCond(bool cond);
+
+    uint8_t opCallImm();
+    uint8_t opCallCond(bool cond);
+    uint8_t opRst(uint8_t offset);
+    uint8_t opRet();
+    uint8_t opRetCond(bool cond);
 
 
 

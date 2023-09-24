@@ -3769,8 +3769,37 @@ TEST_CASE("CPU test RES n,[HL]") {
 
 
 
+TEST_CASE("CPU test unconditional jump JP a16") {
+    TestBus bus;
+    CPU cpu(bus);
 
+    const uint16_t addr = 0x1234;
+    const uint16_t pc = Registers::PCinitialValue;
 
+    bus.write8(pc, op::JP_a16);
+    bus.write8(pc + 1, addr & 0xff);
+    bus.write8(pc + 2, addr >> 8);
+
+    cpu.step();
+
+    CHECK(cpu.regs.PC == addr);
+    CHECK(cpu.elapsedCycles() == 4);
+}
+
+TEST_CASE("CPU test unconditional jump JP HL") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint16_t addr = 0x1234;
+    const uint16_t pc = Registers::PCinitialValue;
+
+    bus.write8(pc, op::JP_HL);
+    cpu.regs.setHL(addr);
+    cpu.step();
+
+    CHECK(cpu.regs.PC == addr);
+    CHECK(cpu.elapsedCycles() == 1);
+}
 
 TEST_CASE("CPU test conditional jumps JP C/Z/NC/NZ, a16") {
     TestBus bus;
@@ -3837,35 +3866,297 @@ TEST_CASE("CPU test conditional jumps JP C/Z/NC/NZ, a16") {
 }
 
 
-
-TEST_CASE("CPU test unconditional jump JP a16") {
+TEST_CASE("CPU test unconditional relative jump JR e8") {
     TestBus bus;
     CPU cpu(bus);
 
-    const uint16_t addr = 0x1234;
     const uint16_t pc = Registers::PCinitialValue;
 
-    bus.write8(pc, op::JP_a16);
+    bus.write8(pc, op::JR_e8);
+    
+    SUBCASE("Test JR e8 positive value") {
+        bus.write8(pc + 1, (uint8_t)25);
+
+        auto oldPC = cpu.regs.PC;
+        cpu.step();
+        CHECK(cpu.regs.PC == oldPC + 2 + 25); // +2 because the instruction is 2 bytes long
+        CHECK(cpu.elapsedCycles() == 3);
+    }
+    SUBCASE("Test JR e8 negative value") {
+        bus.write8(pc + 1, (uint8_t)-15);
+
+        auto oldPC = cpu.regs.PC;
+        cpu.step();
+        CHECK(cpu.regs.PC == (uint16_t)(oldPC + 2 - 15)); // +2 because the instruction is 2 bytes long
+        CHECK(cpu.elapsedCycles() == 3);
+    }
+}
+
+
+TEST_CASE("CPU test conditional relative jumps JR C/Z/NC/NZ,e8") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint16_t pc = Registers::PCinitialValue;
+        
+    uint16_t oldPC = cpu.regs.PC;
+
+    SUBCASE("Test JR C,e8 branch not taken") {
+        bus.write8(pc, op::JR_C_e8);
+        bus.write8(pc + 1, 25);
+        cpu.regs.flags.C = false;
+        cpu.step();
+        CHECK(cpu.regs.PC == oldPC + 2);
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+    SUBCASE("Test JR C,e8 branch taken") {
+        bus.write8(pc, op::JR_C_e8);
+        bus.write8(pc + 1, 25);
+        cpu.regs.flags.C = true;
+        cpu.step();
+        CHECK(cpu.regs.PC == oldPC + 2 + 25);
+        CHECK(cpu.elapsedCycles() == 3);
+    }
+    SUBCASE("Test JR Z,e8 branch not taken") {
+        bus.write8(pc, op::JR_Z_e8);
+        bus.write8(pc + 1, 25);
+        cpu.regs.flags.Z = false;
+        cpu.step();
+        CHECK(cpu.regs.PC == oldPC + 2);
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+    SUBCASE("Test JR Z,e8 branch taken") {
+        bus.write8(pc, op::JR_Z_e8);
+        bus.write8(pc + 1, 25);
+        cpu.regs.flags.Z = true;
+        cpu.step();
+        CHECK(cpu.regs.PC == oldPC + 2 + 25);
+        CHECK(cpu.elapsedCycles() == 3);
+    }
+    SUBCASE("Test JR NC,e8 branch not taken") {
+        bus.write8(pc, op::JR_NC_e8);
+        bus.write8(pc + 1, 25);
+        cpu.regs.flags.C = true;
+        cpu.step();
+        CHECK(cpu.regs.PC == oldPC + 2);
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+    SUBCASE("Test JR NC,e8 branch taken") {
+        bus.write8(pc, op::JR_NC_e8);
+        bus.write8(pc + 1, 25);
+        cpu.regs.flags.C = false;
+        cpu.step();
+        CHECK(cpu.regs.PC == oldPC + 2 + 25);
+        CHECK(cpu.elapsedCycles() == 3);
+    }
+    SUBCASE("Test JR NZ,e8 branch not taken") {
+        bus.write8(pc, op::JR_NZ_e8);
+        bus.write8(pc + 1, 25);
+        cpu.regs.flags.Z = true;
+        cpu.step();
+        CHECK(cpu.regs.PC == oldPC + 2);
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+    SUBCASE("Test JR NZ,e8 branch taken") {
+        bus.write8(pc, op::JR_NZ_e8);
+        bus.write8(pc + 1, 25);
+        cpu.regs.flags.Z = false;
+        cpu.step();
+        CHECK(cpu.regs.PC == oldPC + 2 + 25);
+        CHECK(cpu.elapsedCycles() == 3);
+    }
+    SUBCASE("Test JR C,e8 branch taken (negative)") {
+        bus.write8(pc, op::JR_C_e8);
+        bus.write8(pc + 1, (uint8_t)-15);
+        cpu.regs.flags.C = true;
+        cpu.step();
+        CHECK(cpu.regs.PC == (uint16_t)(oldPC + 2 - 15));
+        CHECK(cpu.elapsedCycles() == 3);
+    }
+    SUBCASE("Test JR NZ,e8 branch taken (negative)") {
+        bus.write8(pc, op::JR_NZ_e8);
+        bus.write8(pc + 1, (uint8_t)-15);
+        cpu.regs.flags.Z = false;
+        cpu.step();
+        CHECK(cpu.regs.PC == (uint16_t)(oldPC + 2 - 15));
+        CHECK(cpu.elapsedCycles() == 3);
+    }
+}
+
+
+TEST_CASE("CPU test unconditional CALL a16") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint16_t pc = Registers::PCinitialValue;
+
+    uint16_t oldSP = 0x1234;
+    uint16_t addr = 0x4321;
+    bus.write8(pc, op::CALL_a16);
+    cpu.regs.SP = oldSP;
+
+    // CALL pushes the current PC to the stack then sets the 
+    // PC to the address read from the instruction
+
     bus.write8(pc + 1, addr & 0xff);
     bus.write8(pc + 2, addr >> 8);
 
     cpu.step();
 
+    // check if current PC contains addr
     CHECK(cpu.regs.PC == addr);
-    CHECK(cpu.elapsedCycles() == 4);
+    // check if SP has been decremented by 2
+    CHECK(cpu.regs.SP == oldSP - 2);
+    // check if SP points to the old value of PC (+3 because that's the length of the CALL instruction)
+    CHECK(bus.read16(cpu.regs.SP) == pc + 3);
+    CHECK(cpu.elapsedCycles() == 6);
 }
 
-TEST_CASE("CPU test unconditional jump JP HL") {
+
+TEST_CASE("CPU test conditional CALL C,Z,NC,NZ,a16") {
     TestBus bus;
     CPU cpu(bus);
 
-    const uint16_t addr = 0x1234;
     const uint16_t pc = Registers::PCinitialValue;
 
-    bus.write8(pc, op::JP_HL);
-    cpu.regs.setHL(addr);
+    uint16_t oldSP = 0x1234;
+    uint16_t oldPC = pc;
+    uint16_t addr = 0x4321;
+    cpu.regs.SP = oldSP;
+
+    // just check if the condition checking happend or not, the code for the 
+    // actual call operation is the same for CALL a16
+
+    bus.write16(pc + 1, addr);
+
+    SUBCASE("CALL C,a16 branch not taken") {
+        bus.write8(pc, op::CALL_C_a16);
+        cpu.regs.flags.C = false;
+        cpu.step();
+        CHECK(cpu.regs.PC == oldPC + 3);
+        CHECK(cpu.elapsedCycles() == 3);
+    }
+    SUBCASE("CALL NZ,a16 branch taken") {
+        bus.write8(pc, op::CALL_NZ_a16);
+        cpu.regs.flags.Z = false;
+        cpu.step();
+        CHECK(cpu.regs.PC == addr);
+        CHECK(cpu.elapsedCycles() == 6);
+    }
+    SUBCASE("CALL NC,a16 branch not taken") {
+        bus.write8(pc, op::CALL_NC_a16);
+        cpu.regs.flags.C = true;
+        cpu.step();
+        CHECK(cpu.regs.PC == oldPC + 3);
+        CHECK(cpu.elapsedCycles() == 3);
+    }
+}
+
+
+TEST_CASE("CPU test unconditional RET") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint16_t pc = Registers::PCinitialValue;
+
+    uint16_t oldSP = 0x1234;
+    uint16_t newPC = 0x4321;
+    bus.write8(pc, op::RET);
+    bus.write16(oldSP, newPC);
+    cpu.regs.SP = oldSP;
+
+    // RET pops the old PC value from the stack and copies it into PC
+
     cpu.step();
 
-    CHECK(cpu.regs.PC == addr);
-    CHECK(cpu.elapsedCycles() == 1);
+    // check if current PC contains addr
+    CHECK(cpu.regs.PC == newPC);
+    // check if SP has been incremented by 2
+    CHECK(cpu.regs.SP == oldSP + 2);
+    CHECK(cpu.elapsedCycles() == 4);
+}
+
+
+TEST_CASE("CPU test conditional RET C,Z,NC,NZ") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint16_t pc = Registers::PCinitialValue;
+
+    uint16_t oldSP = 0x1234;
+    uint16_t oldPC = pc;
+    uint16_t newPC = 0x4321;
+
+    bus.write16(oldSP, newPC);
+    cpu.regs.SP = oldSP;
+
+    // like RET but only if condition is met
+
+    SUBCASE("RET C branch not taken") {
+        bus.write8(pc, op::RET_C);
+        cpu.regs.flags.C = false;
+        cpu.step();
+        CHECK(cpu.regs.PC == oldPC + 1);
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+    SUBCASE("RET NZ branch taken") {
+        bus.write8(pc, op::RET_NZ);
+        cpu.regs.flags.Z = false;
+        cpu.step();
+        CHECK(cpu.regs.PC == newPC);
+        CHECK(cpu.elapsedCycles() == 5);
+    }
+    SUBCASE("RET NC branch not taken") {
+        bus.write8(pc, op::RET_NC);
+        cpu.regs.flags.C = true;
+        cpu.step();
+        CHECK(cpu.regs.PC == oldPC + 1);
+        CHECK(cpu.elapsedCycles() == 2);
+    }
+}
+
+
+TEST_CASE("CPU test RST") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint16_t pc = Registers::PCinitialValue;
+
+    uint16_t oldSP = 0x1234;
+    uint16_t oldPC = pc;
+    cpu.regs.SP = oldSP;
+
+    // RST calls to a fixed address depending on the opcode
+    // RST 08 is equivalent to CALL $0008
+
+    SUBCASE("Test RST 00") {
+        bus.write8(pc, op::RST_00);
+        cpu.step();
+
+        // check if current PC contains the correct RST address
+        CHECK(cpu.regs.PC == 0x0000);
+        // check if SP has been decremented by 2
+        CHECK(cpu.regs.SP == oldSP - 2);
+        // check if SP points to the old value of PC (+1 because that's the length of the RST instruction)
+        CHECK(bus.read16(cpu.regs.SP) == oldPC + 1);
+        CHECK(cpu.elapsedCycles() == 4);
+    }
+    SUBCASE("Test RST 08") {
+        bus.write8(pc, op::RST_08);
+        cpu.step();
+
+        CHECK(cpu.regs.PC == 0x0008);
+        CHECK(cpu.regs.SP == oldSP - 2);
+        CHECK(bus.read16(cpu.regs.SP) == oldPC + 1);
+        CHECK(cpu.elapsedCycles() == 4);
+    }
+    SUBCASE("Test RST 38") {
+        bus.write8(pc, op::RST_38);
+        cpu.step();
+
+        CHECK(cpu.regs.PC == 0x0038);
+        CHECK(cpu.regs.SP == oldSP - 2);
+        CHECK(bus.read16(cpu.regs.SP) == oldPC + 1);
+        CHECK(cpu.elapsedCycles() == 4);
+    }
 }
