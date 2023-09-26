@@ -52,6 +52,8 @@ void CPU::reset()
 {
     mCycles = 0;
 
+    ime = false;
+
     regs.reset();
 }
 
@@ -78,7 +80,7 @@ uint8_t CPU::execute(uint8_t opcode, bool& ok)
     // this function returns the number of machine cycles used to execute the instruction
 
     switch (opcode) {
-        // 0x0*
+    // 0x0*
     case op::NOP: return 1; // nothing to do here
     case op::LD_BC_n16: return opLdReg16Imm(regs.B, regs.C);
     case op::LD_inBC_A: return opLdIndReg(regs.BC(), regs.A);
@@ -96,8 +98,8 @@ uint8_t CPU::execute(uint8_t opcode, bool& ok)
     case op::LD_C_n8: return opLdRegImm(regs.C); // LD C,n8
     case op::RRCA: return opRrca();
 
-        // 0x1*
-        //case op::STOP_n8      : return 1;
+    // 0x1*
+    //case op::STOP_n8      : return 1;
     case op::LD_DE_n16: return opLdReg16Imm(regs.D, regs.E);
     case op::LD_inDE_A: return opLdIndReg(regs.DE(), regs.A);
     case op::INC_DE: return opIncReg16(regs.D, regs.E);
@@ -114,7 +116,7 @@ uint8_t CPU::execute(uint8_t opcode, bool& ok)
     case op::LD_E_n8: return opLdRegImm(regs.E); // LD E,n8
     case op::RRA: return opRra();
 
-        // 0x2*
+    // 0x2*
     case op::JR_NZ_e8: return opJrCond(!regs.flags.Z);
     case op::LD_HL_n16: return opLdReg16Imm(regs.H, regs.L);
     case op::LD_inHLp_A: return opLdIndIncA();
@@ -132,7 +134,7 @@ uint8_t CPU::execute(uint8_t opcode, bool& ok)
     case op::LD_L_n8: return opLdRegImm(regs.L); // LD L,n8
     case op::CPL: return opCpl();
 
-        // 0x3*
+    // 0x3*
     case op::JR_NC_e8: return opJrCond(!regs.flags.C);
     case op::LD_SP_n16: return opLdReg16Imm(regs.SP);
     case op::LD_inHLm_A: return opLdIndDecA();
@@ -150,7 +152,7 @@ uint8_t CPU::execute(uint8_t opcode, bool& ok)
     case op::LD_A_n8: return opLdRegImm(regs.A); // LD A,n8
     case op::CCF: return opCcf();
 
-        // 0x4*
+    // 0x4*
     case op::LD_B_B: return opLdRegReg(regs.B, regs.B); // LD B,B
     case op::LD_B_C: return opLdRegReg(regs.B, regs.C); // LD B,C
     case op::LD_B_D: return opLdRegReg(regs.B, regs.D); // LD B,D
@@ -168,7 +170,7 @@ uint8_t CPU::execute(uint8_t opcode, bool& ok)
     case op::LD_C_inHL: return opLdRegInd(regs.C, regs.HL()); // LD C,[HL]
     case op::LD_C_A: return opLdRegReg(regs.C, regs.A); // LD C,A
 
-        // 0x5*
+    // 0x5*
     case op::LD_D_B: return opLdRegReg(regs.D, regs.B); // LD D,B
     case op::LD_D_C: return opLdRegReg(regs.D, regs.C); // LD D,C
     case op::LD_D_D: return opLdRegReg(regs.D, regs.D); // LD D,D
@@ -186,7 +188,7 @@ uint8_t CPU::execute(uint8_t opcode, bool& ok)
     case op::LD_E_inHL: return opLdRegInd(regs.E, regs.HL()); // LD E,[HL]
     case op::LD_E_A: return opLdRegReg(regs.E, regs.A); // LD E,A
 
-        // 0x6*
+    // 0x6*
     case op::LD_H_B: return opLdRegReg(regs.H, regs.B); // LD H,B
     case op::LD_H_C: return opLdRegReg(regs.H, regs.C); // LD H,C
     case op::LD_H_D: return opLdRegReg(regs.H, regs.D); // LD H,D
@@ -204,14 +206,14 @@ uint8_t CPU::execute(uint8_t opcode, bool& ok)
     case op::LD_L_inHL: return opLdRegInd(regs.L, regs.HL()); // LD L,[HL]
     case op::LD_L_A: return opLdRegReg(regs.L, regs.A); // LD L,A
 
-        // 0x7*
+    // 0x7*
     case op::LD_inHl_B: return opLdIndReg(regs.HL(), regs.B); // LD [HL],B
     case op::LD_inHl_C: return opLdIndReg(regs.HL(), regs.C); // LD [HL],C
     case op::LD_inHl_D: return opLdIndReg(regs.HL(), regs.D); // LD [HL],D
     case op::LD_inHl_E: return opLdIndReg(regs.HL(), regs.E); // LD [HL],E
     case op::LD_inHl_H: return opLdIndReg(regs.HL(), regs.H); // LD [HL],H
     case op::LD_inHl_L: return opLdIndReg(regs.HL(), regs.L); // LD [HL],L
-        // case op::HALT         : return 1;
+    // case op::HALT         : return 1;
     case op::LD_inHl_A: return opLdIndReg(regs.HL(), regs.A); // LD [HL],A
     case op::LD_A_B: return opLdRegReg(regs.A, regs.B); // LD A,B
     case op::LD_A_C: return opLdRegReg(regs.A, regs.C); // LD A,B
@@ -222,7 +224,7 @@ uint8_t CPU::execute(uint8_t opcode, bool& ok)
     case op::LD_A_inHL: return opLdRegInd(regs.A, regs.HL()); // LD A,[HL]
     case op::LD_A_A: return opLdRegReg(regs.A, regs.A); // LD A,A
 
-        // 0x8*
+    // 0x8*
     case op::ADD_A_B: return opAddReg(regs.B); // ADD A,B
     case op::ADD_A_C: return opAddReg(regs.C); // ADD A,C
     case op::ADD_A_D: return opAddReg(regs.D); // ADD A,D
@@ -240,7 +242,7 @@ uint8_t CPU::execute(uint8_t opcode, bool& ok)
     case op::ADC_A_inHL: return opAdcInd();
     case op::ADC_A_A: return opAdcReg(regs.A);
 
-        // 0x9*
+    // 0x9*
     case op::SUB_A_B: return opSubReg(regs.B);
     case op::SUB_A_C: return opSubReg(regs.C);
     case op::SUB_A_D: return opSubReg(regs.D);
@@ -258,7 +260,7 @@ uint8_t CPU::execute(uint8_t opcode, bool& ok)
     case op::SBC_A_inHL: return opSbcInd();
     case op::SBC_A_A: return opSbcReg(regs.A);
 
-        // 0xA*
+    // 0xA*
     case op::AND_A_B: return opAndReg(regs.B);
     case op::AND_A_C: return opAndReg(regs.C);
     case op::AND_A_D: return opAndReg(regs.D);
@@ -276,7 +278,7 @@ uint8_t CPU::execute(uint8_t opcode, bool& ok)
     case op::XOR_A_inHL: return opXorInd();
     case op::XOR_A_A: return opXorReg(regs.A);
 
-        // 0xB*
+    // 0xB*
     case op::OR_A_B: return opOrReg(regs.B);
     case op::OR_A_C: return opOrReg(regs.C);
     case op::OR_A_D: return opOrReg(regs.D);
@@ -294,7 +296,7 @@ uint8_t CPU::execute(uint8_t opcode, bool& ok)
     case op::CP_A_inHL: return opCpInd(); // CP A,[HL]
     case op::CP_A_A: return opCpReg(regs.A);
 
-        // 0xC*
+    // 0xC*
     case op::RET_NZ: return opRetCond(!regs.flags.Z);
     case op::POP_BC: return opPopReg16(regs.B, regs.C);
     case op::JP_NZ_a16: return opJpCond(!regs.flags.Z); // JP NZ,a16
@@ -312,7 +314,7 @@ uint8_t CPU::execute(uint8_t opcode, bool& ok)
     case op::ADC_A_n8: return opAdcImm();
     case op::RST_08: return opRst(0x08);
 
-        // 0xD*
+    // 0xD*
     case op::RET_NC: return opRetCond(!regs.flags.C);
     case op::POP_DE: return opPopReg16(regs.D, regs.E);
     case op::JP_NC_a16: return opJpCond(!regs.flags.C); // JP NC,a16
@@ -322,7 +324,7 @@ uint8_t CPU::execute(uint8_t opcode, bool& ok)
     case op::SUB_A_n8: return opSubImm();
     case op::RST_10: return opRst(0x10);
     case op::RET_C: return opRetCond(regs.flags.C);
-        // case op::RETI         : return 1;
+    case op::RETI: return opReti();
     case op::JP_C_a16: return opJpCond(regs.flags.C); // JP C,a16
     // case op:: 0xDB not implemented
     case op::CALL_C_a16: return opCallCond(regs.flags.C);
@@ -330,7 +332,7 @@ uint8_t CPU::execute(uint8_t opcode, bool& ok)
     case op::SBC_A_n8: return opSbcImm();
     case op::RST_18: return opRst(0x18);
 
-        // 0xE*
+    // 0xE*
     case op::LDH_ina8_A: return opLdIndImm8Reg();
     case op::POP_HL: return opPopReg16(regs.H, regs.L);
     case op::LDH_inC_A: return opLdIndReg(0xFF00 + regs.C, regs.A); // LD [C],A  (address is 0xff00 + C)
@@ -348,19 +350,19 @@ uint8_t CPU::execute(uint8_t opcode, bool& ok)
     case op::XOR_A_n8: return opXorImm();
     case op::RST_28: return opRst(0x28);
 
-        // 0xF*
+    // 0xF*
     case op::LDH_A_ina8: return opLdRegIndImm8();
     case op::POP_AF: return opPopReg16(regs.A, regs.flags);
     case op::LDH_A_inC: return opLdRegInd(regs.A, 0xFF00 + regs.C);  // LD A,[C]  (actual address is 0xff00 + C)
-        // case op::DI           : return 1;
+    case op::DI: return opDi();
     // case op:: 0xF4 not implemented
     case op::PUSH_AF: return opPushReg16(regs.AF());
     case op::OR_A_n8: return opOrImm();
     case op::RST_30: return opRst(0x30);
-        // case op::LD_HL_SPpe8  : return 1;
+    case op::LD_HL_SPpe8: return opLdHlSpOffset();
     case op::LD_SP_HL: return opLdSpHl();
     case op::LD_A_ina16: return opLdRegIndImm16();
-        // case op::EI           : return 1;
+    case op::EI: return opEi();
     // case op:: 0xFB not implemented
     // case op:: 0xFC not implemented
     case op::CP_A_n8: return opCpImm();
@@ -849,6 +851,30 @@ uint8_t CPU::opLdSpHl()
     regs.SP = regs.HL();
 
     return 2;
+}
+
+uint8_t CPU::opLdHlSpOffset()
+{
+    // LD HL,SP+e8
+    // loads in HL the stack pointer value plus an immediate 1-byte signed offset
+    // Z and N are always zero
+    // H is 1 if there is a carry from bit 11
+    // C is 1 if there is a carry from bit 15
+    // 3 cycles
+
+    // TODO: other emulators check for H and C in the in bits 3 and 7 respsectively
+    // but the GameBoy programmer manual states that bit 11 and 15 are used...
+
+    int16_t val = (int8_t)mBus.read8(regs.PC++);
+
+    regs.setHL(regs.SP + val);
+
+    regs.flags.C = checkCarry16(regs.SP, (int32_t)val);
+    regs.flags.H = checkHalfCarry16(regs.SP, (int32_t)val);
+    regs.flags.Z = false;
+    regs.flags.N = false;
+
+    return 3;
 }
 
 uint8_t CPU::opPushReg16(uint16_t val)
@@ -2061,6 +2087,39 @@ uint8_t CPU::opRetCond(bool cond)
     else {
         return 2;
     }
+}
+
+uint8_t CPU::opReti()
+{
+    // RETI
+    // this is supposed to be used to return from an interrupt routine,
+    // just like RET but also sets ime to 1 to re-enable interrupts
+    // 4 cycles
+    
+    opRet();
+    ime = true;
+
+    return 4;
+}
+
+uint8_t CPU::opEi()
+{
+    // EI
+    // enable interrupts globally by turning the ime flag on
+    // 1 cycle
+
+    ime = true;
+    return 1;
+}
+
+uint8_t CPU::opDi()
+{
+    // DI
+    // disable interrupts globally by turning the ime flag off
+    // 1 cycle
+
+    ime = false;
+    return 1;
 }
 
 

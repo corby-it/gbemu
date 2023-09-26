@@ -123,10 +123,14 @@ public:
     
     Registers regs;
 
+    // interrup master enable
+    bool ime;
+
     // the gb cpu actually runs at 4.194304 MHz but, since we are not counting actual clock
     // cycles but machine cycles (clock cycles / 4) we have to use the clock frequency
     // divided by 4
-    static constexpr uint32_t freq = 1048576;
+    static constexpr uint32_t clockFreq = 4194304;
+    static constexpr uint32_t machineFreq = 1048576;
 
 private:
 
@@ -153,6 +157,7 @@ private:
     uint8_t opLdReg16Imm(uint16_t& dst);
     uint8_t opLdIndImm16Sp();
     uint8_t opLdSpHl();
+    uint8_t opLdHlSpOffset();
     uint8_t opPushReg16(uint16_t val);
 
     template<typename T1, typename T2>
@@ -270,6 +275,10 @@ private:
     uint8_t opRst(uint8_t offset);
     uint8_t opRet();
     uint8_t opRetCond(bool cond);
+    uint8_t opReti();
+
+    uint8_t opEi();
+    uint8_t opDi();
 
 
 

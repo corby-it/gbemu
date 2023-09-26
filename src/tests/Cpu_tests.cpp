@@ -917,6 +917,62 @@ TEST_CASE("CPU test LD SP,HL") {
     CHECK(cpu.elapsedCycles() == 2);
 }
 
+TEST_CASE("CPU test LD HL,SP+e8") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint16_t pc = Registers::PCinitialValue;
+
+    bus.write8(pc, op::LD_HL_SPpe8);
+
+    // load in HL the value of SP plus an immediate 1-byte offset
+    // Z and N are always zero
+    // H is 1 if there is a carry from bit 11
+    // C is 1 if there is a carry from bit 15
+
+    // TODO: other emulators check for H and C in the in bits 3 and 7 respsectively
+    // but the GameBoy programmer manual states that bit 11 and 15 are used...
+
+    SUBCASE("Test LD HL,SP+e8 no flags") {
+        bus.write8(pc + 1, 10);
+        cpu.regs.SP = 10;
+        cpu.step();
+
+        CHECK(cpu.regs.HL() == 20);
+        CHECK_FALSE(cpu.regs.flags.Z);
+        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.N);
+        CHECK(cpu.elapsedCycles() == 3);
+    }
+    SUBCASE("Test LD HL,SP+e8 carry and half-carry flags") {
+        bus.write8(pc + 1, 2);
+        cpu.regs.SP = 0xFFFF;
+        cpu.step();
+
+        CHECK(cpu.regs.HL() == 0x001);
+        CHECK_FALSE(cpu.regs.flags.Z);
+        CHECK(cpu.regs.flags.H);
+        CHECK(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.N);
+        CHECK(cpu.elapsedCycles() == 3);
+    }
+    SUBCASE("Test LD HL,SP+e8 negative value") {
+        bus.write8(pc + 1, (uint8_t)-50);
+        cpu.regs.SP = 5000;
+        cpu.step();
+
+        CHECK(cpu.regs.HL() == 4950);
+        CHECK_FALSE(cpu.regs.flags.Z);
+        CHECK(cpu.regs.flags.H);
+        CHECK(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.N);
+        CHECK(cpu.elapsedCycles() == 3);
+    }
+}
+
+
+
 TEST_CASE("CPU test PUSH reg16") {
     TestBus bus;
     CPU cpu(bus);
@@ -4076,6 +4132,31 @@ TEST_CASE("CPU test unconditional RET") {
     CHECK(cpu.elapsedCycles() == 4);
 }
 
+TEST_CASE("CPU test RETI") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint16_t pc = Registers::PCinitialValue;
+
+    uint16_t oldSP = 0x1234;
+    uint16_t newPC = 0x4321;
+    bus.write8(pc, op::RETI);
+    bus.write16(oldSP, newPC);
+    cpu.regs.SP = oldSP;
+    cpu.ime = false;
+
+    // RETI works like ret but also sets the ime flag to 1
+
+    cpu.step();
+
+    // check if current PC contains addr
+    CHECK(cpu.regs.PC == newPC);
+    // check if SP has been incremented by 2
+    CHECK(cpu.regs.SP == oldSP + 2);
+    CHECK(cpu.ime == true);
+    CHECK(cpu.elapsedCycles() == 4);
+}
+
 
 TEST_CASE("CPU test conditional RET C,Z,NC,NZ") {
     TestBus bus;
@@ -4159,4 +4240,31 @@ TEST_CASE("CPU test RST") {
         CHECK(bus.read16(cpu.regs.SP) == oldPC + 1);
         CHECK(cpu.elapsedCycles() == 4);
     }
+}
+
+
+TEST_CASE("CPU test EI/DI") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint16_t pc = Registers::PCinitialValue;
+
+    // EI (Enable Interrupts), sets the ime flag in the cpu
+    // DI (Disable Interrupts), resets the ime flag in the cpu
+
+    bus.write8(pc, op::DI);
+    bus.write8(pc + 1, op::EI);
+
+    // ime should be false at reset
+    CHECK(cpu.ime == false);
+
+    // execute EI
+    cpu.step();
+    CHECK(cpu.ime == true);
+    CHECK(cpu.elapsedCycles() == 1);
+    
+    // execute DI
+    cpu.step();
+    CHECK(cpu.ime == false);
+    CHECK(cpu.elapsedCycles() == 2);
 }
