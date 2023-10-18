@@ -329,6 +329,10 @@ private:
     // as in "machine cycles")
     uint32_t mCycles;
 
+    // When the EI instruction is executed the IME flag is not immediately set, it is set only after
+    // the instruction following EI is exectued
+    bool mImeScheduled;
+
     Bus& mBus;
 
 };

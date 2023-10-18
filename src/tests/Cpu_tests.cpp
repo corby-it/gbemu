@@ -4249,22 +4249,58 @@ TEST_CASE("CPU test EI/DI") {
 
     const uint16_t pc = Registers::PCinitialValue;
 
-    // EI (Enable Interrupts), sets the ime flag in the cpu
+    // EI (Enable Interrupts), sets the ime flag in the cpu, the interrupts
+    //  are actually enabled AFTER the instruction following EI has been executed.
+    //  This means that the 'ime' flag should still be false after EI, but should
+    //  become true after the following instruction.
+    
     // DI (Disable Interrupts), resets the ime flag in the cpu
+    //  with DI ime immediately becomes false, unlike what happens with EI
+    //  DI also cancels the effects of EI if ime was scheduled to be set
 
-    bus.write8(pc, op::DI);
-    bus.write8(pc + 1, op::EI);
+    bus.write8(pc, op::EI);
+    bus.write8(pc + 1, op::NOP);
+    bus.write8(pc + 2, op::DI);
+    bus.write8(pc + 3, op::NOP);
+    bus.write8(pc + 4, op::NOP);
+    bus.write8(pc + 5, op::EI);
+    bus.write8(pc + 6, op::DI);
+    bus.write8(pc + 7, op::NOP);
 
     // ime should be false at reset
     CHECK(cpu.ime == false);
 
     // execute EI
     cpu.step();
-    CHECK(cpu.ime == true);
+    CHECK(cpu.ime == false); // ime must still be false here!
     CHECK(cpu.elapsedCycles() == 1);
-    
+
+    // execute the following instruction (NOP in this case)
+    cpu.step();
+    CHECK(cpu.ime == true); // now ime must be true
+    CHECK(cpu.elapsedCycles() == 2);
+
     // execute DI
     cpu.step();
     CHECK(cpu.ime == false);
-    CHECK(cpu.elapsedCycles() == 2);
+    CHECK(cpu.elapsedCycles() == 3);
+
+    // execute 2 NOPs
+    cpu.step();
+    cpu.step();
+
+    // execute 2nd EI
+    cpu.step();
+    CHECK(cpu.ime == false); // ime must still be false here!
+    CHECK(cpu.elapsedCycles() == 6);
+
+    // execute 2nd DI
+    cpu.step();
+    CHECK(cpu.ime == false);
+    CHECK(cpu.elapsedCycles() == 7);
+
+    // execute the last NOP
+    cpu.step();
+    CHECK(cpu.ime == false); // ime must still be false
+    CHECK(cpu.elapsedCycles() == 8);
 }

@@ -53,6 +53,7 @@ void CPU::reset()
     mCycles = 0;
 
     ime = false;
+    mImeScheduled = false;
 
     regs.reset();
 }
@@ -60,6 +61,15 @@ void CPU::reset()
 bool CPU::step()
 {
     // in one step we execute one instruction, the instruction can take 1 or more machine cycles
+
+    // check if interrupt occurred 
+    // TODO
+
+    // if ime was scheduled to be set, set it now
+    if (mImeScheduled) {
+        ime = true;
+        mImeScheduled = false;
+    }
 
     // fetch opcode 
     auto opcode = mBus.read8(regs.PC++);
@@ -2105,20 +2115,23 @@ uint8_t CPU::opReti()
 uint8_t CPU::opEi()
 {
     // EI
-    // enable interrupts globally by turning the ime flag on
+    // enable interrupts globally AFTER the next instruction has been executed, here we only have to
+    // schedule the ime flag to be set
     // 1 cycle
 
-    ime = true;
+    mImeScheduled = true;
     return 1;
 }
 
 uint8_t CPU::opDi()
 {
     // DI
-    // disable interrupts globally by turning the ime flag off
+    // disable interrupts globally by turning the ime flag off, also, if the ime flag
+    // wash scheduled to be turned on, it won't happen
     // 1 cycle
 
     ime = false;
+    mImeScheduled = false;
     return 1;
 }
 
