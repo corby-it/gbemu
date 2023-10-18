@@ -98,10 +98,10 @@ workspace(project_name)
     filter { "system:windows", "action:vs*" }
         startproject(project_name)
         externalincludedirs {
-            "$(LIBRARIES_PATH)/glfw-3.3.8.bin.WIN64/include"
+            "$(GLFW_PATH)/include"
         }
         libdirs {
-            "$(LIBRARIES_PATH)/glfw-3.3.8.bin.WIN64/lib-vc2022"
+            "$(GLFW_PATH)/lib-vc2022"
         }
         links {
             "opengl32.lib",
