@@ -33,8 +33,7 @@ TEST_CASE("Timer test TIMA increase")
     Timer t;
 
     SUBCASE("Increase with ClockSelect::N16") {
-        t.setSubclock(Timer::ClockSelect::N16);
-        t.enableTimer(true);
+        t.writeTAC(Timer::TACTimerEnableMask | Timer::ClockSelect::N16);
 
         t.step(4);
         CHECK(t.readTIMA() == 1);
@@ -46,8 +45,7 @@ TEST_CASE("Timer test TIMA increase")
     }
 
     SUBCASE("Increase with ClockSelect::N64") {
-        t.setSubclock(Timer::ClockSelect::N64);
-        t.enableTimer(true);
+        t.writeTAC(Timer::TACTimerEnableMask | Timer::ClockSelect::N64);
 
         t.step(16);
         CHECK(t.readTIMA() == 1);
@@ -59,8 +57,7 @@ TEST_CASE("Timer test TIMA increase")
     }
 
     SUBCASE("Increase with ClockSelect::N256") {
-        t.setSubclock(Timer::ClockSelect::N256);
-        t.enableTimer(true);
+        t.writeTAC(Timer::TACTimerEnableMask | Timer::ClockSelect::N256);
 
         t.step(64);
         CHECK(t.readTIMA() == 1);
@@ -72,8 +69,7 @@ TEST_CASE("Timer test TIMA increase")
     }
 
     SUBCASE("Increase with ClockSelect::N1024") {
-        t.setSubclock(Timer::ClockSelect::N1024);
-        t.enableTimer(true);
+        t.writeTAC(Timer::TACTimerEnableMask | Timer::ClockSelect::N1024);
 
         t.step(256);
         CHECK(t.readTIMA() == 1);
@@ -89,8 +85,7 @@ TEST_CASE("Timer test TIMA overflow")
 {
     Timer t;
 
-    t.enableTimer(true);
-    t.setSubclock(Timer::ClockSelect::N16);
+    t.writeTAC(Timer::TACTimerEnableMask | Timer::ClockSelect::N16);
     
     t.writeTIMA(0xFE);
     // TIMA start from FE so we need 16 + 16 clock cycles (4 + 4 machine cycles) to overflow
@@ -114,5 +109,56 @@ TEST_CASE("Timer test TIMA overflow")
     }
 }
 
-// TODO: test what happens when the selected clock is changed 
-// TODO: test what happens when the timer is started -> stopped -> restarted
+
+TEST_CASE("Timer test changing subclock while timer is running")
+{
+    Timer t;
+
+    t.writeTAC(Timer::TACTimerEnableMask | Timer::ClockSelect::N16);
+
+    // 4 machine cycles = 16 clock cycles --> TIMA must become 1 (and subcounter 0)
+    t.step(4);
+    CHECK(t.readTIMA() == 0x1);
+    CHECK(t.getTimaSubcounter() == 0);
+    // 2 machine cycles = 8 clock cycles --> TIMA must still be 1 (and subcounter 8)
+    t.step(2);
+    CHECK(t.readTIMA() == 1);
+    CHECK(t.getTimaSubcounter() == 8);
+
+    // change subclock to N64
+    t.writeTAC(Timer::TACTimerEnableMask | Timer::ClockSelect::N64);
+
+    // 14 machine cycles = 56 clock cycles, TIMA must become 2 (and subcounter 0)
+    t.step(14);
+    CHECK(t.readTIMA() == 2);
+    CHECK(t.getTimaSubcounter() == 0);
+}
+
+
+TEST_CASE("Timer test starting, stopping and restarting the timer")
+{
+    Timer t;
+
+    t.writeTAC(Timer::TACTimerEnableMask | Timer::ClockSelect::N16);
+
+    // 2 machine cycles = 8 clock cycles --> TIMA must still be 0 (and subcounter 8)
+    t.step(2);
+    CHECK(t.readTIMA() == 0);
+    CHECK(t.getTimaSubcounter() == 8);
+
+    // disable timer
+    t.writeTAC(Timer::ClockSelect::N16);
+    
+    // 4 machine cycles = 16 clock cycles but timer disabled --> TIMA must still be 0 (and subcounter 8)
+    t.step(4);
+    CHECK(t.readTIMA() == 0);
+    CHECK(t.getTimaSubcounter() == 8);
+
+    // re-enable timer 
+    t.writeTAC(Timer::TACTimerEnableMask | Timer::ClockSelect::N16);
+
+    // 4 machine cycles = 16 clock cycles --> TIMA must become 1 (and subcounter 0 because it resets on timer enable)
+    t.step(4);
+    CHECK(t.readTIMA() == 1);
+    CHECK(t.getTimaSubcounter() == 0);
+}

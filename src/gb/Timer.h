@@ -6,12 +6,15 @@
 
 class Timer {
 public:
-    enum ClockSelect {
+    enum ClockSelect : uint8_t {
         N1024 = 0,
         N16 = 1,
         N64 = 2,
         N256 = 3
     };
+
+    static constexpr uint8_t TACTimerEnableMask = 0x04;
+
 
     Timer();
 

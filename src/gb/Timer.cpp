@@ -53,10 +53,12 @@ void Timer::writeTAC(uint8_t val)
     auto newClockSelect = (ClockSelect)(val & 0x3);
     auto newTimaEnabled = val & 0x4;
 
+    // the TIMA subcounter must be restarted when we enable
+    // the timer (off to on transition)
     if (newTimaEnabled && !mTimaEnabled)
         mTimaSubcounter = 0;
 
-    mClockSelect = (ClockSelect)(val & 0x3);
-    mTimaEnabled = val & 0x4;
+    mClockSelect = newClockSelect;
+    mTimaEnabled = newTimaEnabled;
 }
 
