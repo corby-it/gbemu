@@ -4143,7 +4143,7 @@ TEST_CASE("CPU test RETI") {
     bus.write8(pc, op::RETI);
     bus.write16(oldSP, newPC);
     cpu.regs.SP = oldSP;
-    cpu.ime = false;
+    cpu.irqs.ime = false;
 
     // RETI works like ret but also sets the ime flag to 1
 
@@ -4153,7 +4153,7 @@ TEST_CASE("CPU test RETI") {
     CHECK(cpu.regs.PC == newPC);
     // check if SP has been incremented by 2
     CHECK(cpu.regs.SP == oldSP + 2);
-    CHECK(cpu.ime == true);
+    CHECK(cpu.irqs.ime == true);
     CHECK(cpu.elapsedCycles() == 4);
 }
 
@@ -4268,21 +4268,21 @@ TEST_CASE("CPU test EI/DI") {
     bus.write8(pc + 7, op::NOP);
 
     // ime should be false at reset
-    CHECK(cpu.ime == false);
+    CHECK(cpu.irqs.ime == false);
 
     // execute EI
     cpu.step();
-    CHECK(cpu.ime == false); // ime must still be false here!
+    CHECK(cpu.irqs.ime == false); // ime must still be false here!
     CHECK(cpu.elapsedCycles() == 1);
 
     // execute the following instruction (NOP in this case)
     cpu.step();
-    CHECK(cpu.ime == true); // now ime must be true
+    CHECK(cpu.irqs.ime == true); // now ime must be true
     CHECK(cpu.elapsedCycles() == 2);
 
     // execute DI
     cpu.step();
-    CHECK(cpu.ime == false);
+    CHECK(cpu.irqs.ime == false);
     CHECK(cpu.elapsedCycles() == 3);
 
     // execute 2 NOPs
@@ -4291,16 +4291,16 @@ TEST_CASE("CPU test EI/DI") {
 
     // execute 2nd EI
     cpu.step();
-    CHECK(cpu.ime == false); // ime must still be false here!
+    CHECK(cpu.irqs.ime == false); // ime must still be false here!
     CHECK(cpu.elapsedCycles() == 6);
 
     // execute 2nd DI
     cpu.step();
-    CHECK(cpu.ime == false);
+    CHECK(cpu.irqs.ime == false);
     CHECK(cpu.elapsedCycles() == 7);
 
     // execute the last NOP
     cpu.step();
-    CHECK(cpu.ime == false); // ime must still be false
+    CHECK(cpu.irqs.ime == false); // ime must still be false
     CHECK(cpu.elapsedCycles() == 8);
 }

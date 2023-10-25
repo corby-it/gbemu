@@ -39,6 +39,15 @@ bool Registers::equal(const Registers& other)
 }
 
 
+void Interrupts::reset()
+{
+    ime = false;
+    IF = 0;
+    IE = 0;
+}
+
+
+
 
 
 CPU::CPU(Bus& bus)
@@ -52,22 +61,36 @@ void CPU::reset()
 {
     mCycles = 0;
 
-    ime = false;
     mImeScheduled = false;
 
     regs.reset();
+    irqs.reset();
 }
 
 bool CPU::step()
 {
     // in one step we execute one instruction, the instruction can take 1 or more machine cycles
 
-    // check if interrupt occurred 
-    // TODO
+    // check if interrupt occurred
+    auto irqRequest = checkIrq();
+    if (irqRequest) {
+        auto irqType = irqRequest.value();
+
+        // as soon as an interrupt is serviced the IME flags is reset and the corresponding
+        // bit in the IF register is reset as well
+        irqs.ime = false;
+        irqs.IF &= ~Interrupts::mask(irqType);
+        
+        // calling an interrupt has the same effect as a CALL instruction
+        opCallIrq(irqType);
+
+        return true;
+    }
+    
 
     // if ime was scheduled to be set, set it now
     if (mImeScheduled) {
-        ime = true;
+        irqs.ime = true;
         mImeScheduled = false;
     }
 
@@ -78,6 +101,39 @@ bool CPU::step()
     mCycles += execute(opcode, ok);
 
     return ok;
+}
+
+
+std::optional<Interrupts::Type> CPU::checkIrq()
+{
+    // if IME is false no interrupt will be serviced
+    if (!irqs.ime)
+        return {};
+
+    // when IME is true we have to check which interrupts are both
+    // enabled in the IE registers and which ones are currently requested
+    // more than one interrupt at a time can be requested, in this case the 
+    // priority is the following:
+    // 1 - VBlank
+    // 2 - LCD status
+    // 3 - Timer
+    // 4 - Serial
+    // 5 - Joypad
+
+    uint8_t currentIrqs = irqs.IE & irqs.IF;
+    
+    if (currentIrqs & Interrupts::mask(Interrupts::Type::VBlank))
+        return Interrupts::Type::VBlank;
+    if (currentIrqs & Interrupts::mask(Interrupts::Type::Lcd))
+        return Interrupts::Type::Lcd;
+    if (currentIrqs & Interrupts::mask(Interrupts::Type::Timer))
+        return Interrupts::Type::Timer;
+    if (currentIrqs & Interrupts::mask(Interrupts::Type::Serial))
+        return Interrupts::Type::Serial;
+    if (currentIrqs & Interrupts::mask(Interrupts::Type::Joypad))
+        return Interrupts::Type::Joypad;
+
+    return {};
 }
 
 
@@ -2107,7 +2163,7 @@ uint8_t CPU::opReti()
     // 4 cycles
     
     opRet();
-    ime = true;
+    irqs.ime = true;
 
     return 4;
 }
@@ -2130,9 +2186,32 @@ uint8_t CPU::opDi()
     // wash scheduled to be turned on, it won't happen
     // 1 cycle
 
-    ime = false;
+    irqs.ime = false;
     mImeScheduled = false;
     return 1;
+}
+
+uint8_t CPU::opCallIrq(Interrupts::Type type)
+{
+    // call irq routine
+    // this is the same as a regular CALL, the current PC is pushed to the stack 
+    // and it's replaced with the corresponding irq handler address (very similar to the RST instruction)
+    // 
+    // Anyway, this takes 5 cycles instead of 4, in the actual hardware the next opcode is fetched, only then
+    // the interrupts are checked so, before pushing the PC to the stack, it must be decremented,
+    // hence the additional cycle compared to RST
+    // 
+    // Here we don't actually fetch the next opcode before checking for interrutps, so we only have 
+    // to account for the difference in cycles
+
+    // push the old PC to the stack
+    regs.SP -= 2;
+    mBus.write16(regs.SP, regs.PC);
+
+    // update the current PC
+    regs.PC = Interrupts::addr(type);
+
+    return 5;
 }
 
 
