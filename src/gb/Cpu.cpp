@@ -39,7 +39,7 @@ bool Registers::equal(const Registers& other)
 }
 
 
-void Interrupts::reset()
+void Irqs::reset()
 {
     ime = false;
     IF = 0;
@@ -79,10 +79,10 @@ bool CPU::step()
         // as soon as an interrupt is serviced the IME flags is reset and the corresponding
         // bit in the IF register is reset as well
         irqs.ime = false;
-        irqs.IF &= ~Interrupts::mask(irqType);
+        irqs.IF &= ~Irqs::mask(irqType);
         
         // calling an interrupt has the same effect as a CALL instruction
-        opCallIrq(irqType);
+        mCycles += opCallIrq(irqType);
 
         return true;
     }
@@ -104,7 +104,7 @@ bool CPU::step()
 }
 
 
-std::optional<Interrupts::Type> CPU::checkIrq()
+std::optional<Irqs::Type> CPU::checkIrq()
 {
     // if IME is false no interrupt will be serviced
     if (!irqs.ime)
@@ -122,16 +122,16 @@ std::optional<Interrupts::Type> CPU::checkIrq()
 
     uint8_t currentIrqs = irqs.IE & irqs.IF;
     
-    if (currentIrqs & Interrupts::mask(Interrupts::Type::VBlank))
-        return Interrupts::Type::VBlank;
-    if (currentIrqs & Interrupts::mask(Interrupts::Type::Lcd))
-        return Interrupts::Type::Lcd;
-    if (currentIrqs & Interrupts::mask(Interrupts::Type::Timer))
-        return Interrupts::Type::Timer;
-    if (currentIrqs & Interrupts::mask(Interrupts::Type::Serial))
-        return Interrupts::Type::Serial;
-    if (currentIrqs & Interrupts::mask(Interrupts::Type::Joypad))
-        return Interrupts::Type::Joypad;
+    if (currentIrqs & Irqs::mask(Irqs::Type::VBlank))
+        return Irqs::Type::VBlank;
+    if (currentIrqs & Irqs::mask(Irqs::Type::Lcd))
+        return Irqs::Type::Lcd;
+    if (currentIrqs & Irqs::mask(Irqs::Type::Timer))
+        return Irqs::Type::Timer;
+    if (currentIrqs & Irqs::mask(Irqs::Type::Serial))
+        return Irqs::Type::Serial;
+    if (currentIrqs & Irqs::mask(Irqs::Type::Joypad))
+        return Irqs::Type::Joypad;
 
     return {};
 }
@@ -2137,6 +2137,11 @@ uint8_t CPU::opRet()
 
     regs.PC = newPC;
 
+    // if the PC that is currently being restored is also at the top of the irq nesting
+    // stack we know that we have completed the current interrupt routine
+    if (!mIrqNesting.empty() && mIrqNesting.top() == newPC)
+        mIrqNesting.pop();
+
     return 4;
 }
 
@@ -2191,7 +2196,7 @@ uint8_t CPU::opDi()
     return 1;
 }
 
-uint8_t CPU::opCallIrq(Interrupts::Type type)
+uint8_t CPU::opCallIrq(Irqs::Type type)
 {
     // call irq routine
     // this is the same as a regular CALL, the current PC is pushed to the stack 
@@ -2208,8 +2213,11 @@ uint8_t CPU::opCallIrq(Interrupts::Type type)
     regs.SP -= 2;
     mBus.write16(regs.SP, regs.PC);
 
+    // save the old PC to the nesting stack for debug purposes
+    mIrqNesting.push(regs.PC);
+
     // update the current PC
-    regs.PC = Interrupts::addr(type);
+    regs.PC = Irqs::addr(type);
 
     return 5;
 }

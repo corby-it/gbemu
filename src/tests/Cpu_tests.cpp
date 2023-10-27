@@ -4304,3 +4304,177 @@ TEST_CASE("CPU test EI/DI") {
     CHECK(cpu.irqs.ime == false); // ime must still be false
     CHECK(cpu.elapsedCycles() == 8);
 }
+
+
+TEST_CASE("CPU test irq handling") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint16_t pc = Registers::PCinitialValue;
+
+    bus.write8(pc, op::EI);
+    bus.write8(pc + 1, op::NOP);
+    bus.write8(pc + 2, op::NOP);
+
+    // enable all interrupts
+    cpu.irqs.IE = Irqs::mask(Irqs::Type::VBlank)
+        | Irqs::mask(Irqs::Type::Lcd)
+        | Irqs::mask(Irqs::Type::Timer)
+        | Irqs::mask(Irqs::Type::Serial)
+        | Irqs::mask(Irqs::Type::Joypad);
+     
+
+    // enable interrutps and execute the first NOP (IME becomes true only
+    // after the next instruction has been executed)
+    cpu.step();
+    cpu.step();
+
+    auto oldPC = cpu.regs.PC;
+
+    SUBCASE("Test VBlank irq handling") {
+        cpu.irqs.IF = Irqs::mask(Irqs::Type::VBlank);
+
+        cpu.step();
+
+        CHECK(cpu.regs.PC == Irqs::addr(Irqs::Type::VBlank));
+        CHECK(bus.read16(cpu.regs.SP) == oldPC);
+        CHECK(cpu.irqNesting() == 1);
+        CHECK((cpu.irqs.IF & Irqs::mask(Irqs::Type::VBlank)) == 0);
+    }
+    SUBCASE("Test LCD irq handling") {
+        cpu.irqs.IF = Irqs::mask(Irqs::Type::Lcd);
+
+        cpu.step();
+
+        CHECK(cpu.regs.PC == Irqs::addr(Irqs::Type::Lcd));
+        CHECK(bus.read16(cpu.regs.SP) == oldPC);
+        CHECK(cpu.irqNesting() == 1);
+        CHECK((cpu.irqs.IF & Irqs::mask(Irqs::Type::Lcd)) == 0);
+    }
+    SUBCASE("Test timer irq handling") {
+        cpu.irqs.IF = Irqs::mask(Irqs::Type::Timer);
+
+        cpu.step();
+
+        CHECK(cpu.regs.PC == Irqs::addr(Irqs::Type::Timer));
+        CHECK(bus.read16(cpu.regs.SP) == oldPC);
+        CHECK(cpu.irqNesting() == 1);
+        CHECK((cpu.irqs.IF & Irqs::mask(Irqs::Type::Timer)) == 0);
+    }
+    SUBCASE("Test serial irq handling") {
+        cpu.irqs.IF = Irqs::mask(Irqs::Type::Serial);
+
+        cpu.step();
+
+        CHECK(cpu.regs.PC == Irqs::addr(Irqs::Type::Serial));
+        CHECK(bus.read16(cpu.regs.SP) == oldPC);
+        CHECK(cpu.irqNesting() == 1);
+        CHECK((cpu.irqs.IF & Irqs::mask(Irqs::Type::Serial)) == 0);
+    }
+    SUBCASE("Test joypad irq handling") {
+        cpu.irqs.IF = Irqs::mask(Irqs::Type::Joypad);
+
+        cpu.step();
+
+        CHECK(cpu.regs.PC == Irqs::addr(Irqs::Type::Joypad));
+        CHECK(bus.read16(cpu.regs.SP) == oldPC);
+        CHECK(cpu.irqNesting() == 1);
+        CHECK((cpu.irqs.IF & Irqs::mask(Irqs::Type::Joypad)) == 0);
+    }
+}
+
+
+TEST_CASE("CPU test irq handling priorities") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint16_t pc = Registers::PCinitialValue;
+
+    bus.write8(pc, op::EI);
+    bus.write8(pc + 1, op::NOP);
+    bus.write8(pc + 2, op::NOP);
+
+    // enable all interrupts
+    cpu.irqs.IE = Irqs::mask(Irqs::Type::VBlank)
+        | Irqs::mask(Irqs::Type::Lcd)
+        | Irqs::mask(Irqs::Type::Timer)
+        | Irqs::mask(Irqs::Type::Serial)
+        | Irqs::mask(Irqs::Type::Joypad);
+
+    // enable interrutps and execute the first NOP (IME becomes true only
+    // after the next instruction has been executed)
+    cpu.step();
+    cpu.step();
+
+    auto oldPC = cpu.regs.PC;
+
+    // raise both lcd and timer interrupts
+    cpu.irqs.IF = Irqs::mask(Irqs::Type::Lcd) | Irqs::mask(Irqs::Type::Timer);
+
+    cpu.step();
+
+    // the lcd interrupts has higher priority
+    CHECK(cpu.regs.PC == Irqs::addr(Irqs::Type::Lcd));
+    CHECK(bus.read16(cpu.regs.SP) == oldPC);
+    CHECK(cpu.irqNesting() == 1);
+    CHECK((cpu.irqs.IF & Irqs::mask(Irqs::Type::Lcd)) == 0);
+}
+
+
+TEST_CASE("CPU test irq returns") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint16_t pc = Registers::PCinitialValue;
+    const uint16_t irqAddr = Irqs::addr(Irqs::Type::Timer);
+
+    bus.write8(pc, op::EI);
+    bus.write8(pc + 1, op::NOP);
+    bus.write8(pc + 2, op::NOP);
+    bus.write8(irqAddr, op::NOP);
+    bus.write8(irqAddr + 1, op::RETI);
+
+    // we use the timer interrupt for this test
+    cpu.irqs.IE = Irqs::mask(Irqs::Type::Timer);
+
+
+    // enable interrutps and execute the first NOP (IME becomes true only
+    // after the next instruction has been executed)
+    cpu.step();
+    cpu.step();
+
+    auto oldPC = cpu.regs.PC;
+
+    // raise timer irq
+    cpu.irqs.IF = Irqs::mask(Irqs::Type::Timer);
+    cpu.step();
+
+    CHECK(cpu.regs.PC == Irqs::addr(Irqs::Type::Timer));
+    CHECK(bus.read16(cpu.regs.SP) == oldPC);
+    CHECK(cpu.irqNesting() == 1);
+    CHECK((cpu.irqs.IF & Irqs::mask(Irqs::Type::Timer)) == 0);
+
+    SUBCASE("Test RETI results") {
+        bus.write8(irqAddr + 1, op::RETI);
+
+        cpu.step(); // exec NOP
+        cpu.step(); // exec RETI
+
+        CHECK(cpu.regs.PC == oldPC);
+        CHECK(cpu.irqNesting() == 0);
+        CHECK(cpu.irqs.ime == true);
+    }
+    SUBCASE("Test RET results") {
+        bus.write8(irqAddr + 1, op::RET);
+
+        cpu.step(); // exec NOP
+        cpu.step(); // exec RET
+
+        CHECK(cpu.regs.PC == oldPC);
+        CHECK(cpu.irqNesting() == 0);
+        CHECK(cpu.irqs.ime == false);
+    }
+}
+
+
+// TODO: test deeper irq nesting

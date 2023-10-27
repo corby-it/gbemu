@@ -10,7 +10,12 @@ template<size_t N>
 class WRam {
 public:
     WRam() {
+        mData = new uint8_t[N];
         memset(mData, 0, sizeof(mData));
+    }
+
+    ~WRam() {
+        delete[] mData;
     }
 
     uint8_t read8(uint16_t addr) const
@@ -46,7 +51,7 @@ public:
 
 
 private:
-    uint8_t mData[N];
+    uint8_t* mData;
 
 };
 

@@ -5,6 +5,7 @@
 #include "Bus.h"
 #include <cstdint>
 #include <optional>
+#include <stack>
 
 
 // the GB uses a CPU similar to the Zilog Z80
@@ -113,7 +114,7 @@ struct Registers {
 
 
 
-struct Interrupts {
+struct Irqs {
 
     // There are 5 possible interrupts, all of them can be disabled (there are no NMIs)
     // - Vertical blanking interrupt: TODO
@@ -149,11 +150,11 @@ struct Interrupts {
     // the bits used in the IF and IE registers are the same for the 5 available interrupts
     static constexpr uint8_t mask(Type type) {
         switch (type) {
-        case Interrupts::Type::VBlank:  return 0x01;
-        case Interrupts::Type::Lcd:     return 0x02;
-        case Interrupts::Type::Timer:   return 0x04;
-        case Interrupts::Type::Serial:  return 0x08;
-        case Interrupts::Type::Joypad:  return 0x10;
+        case Irqs::Type::VBlank:  return 0x01;
+        case Irqs::Type::Lcd:     return 0x02;
+        case Irqs::Type::Timer:   return 0x04;
+        case Irqs::Type::Serial:  return 0x08;
+        case Irqs::Type::Joypad:  return 0x10;
         default:
             assert(false);
             return 0;
@@ -163,11 +164,11 @@ struct Interrupts {
     // the address that will be called when a specific interrupt is requested
     static constexpr uint16_t addr(Type type) {
         switch (type) {
-        case Interrupts::Type::VBlank:  return 0x0040;
-        case Interrupts::Type::Lcd:     return 0x0048;
-        case Interrupts::Type::Timer:   return 0x0050;
-        case Interrupts::Type::Serial:  return 0x0058;
-        case Interrupts::Type::Joypad:  return 0x0060;
+        case Irqs::Type::VBlank:  return 0x0040;
+        case Irqs::Type::Lcd:     return 0x0048;
+        case Irqs::Type::Timer:   return 0x0050;
+        case Irqs::Type::Serial:  return 0x0058;
+        case Irqs::Type::Joypad:  return 0x0060;
         default:
             assert(false);
             return 0;
@@ -195,13 +196,13 @@ public:
     uint32_t elapsedCycles() const { return mCycles; }
     
     Registers regs;
-    Interrupts irqs;
+    Irqs irqs;
 
-
+    size_t irqNesting() const { return mIrqNesting.size(); }
 
 private:
 
-    std::optional<Interrupts::Type> checkIrq();
+    std::optional<Irqs::Type> checkIrq();
 
 
     uint8_t execute(uint8_t opcode, bool& ok);
@@ -350,7 +351,7 @@ private:
     uint8_t opEi();
     uint8_t opDi();
 
-    uint8_t opCallIrq(Interrupts::Type type);
+    uint8_t opCallIrq(Irqs::Type type);
 
 
 
@@ -406,6 +407,11 @@ private:
     bool mImeScheduled;
 
     Bus& mBus;
+
+    // We monitor the irq nesting level, every time an interrupt is serviced we push the old PC to this
+    // stack, when we call a RET or RETI we check if the PC we are restoring is on the top of the stack
+    // if so, we know that one irq routing is done. The size of the stack is the nesting depth
+    std::stack<uint16_t> mIrqNesting;
 
 };
 
