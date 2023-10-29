@@ -4477,4 +4477,81 @@ TEST_CASE("CPU test irq returns") {
 }
 
 
-// TODO: test deeper irq nesting
+TEST_CASE("CPU test irq nesting") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint16_t pc = Registers::PCinitialValue;
+    constexpr uint16_t irqVblankAddr = Irqs::addr(Irqs::Type::VBlank);
+    constexpr uint16_t irqTimerAddr = Irqs::addr(Irqs::Type::Timer);
+
+    bus.write8(pc, op::EI);
+    bus.write8(pc + 1, op::NOP);
+    bus.write8(pc + 2, op::NOP);
+    
+    bus.write8(irqVblankAddr, op::EI);
+    bus.write8(irqVblankAddr + 1, op::NOP);
+    bus.write8(irqVblankAddr + 2, op::NOP);
+    bus.write8(irqVblankAddr + 3, op::RETI);
+
+    bus.write8(irqTimerAddr, op::NOP);
+    bus.write8(irqTimerAddr + 1, op::NOP);
+    bus.write8(irqTimerAddr + 2, op::RET);
+
+    // enable relevant interrupts
+    cpu.irqs.IE = Irqs::mask(Irqs::Type::VBlank) | Irqs::mask(Irqs::Type::Timer);
+
+
+    // enable interrutps and execute the first NOP (IME becomes true only
+    // after the next instruction has been executed)
+    cpu.step(); // EI
+    cpu.step(); // NOP
+
+    auto pcBeforeVblank = cpu.regs.PC;
+
+    // raise vblank irq
+    cpu.irqs.IF = Irqs::mask(Irqs::Type::VBlank);
+    cpu.step();
+
+    CHECK(cpu.regs.PC == Irqs::addr(Irqs::Type::VBlank));
+    CHECK(bus.read16(cpu.regs.SP) == pcBeforeVblank);
+    CHECK(cpu.irqNesting() == 1);
+    CHECK((cpu.irqs.IF & Irqs::mask(Irqs::Type::VBlank)) == 0);
+    CHECK_FALSE(cpu.irqs.ime);
+
+    // execute vblank interrupt routine ---------------------------------------
+    cpu.step(); // EI
+    cpu.step(); // NOP
+
+    CHECK(cpu.irqs.ime);
+
+    // raise timer interrupt
+    auto pcBeforeTimer = cpu.regs.PC;
+
+    cpu.irqs.IF = Irqs::mask(Irqs::Type::Timer);
+    cpu.step();
+
+    CHECK(cpu.regs.PC == Irqs::addr(Irqs::Type::Timer));
+    CHECK(bus.read16(cpu.regs.SP) == pcBeforeTimer);
+    CHECK(cpu.irqNesting() == 2);
+    CHECK((cpu.irqs.IF & Irqs::mask(Irqs::Type::Timer)) == 0);
+    CHECK_FALSE(cpu.irqs.ime);
+
+    // execute timer interrupt routine ----------------------------------------
+    cpu.step(); // NOP
+    cpu.step(); // NOP
+    cpu.step(); // RET
+
+    CHECK(cpu.regs.PC == pcBeforeTimer);
+    CHECK(cpu.irqNesting() == 1);
+    CHECK_FALSE(cpu.irqs.ime);
+
+    // finish vblank interrupt routine ----------------------------------------
+    cpu.step(); // NOP
+    cpu.step(); // RETI
+
+    CHECK(cpu.regs.PC == pcBeforeVblank);
+    CHECK(cpu.irqNesting() == 0);
+    CHECK(cpu.irqs.ime);
+
+}

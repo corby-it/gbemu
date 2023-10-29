@@ -11,6 +11,9 @@ Timer::Timer()
     , mClockSelect(ClockSelect::N1024)
 {}
 
+// TODO: handle "Timer obscure behavior": https://gbdev.io/pandocs/Timer_Obscure_Behaviour.html
+
+
 void Timer::step(uint16_t mCycles)
 {
     // the mCycles argument represents the number of machine cycles that 
