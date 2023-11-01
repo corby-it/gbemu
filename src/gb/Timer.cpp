@@ -1,14 +1,17 @@
 
 #include "Timer.h"
+#include "GbCommons.h"
+#include "Irqs.h"
 
 
-Timer::Timer()
+Timer::Timer(Bus& bus)
     : mDiv(0)
     , mTima(0)
     , mTimaSubcounter(0)
     , mTma(0)
     , mTimaEnabled(false)
     , mClockSelect(ClockSelect::N1024)
+    , mBus(bus)
 {}
 
 // TODO: handle "Timer obscure behavior": https://gbdev.io/pandocs/Timer_Obscure_Behaviour.html
@@ -41,7 +44,8 @@ void Timer::step(uint16_t mCycles)
             // reset TIMA value to that of TMA
             mTima = mTma;
 
-            // TODO: generate interrupt
+            auto currIF = mBus.read8(mmap::regs::IF);
+            mBus.write8(mmap::regs::IF, Irqs::mask(Irqs::Type::Timer) | currIF);
         }
     }
 }

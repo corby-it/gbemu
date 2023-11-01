@@ -1,11 +1,14 @@
 
 #include "gb/Timer.h"
+#include "gb/GbCommons.h"
+#include "gb/Irqs.h"
 #include "doctest/doctest.h"
 
 
 TEST_CASE("Timer test DIV increase")
 {
-    Timer t;
+    TestBus bus;
+    Timer t(bus);
 
     t.step(10);
     CHECK(t.readDIV() == 0); // should still be 0
@@ -19,7 +22,8 @@ TEST_CASE("Timer test DIV increase")
 
 TEST_CASE("Timer test DIV overflow")
 {
-    Timer t;
+    TestBus bus;
+    Timer t(bus);
 
     t.step(0x3FFF);
     CHECK(t.readDIV() == 0xFF);
@@ -30,7 +34,8 @@ TEST_CASE("Timer test DIV overflow")
 
 TEST_CASE("Timer test TIMA increase")
 {
-    Timer t;
+    TestBus bus;
+    Timer t(bus);
 
     SUBCASE("Increase with ClockSelect::N16") {
         t.writeTAC(Timer::TACTimerEnableMask | Timer::ClockSelect::N16);
@@ -81,9 +86,12 @@ TEST_CASE("Timer test TIMA increase")
     }
 }
 
-TEST_CASE("Timer test TIMA overflow")
+TEST_CASE("Timer test TIMA overflow and interrupt generation")
 {
-    Timer t;
+    TestBus bus;
+    Timer t(bus);
+    
+    auto timerIrqMask = Irqs::mask(Irqs::Type::Timer);
 
     t.writeTAC(Timer::TACTimerEnableMask | Timer::ClockSelect::N16);
     
@@ -96,6 +104,7 @@ TEST_CASE("Timer test TIMA overflow")
         CHECK(t.readTIMA() == 0xFF);
         t.step(4);
         CHECK(t.readTIMA() == 0x00);
+        CHECK(timerIrqMask == (bus.read8(mmap::regs::IF) & timerIrqMask));
     }
 
     SUBCASE("TIMA overflow with TMA == 0xFE") {
@@ -106,13 +115,15 @@ TEST_CASE("Timer test TIMA overflow")
         CHECK(t.readTIMA() == 0xFF);
         t.step(4);
         CHECK(t.readTIMA() == 0xDD);
+        CHECK(timerIrqMask == (bus.read8(mmap::regs::IF) & timerIrqMask));
     }
 }
 
 
 TEST_CASE("Timer test changing subclock while timer is running")
 {
-    Timer t;
+    TestBus bus;
+    Timer t(bus);
 
     t.writeTAC(Timer::TACTimerEnableMask | Timer::ClockSelect::N16);
 
@@ -137,7 +148,8 @@ TEST_CASE("Timer test changing subclock while timer is running")
 
 TEST_CASE("Timer test starting, stopping and restarting the timer")
 {
-    Timer t;
+    TestBus bus;
+    Timer t(bus);
 
     t.writeTAC(Timer::TACTimerEnableMask | Timer::ClockSelect::N16);
 

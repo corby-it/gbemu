@@ -2,7 +2,9 @@
 #ifndef GBEMU_SRC_GB_TIMER_H_
 #define GBEMU_SRC_GB_TIMER_H_
 
+#include "Bus.h"
 #include <cstdint>
+
 
 class Timer {
 public:
@@ -16,7 +18,7 @@ public:
     static constexpr uint8_t TACTimerEnableMask = 0x04;
 
 
-    Timer();
+    Timer(Bus& bus);
 
     void step(uint16_t mCycles);
 
@@ -39,6 +41,7 @@ public:
 
 
 private:
+    Bus& mBus;
 
     // REGISTERS
 
@@ -74,6 +77,7 @@ private:
     ClockSelect mClockSelect;
 
     static constexpr uint16_t clockDividers[4] = { 1024, 16, 64, 256 };
+
 };
 
 
