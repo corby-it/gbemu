@@ -124,11 +124,15 @@ public:
     bool step();
 
     uint32_t elapsedCycles() const { return mCycles; }
+
+    bool isHalted() const { return mIsHalted; }
+    bool isStopped() const { return mIsStopped; }
     
     Registers regs;
     Irqs irqs;
 
     size_t irqNesting() const { return mIrqNesting.size(); }
+
 
 private:
 
@@ -281,6 +285,9 @@ private:
     uint8_t opEi();
     uint8_t opDi();
 
+    uint8_t opHalt();
+    uint8_t opStop();
+
     uint8_t opCallIrq(Irqs::Type type);
 
 
@@ -326,6 +333,7 @@ private:
 
     // Members ------------------------------------------------------------------------------------
 
+    Bus& mBus;
 
     // each instruction of the gameboy uses a number of clock cycles that is 
     // divisible by 4, here we use that number already divided by 4 (usually called m-cycles,
@@ -336,7 +344,15 @@ private:
     // the instruction following EI is exectued
     bool mImeScheduled;
 
-    Bus& mBus;
+    // When the CPU is halted (after executing the HALT instruction) it goes into a low-power state and
+    // it stops executing instructions, regular execution can be resumed when an interrupt is raised
+    bool mIsHalted;
+    bool mCheckForHaltBug;
+
+    // When the CPU is stopped it goes into a very-low-power state and it stops executing instructions.
+    // The only way to exit the stopped state is to reset the CPU
+    bool mIsStopped;
+
 
     // We monitor the irq nesting level, every time an interrupt is serviced we push the old PC to this
     // stack, when we call a RET or RETI we check if the PC we are restoring is on the top of the stack

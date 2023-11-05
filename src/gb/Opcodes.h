@@ -35,7 +35,7 @@ namespace op {
     static constexpr const uint8_t RRCA         = 0x0F;
 
     // 0x1*
-    static constexpr const uint8_t STOP_n8      = 0x10;
+    static constexpr const uint8_t STOP         = 0x10;
     static constexpr const uint8_t LD_DE_n16    = 0x11;
     static constexpr const uint8_t LD_inDE_A    = 0x12;
     static constexpr const uint8_t INC_DE       = 0x13;

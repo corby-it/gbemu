@@ -4243,6 +4243,38 @@ TEST_CASE("CPU test RST") {
 }
 
 
+TEST_CASE("CPU test STOP") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint16_t pc = Registers::PCinitialValue;
+
+    // STOP puts the cpu in the stopped state, after that nothing
+    // happens until a full reset
+
+    bus.write8(pc, op::STOP);
+    bus.write8(pc + 1, 0);
+    bus.write8(pc + 2, op::NOP);
+    bus.write8(pc + 3, op::NOP);
+
+    // execute STOP
+    cpu.step();
+
+    CHECK(cpu.isStopped());
+    CHECK(cpu.elapsedCycles() == 1);
+
+    uint16_t oldPC = cpu.regs.PC;
+
+    // try to execute more
+    cpu.step();
+    cpu.step();
+    
+    CHECK(cpu.isStopped());
+    CHECK(cpu.elapsedCycles() == 1);
+    CHECK(cpu.regs.PC == oldPC);
+}
+
+
 TEST_CASE("CPU test EI/DI") {
     TestBus bus;
     CPU cpu(bus);
@@ -4553,5 +4585,155 @@ TEST_CASE("CPU test irq nesting") {
     CHECK(cpu.regs.PC == pcBeforeVblank);
     CHECK(cpu.irqNesting() == 0);
     CHECK(cpu.irqs.ime);
-
 }
+
+
+
+TEST_CASE("CPU test HALT mode with interrupts enabled") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint16_t pc = Registers::PCinitialValue;
+    const uint16_t irqAddr = Irqs::addr(Irqs::Type::Timer);
+
+    bus.write8(pc, op::EI);
+    bus.write8(pc + 1, op::NOP);
+    bus.write8(pc + 2, op::HALT);
+    bus.write8(pc + 3, op::INC_A);
+    bus.write8(pc + 4, op::INC_A);
+
+    bus.write8(irqAddr, op::RETI);
+
+    // enable timer interrupts
+    cpu.irqs.IE = Irqs::mask(Irqs::Type::Timer);
+
+    // enable interrupts and execute the first NOP (IME becomes true only
+    // after the next instruction has been executed)
+    cpu.step();
+    cpu.step();
+
+    // enter HALT state
+    auto oldCycles = cpu.elapsedCycles();
+    cpu.step();
+
+    CHECK(cpu.isHalted());
+    CHECK(cpu.elapsedCycles() == oldCycles + 1);
+
+    // try to step, nothing should happen
+    auto oldPC = cpu.regs.PC;
+    cpu.step();
+    cpu.step();
+
+    CHECK(cpu.isHalted());
+    CHECK(cpu.regs.PC == oldPC);
+
+    // raise timer interrupt 
+    cpu.irqs.IF = Irqs::mask(Irqs::Type::Timer);
+    cpu.step();
+    
+    CHECK_FALSE(cpu.isHalted());
+    CHECK(cpu.regs.PC == irqAddr);
+
+    // execute the RETI and the two INC_A
+    cpu.step();
+    cpu.step();
+    cpu.step();
+
+    CHECK(cpu.regs.A == 2);
+}
+
+TEST_CASE("CPU test HALT mode with interrupts disabled") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint16_t pc = Registers::PCinitialValue;
+    
+    bus.write8(pc, op::HALT);
+    bus.write8(pc + 1, op::INC_A);
+    bus.write8(pc + 2, op::INC_A);
+
+    // don't enable interrupts (EI + NOP)
+    // enable timer interrupts
+    cpu.irqs.IE = Irqs::mask(Irqs::Type::Timer);
+
+    // enter HALT state
+    cpu.step();
+
+    CHECK(cpu.isHalted());
+    CHECK(cpu.elapsedCycles() == 1);
+
+    // try to step, nothing should happen
+    auto oldPC = cpu.regs.PC;
+    cpu.step();
+    cpu.step();
+
+    CHECK(cpu.isHalted());
+    CHECK(cpu.regs.PC == oldPC);
+
+    // raise timer interrupt that won't be handled because
+    // IME is false 
+    cpu.irqs.IF = Irqs::mask(Irqs::Type::Timer);
+    cpu.step();
+
+    CHECK_FALSE(cpu.isHalted());
+    CHECK(cpu.regs.PC == pc + 2);
+
+    // execute two INC_A
+    cpu.step();
+    cpu.step();
+
+    CHECK(cpu.regs.A == 2);
+}
+
+
+TEST_CASE("CPU test HALT mode, trigger HALT bug") {
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint16_t pc = Registers::PCinitialValue;
+    
+    bus.write8(pc, op::HALT);
+    bus.write8(pc + 1, op::INC_A);
+    bus.write8(pc + 2, op::INC_A);
+
+    // don't enable interrupts (EI + NOP)
+    // enable timer interrupts
+    cpu.irqs.IE = Irqs::mask(Irqs::Type::Timer);
+
+    // enter HALT state
+    cpu.step();
+
+    CHECK(cpu.isHalted());
+    CHECK(cpu.elapsedCycles() == 1);
+
+    // immediately raise an interrupt with IME == false, this will:
+    // - exit the HALT mode 
+    // - execute the next instruction (INC_A)
+    // - fail to increment the PC as expected
+    auto oldPC = cpu.regs.PC;
+
+    cpu.irqs.IF = Irqs::mask(Irqs::Type::Timer);
+    cpu.step();
+
+    CHECK_FALSE(cpu.isHalted());
+    CHECK(cpu.regs.A == 1);
+    CHECK(cpu.regs.PC == oldPC);
+
+    // step again to read the same byte from the program counter (it's important
+    // to not that it's not the same instruction that is executed twice, it's the 
+    // byte read from the PC that is read twice!)
+    cpu.step();
+    CHECK_FALSE(cpu.isHalted());
+    CHECK(cpu.regs.A == 2);
+    CHECK(cpu.regs.PC == oldPC + 1);
+
+    // step again to execute the last INC_A
+    cpu.step();
+    CHECK_FALSE(cpu.isHalted());
+    CHECK(cpu.regs.A == 3);
+    CHECK(cpu.regs.PC == oldPC + 2);
+}
+
+// TODO: also test the halt bug with instructions longer than 1 byte (like LD A,4)
+// TODO: also test the halt bug with RST
+// TODO: also test the double halt
