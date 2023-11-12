@@ -4686,7 +4686,9 @@ TEST_CASE("CPU test HALT mode with interrupts disabled") {
 }
 
 
-TEST_CASE("CPU test HALT mode, trigger HALT bug") {
+TEST_CASE("CPU test HALT mode, trigger HALT bug on 1-byte instruction") {
+    // see: https://github.com/nitro2k01/little-things-gb/tree/main/double-halt-cancel
+    // and https://gbdev.io/pandocs/halt.html
     TestBus bus;
     CPU cpu(bus);
 
@@ -4720,7 +4722,7 @@ TEST_CASE("CPU test HALT mode, trigger HALT bug") {
     CHECK(cpu.regs.PC == oldPC);
 
     // step again to read the same byte from the program counter (it's important
-    // to not that it's not the same instruction that is executed twice, it's the 
+    // to note that it's not the same instruction that is executed twice, it's the 
     // byte read from the PC that is read twice!)
     cpu.step();
     CHECK_FALSE(cpu.isHalted());
@@ -4734,6 +4736,92 @@ TEST_CASE("CPU test HALT mode, trigger HALT bug") {
     CHECK(cpu.regs.PC == oldPC + 2);
 }
 
-// TODO: also test the halt bug with instructions longer than 1 byte (like LD A,4)
-// TODO: also test the halt bug with RST
-// TODO: also test the double halt
+TEST_CASE("CPU test HALT mode, trigger HALT bug on 2-byte instruction") {
+    // see: https://github.com/nitro2k01/little-things-gb/tree/main/double-halt-cancel
+    // and https://gbdev.io/pandocs/halt.html
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint16_t pc = Registers::PCinitialValue;
+
+    bus.write8(pc, op::HALT);
+    bus.write8(pc + 1, op::LD_B_n8);
+    bus.write8(pc + 2, 0x4);
+
+    // don't enable interrupts (EI + NOP)
+    // enable timer interrupts
+    cpu.irqs.IE = Irqs::mask(Irqs::Type::Timer);
+
+    // enter HALT state
+    cpu.step();
+
+    CHECK(cpu.isHalted());
+    CHECK(cpu.elapsedCycles() == 1);
+
+    // immediately raise an interrupt with IME == false, this will:
+    // - exit the HALT mode 
+    // - read the opcode (0x06)
+    // - fail to increment the PC as expected
+    // so, instead of reading:
+    // 06 04    LD B,4
+    // the cpu actually reads 06 twice, leading to:
+    // 06 06    LD B,6
+    // 04       INC B
+    auto oldPC = cpu.regs.PC;
+
+    cpu.irqs.IF = Irqs::mask(Irqs::Type::Timer);
+    cpu.step();
+
+    CHECK_FALSE(cpu.isHalted());
+    CHECK(cpu.regs.B == 6);
+    // the PC must be incremented by 1 because the immediat LD instruction is 2-bytes long
+    CHECK(cpu.regs.PC == oldPC + 1);
+
+    // step again to execute the unexpected INC B instruction (0x04)
+    cpu.step();
+    CHECK_FALSE(cpu.isHalted());
+    CHECK(cpu.regs.B == 7);
+    CHECK(cpu.regs.PC == oldPC + 2);
+}
+
+TEST_CASE("CPU test HALT mode, double HALT bug") {
+    // see: https://github.com/nitro2k01/little-things-gb/tree/main/double-halt-cancel
+    // and https://gbdev.io/pandocs/halt.html
+    TestBus bus;
+    CPU cpu(bus);
+
+    const uint16_t pc = Registers::PCinitialValue;
+
+    bus.write8(pc, op::HALT);
+    bus.write8(pc + 1, op::HALT);
+    
+    // don't enable interrupts (EI + NOP)
+    // enable timer interrupts
+    cpu.irqs.IE = Irqs::mask(Irqs::Type::Timer);
+
+    // enter HALT state
+    cpu.step();
+
+    CHECK(cpu.isHalted());
+    CHECK(cpu.elapsedCycles() == 1);
+
+    // with two consecutive HALT instructions, what happens is that the second HALT is 
+    // executed forever, effectively locking the cpu
+    auto oldPC = cpu.regs.PC;
+
+    cpu.irqs.IF = Irqs::mask(Irqs::Type::Timer);
+    cpu.step();
+
+    // the cpu must still be in the halted state and the PC shouldn't increment
+    CHECK(cpu.isHalted());
+    CHECK(cpu.regs.PC == oldPC);
+    CHECK(cpu.elapsedCycles() == 2);
+
+    // step again multiple times and check that nothing happened
+    for(int i = 0; i < 10; ++i)
+        cpu.step();
+
+    CHECK(cpu.isHalted());
+    CHECK(cpu.regs.PC == oldPC);
+    CHECK(cpu.elapsedCycles() == 12);
+}
