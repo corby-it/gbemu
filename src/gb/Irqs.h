@@ -1,4 +1,8 @@
 
+#ifndef GBEMU_SRC_GB_IRQS_H_
+#define GBEMU_SRC_GB_IRQS_H_
+
+
 #include <cstdint>
 #include <cassert>
 
@@ -70,3 +74,6 @@ struct Irqs {
 
     void reset();
 };
+
+
+#endif // GBEMU_SRC_GB_IRQS_H_

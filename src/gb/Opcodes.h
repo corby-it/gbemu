@@ -1,4 +1,7 @@
 
+#ifndef GBEMU_SRC_GB_OPCODES_H_
+#define GBEMU_SRC_GB_OPCODES_H_
+
 
 #include <cstdint>
 
@@ -603,3 +606,6 @@ namespace op_cb {
     static constexpr const uint8_t SET_7_A      = 0xFF;
 
 }
+
+
+#endif // GBEMU_SRC_GB_OPCODES_H_
