@@ -1,10 +1,34 @@
-#include "Joypad.h"
 
-Joypad::Joypad()
+#include "Joypad.h"
+#include "Irqs.h"
+#include "GbCommons.h"
+
+
+
+Joypad::Joypad(Bus& bus)
     : mSelection(Selection::Disabled)
-    , mDpadByte(0x0f)
-    , mBtnsByte(0x0f)
+    , mDpadByte(static_cast<uint8_t>(Selection::Dpad) << 4 | 0x0F)
+    , mBtnsByte(static_cast<uint8_t>(Selection::Buttons) << 4 | 0x0F)
+    , mCounterEnabled(false)
+    , mCyclesCounter(0)
+    , mBus(bus)
 {}
+
+void Joypad::step(uint16_t mCycles)
+{
+    // from the gameboy developer manual (page 25), the joypad interrupt is triggered
+    // after 16 clock cycles (4 machine cycles) after a negative edge
+    if (mCounterEnabled) {
+        mCyclesCounter += mCycles;
+
+        if (mCyclesCounter > 4) {
+            // trigger interrupt
+            auto currIF = mBus.read8(mmap::regs::IF);
+            mBus.write8(mmap::regs::IF, Irqs::mask(Irqs::Type::Joypad) | currIF);
+        }
+    }
+}
+
 
 void Joypad::write(uint8_t val)
 {
@@ -19,13 +43,27 @@ void Joypad::write(uint8_t val)
     // keep only bits 4 and 5
     val = (val >> 4) & 0x03;
 
+    Selection newSelection;
+
     switch (val) {
-    case 0x00: mSelection = Selection::Both; break;
-    case 0x01: mSelection = Selection::Buttons; break;
-    case 0x02: mSelection = Selection::Dpad; break;
+    case 0x00: newSelection = Selection::Both; break;
+    case 0x01: newSelection = Selection::Buttons; break;
+    case 0x02: newSelection = Selection::Dpad; break;
     default:
-    case 0x03: mSelection = Selection::Disabled; break;
+    case 0x03: newSelection = Selection::Disabled; break;
     }
+
+    if (newSelection == Selection::Buttons || newSelection == Selection::Dpad) {
+        // when we enable one of the two inputs we also reset the cycles counter
+        mCyclesCounter = 0;
+    }
+    if (newSelection == Selection::Disabled || newSelection == Selection::Both) {
+        // when we disable both inputs we also reset the cycles counter
+        mCounterEnabled = false;
+        mCyclesCounter = 0;
+    }
+
+    mSelection = newSelection;
 }
 
 uint8_t Joypad::read() const
@@ -35,26 +73,16 @@ uint8_t Joypad::read() const
     // bits 0, 1, 2 and 3 will report the value of the corresponding buttons 
     // (1 means 'not pressed' and 0 means 'pressed')
 
-    uint8_t val = static_cast<uint8_t>(mSelection) << 4;
-
     switch (mSelection) {
-    case Joypad::Selection::Dpad:
-        val |= mDpadByte;
-        break;
-
-    case Joypad::Selection::Buttons:
-        val |= mBtnsByte;
-        break;
-    
+    case Joypad::Selection::Dpad: return mDpadByte;
+    case Joypad::Selection::Buttons: return mBtnsByte;
     default:
     case Joypad::Selection::Disabled:
-    case Joypad::Selection::Both:
-        val |= 0x0f;
-        break;
+    case Joypad::Selection::Both: return 0x3F;
     }
-
-    return val;
 }
+
+
 
 void Joypad::press(Btn bt)
 {
@@ -74,6 +102,11 @@ void Joypad::press(Btn bt)
     default:
         break;
     }
+
+    // if the pressed button is also in the active selection we
+    // can start the interrupt cycles counter 
+    if (inCurrentSelection(bt)) 
+        mCounterEnabled = true;
 }
 
 void Joypad::release(Btn bt)
@@ -94,4 +127,23 @@ void Joypad::release(Btn bt)
     default:
         break;
     }
+
+    if (inCurrentSelection(bt)) {
+        // if the button is released and all the bits in its group are 1 we have to stop the counter
+        if ((Joypad::read() & 0x0F) == 0x0F) {
+            mCounterEnabled = false;
+            mCyclesCounter = 0;
+        }
+    }
 }
+
+bool Joypad::inCurrentSelection(Joypad::Btn btn) const
+{
+    if ((btn == Btn::Up || btn == Btn::Down || btn == Btn::Left || btn == Btn::Right) && mSelection == Selection::Dpad)
+        return true;
+    else if ((btn == Btn::A || btn == Btn::B || btn == Btn::Start || btn == Btn::Select) && mSelection == Selection::Buttons)
+        return true;
+    else 
+        return false;
+}
+

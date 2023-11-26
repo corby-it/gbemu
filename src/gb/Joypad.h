@@ -2,10 +2,10 @@
 #ifndef GBEMU_SRC_GB_JOYPAD_H_
 #define GBEMU_SRC_GB_JOYPAD_H_
 
-#include <cstdint>
+#include "Bus.h"
 
 
-// reference: https://gbdev.io/pandocs/Joypad_Input.html
+// reference for how the joypad works in the gameboy: https://gbdev.io/pandocs/Joypad_Input.html
 
 
 class Joypad {
@@ -16,7 +16,9 @@ public:
     };
 
 
-    Joypad();
+    Joypad(Bus& bus);
+
+    void step(uint16_t mCycles);
 
     // GB side
     void write(uint8_t val);
@@ -34,10 +36,18 @@ private:
         Disabled = 0x03
     };
 
+    bool inCurrentSelection(Btn btn) const;
+
+
     Selection mSelection;
 
     uint8_t mDpadByte;
     uint8_t mBtnsByte;
+
+    bool mCounterEnabled;
+    uint32_t mCyclesCounter;
+
+    Bus& mBus;
 };
 
 
