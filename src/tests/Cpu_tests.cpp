@@ -1,5 +1,7 @@
+
 #include "gb/Cpu.h"
 #include "gb/Opcodes.h"
+#include "gb/GbCommons.h"
 #include "doctest/doctest.h"
 
 
@@ -4243,11 +4245,15 @@ TEST_CASE("CPU test RST") {
 }
 
 
-TEST_CASE("CPU test STOP") {
+TEST_CASE("CPU test entering and resuming from STOP mode") {
     TestBus bus;
     CPU cpu(bus);
 
     const uint16_t pc = Registers::PCinitialValue;
+
+    // simulate all of the joypad lines being high (no buttons pressed)
+    // see the corresponding joypad source file for an explanation of the values
+    bus.write8(mmap::regs::joypad, 0x2F);
 
     // STOP puts the cpu in the stopped state, after that nothing
     // happens until a full reset
@@ -4272,7 +4278,19 @@ TEST_CASE("CPU test STOP") {
     CHECK(cpu.isStopped());
     CHECK(cpu.elapsedCycles() == 1);
     CHECK(cpu.regs.PC == oldPC);
+
+    // simulate one of the joypad lines going low to resume from STOP mode
+    // see the corresponding joypad source file for an explanation of the values
+    bus.write8(mmap::regs::joypad, 0x2E);
+
+    // stepping should resume from STOP mode and execute a NOP (1 more cycle and +1 to the PC)
+    cpu.step();
+
+    CHECK_FALSE(cpu.isStopped());
+    CHECK(cpu.elapsedCycles() == 2);
+    CHECK(cpu.regs.PC == oldPC + 1);
 }
+
 
 
 TEST_CASE("CPU test EI/DI") {

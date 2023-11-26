@@ -45,6 +45,8 @@ namespace mmap {
     namespace regs {
         MMAP_T start = 0xFF00;
 
+        MMAP_T joypad = 0xFF00;
+
         namespace timer {
             MMAP_T start = 0xFF04;
             MMAP_T DIV = 0xFF04;

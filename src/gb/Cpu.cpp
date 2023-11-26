@@ -1,6 +1,7 @@
 
 #include "Cpu.h"
 #include "Opcodes.h"
+#include "GbCommons.h"
 #include <cassert>
 
 
@@ -78,8 +79,16 @@ bool CPU::step()
     bool triggerHaltBug = false;
 
     // if we're in the stopped state we don't execute instructions, nothing happens until a reset
-    if (mIsStopped)
-        return true;
+    // or until one of the joypad lines goes low (not an interrupt, only the signal going low is enough!)
+    // see the gameboy developer manual, page 23
+    if (mIsStopped) {
+        auto joypad = mBus.read8(mmap::regs::joypad);
+        
+        if ((joypad & 0x0F) != 0x0F) 
+            mIsStopped = false;
+        else 
+            return true;
+    }
 
     // check if interrupt occurred
     auto irqRequest = checkIrq();
@@ -2246,8 +2255,10 @@ uint8_t CPU::opHalt()
 uint8_t CPU::opStop()
 {
     // STOP
-    // enter stop mode, basically turns everything off, the only way to exit this
-    // state is to reset the system
+    // enter stop mode, basically turns everything off, in this state nothing is executed and
+    // the only way to go back to normal is to reset the system or to receive a low signal
+    // on one of the joypad lines (not an interrupt, only the signal going low is enough!)
+    // see the gameboy developer manual, page 23
     
     // technically STOP is 2-bytes long, even if the second byte is ignored
     regs.PC++;
