@@ -4,10 +4,18 @@
 #define GBEMU_SRC_GB_PPU_H_
 
 
+#include "Bus.h"
 #include "Vram.h"
+#include "GbCommons.h"
 
 
-struct LCDCReg {
+
+// ------------------------------------------------------------------------------------------------
+// PPURegs
+// ------------------------------------------------------------------------------------------------
+
+
+struct LCDCReg : public RegU8 {
     // 0xFF40
     // LCDC - LCD Control register
     // This is the main LCD control register. Its bits toggle what elements are displayed on the screen, and how
@@ -31,11 +39,20 @@ struct LCDCReg {
     bool winTileMapArea;
     bool lcdEnable;
 
-    uint8_t asU8() const;
-    void fromU8(uint8_t b);
+    uint8_t asU8() const override;
+    void fromU8(uint8_t b) override;
 };
 
-struct STATReg {
+
+
+enum PPUMode : uint8_t {
+    HBlank = 0,
+    VBlank = 1,
+    OAMScan = 2,
+    Draw = 3
+};
+
+struct STATReg :public RegU8 {
     // 0xFF41
     // STAT - LCD Status register
     // this register contains the status of the lcd and ppu
@@ -48,18 +65,19 @@ struct STATReg {
     // 6    LYC interrupt select: if set, selects LYC==LY for interrupt triggering
     // 7    unused
 
-    uint8_t ppuMode : 2;
+    PPUMode ppuMode : 2;
     bool lycEqual;
     bool mode0IrqEnable;
     bool mode1IrqEnable;
     bool mode2IrqEnable;
     bool lycIrqEnable;
 
-    uint8_t asU8() const;
-    void fromU8(uint8_t b);
+    uint8_t asU8() const override;
+    void fromU8(uint8_t b) override;
 };
 
-struct PaletteReg {
+
+struct PaletteReg : public RegU8 {
     // this register assigns gray shades to the 3 possible colors for a pixel
     // bit  function
     // 0..1 Color ID 0
@@ -71,8 +89,8 @@ struct PaletteReg {
     uint8_t id2 : 2;
     uint8_t id3 : 2;
 
-    uint8_t asU8() const;
-    void fromU8(uint8_t b);
+    uint8_t asU8() const override;
+    void fromU8(uint8_t b) override;
 };
 
 
@@ -126,21 +144,32 @@ struct PPURegs {
     uint8_t WY;
     uint8_t WX;
 
+
+    void reset();
 };
 
 
 
+// ------------------------------------------------------------------------------------------------
+// PPU
+// ------------------------------------------------------------------------------------------------
 
 class PPU {
 public:
-    PPU();
+    PPU(Bus& bus);
+
+    void reset();
 
     void step(uint16_t mCycles);
 
-
     PPURegs regs;
 
+    uint32_t getDotCounter() const { return mDotCounter; }
+
 private:
+    Bus& mBus;
+
+    uint32_t mDotCounter;
 
     VRam mVram;
     OAMRam mOamRam;

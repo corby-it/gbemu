@@ -76,9 +76,9 @@ struct OAMData : public MemoryMappedObj {
 
 
 
-class VRam : public Ram<8 * 1024> {
+class VRam : public LockableRam<8 * 1024> {
 public:
-    VRam() : Ram(mmap::vram::start) {}
+    VRam() : LockableRam(mmap::vram::start) {}
 
 
     TileData getObjTile(uint8_t id, bool doubleHeight) const;
@@ -91,9 +91,9 @@ private:
 };
 
 
-class OAMRam : public Ram<160> {
+class OAMRam : public LockableRam<160> {
 public:
-    OAMRam() : Ram(mmap::oam::start) {}
+    OAMRam() : LockableRam(mmap::oam::start) {}
 
     OAMData getOAMData(uint8_t id) const;
 

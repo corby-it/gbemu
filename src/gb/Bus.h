@@ -46,7 +46,7 @@ public:
     }
     
 private:
-    WRam<64 * 1024> mWram;
+    Ram<64 * 1024> mWram;
 
 };
 
@@ -76,7 +76,7 @@ public:
 
 private:
 
-    WRam<8 * 1024> mWram;
+    Ram<8 * 1024> mWram;
 
     CPU* mCpu;
     Timer* mTimer;

@@ -4,6 +4,7 @@
 
 #include "Bus.h"
 #include "Irqs.h"
+#include "GbCommons.h"
 #include <cstdint>
 #include <optional>
 #include <stack>
@@ -11,7 +12,7 @@
 
 // the GB uses a CPU similar to the Zilog Z80
 
-struct Flags {
+struct Flags : public RegU8 {
     // the flags register works as follows:
     // bit      function
     // 0..3     unused
@@ -25,7 +26,7 @@ struct Flags {
     bool H;
     bool C;
 
-    uint8_t asU8() const {
+    uint8_t asU8() const override {
         uint8_t val = 0;
         
         if (Z) val |= maskZ;
@@ -36,23 +37,14 @@ struct Flags {
         return val;
     }
 
-    void fromU8(uint8_t val) {
+    void fromU8(uint8_t val) override {
         Z = val & maskZ;
         N = val & maskN;
         H = val & maskH;
         C = val & maskC;
     }
 
-    operator uint8_t() const { return asU8(); }
-
-    void operator=(uint8_t val) { fromU8(val); }
-
-    bool operator==(const Flags& other) const {
-        return Z == other.Z
-            && N == other.N
-            && H == other.H
-            && C == other.C;
-    }
+    virtual void operator=(uint8_t val) { fromU8(val); }
 
     static constexpr const uint8_t maskZ = 0b10000000;
     static constexpr const uint8_t maskN = 0b01000000;

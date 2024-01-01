@@ -71,4 +71,23 @@ namespace mmap {
 
 
 
+// Generic register class with helper methods
+struct RegU8 {
+public:
+    virtual ~RegU8() {}
+
+    virtual uint8_t asU8() const = 0;
+
+    virtual void fromU8(uint8_t val) = 0;
+
+    virtual operator uint8_t() const { return asU8(); }
+
+    virtual bool operator==(const RegU8& other) const
+    {
+        return asU8() == other.asU8();
+    }
+};
+
+
+
 #endif // GBEMU_SRC_GB_GBCOMMONS_H_

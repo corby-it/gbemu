@@ -18,7 +18,7 @@ void Registers::reset()
     L = 0;
     PC = PCinitialValue;
     SP = SPinitialValue;
-    flags = 0;
+    flags.fromU8(0);
 }
 
 bool Registers::equalSkipPC(const Registers& other)

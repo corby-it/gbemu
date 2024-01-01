@@ -5,17 +5,23 @@
 
 
 Timer::Timer(Bus& bus)
-    : mDiv(0)
-    , mTima(0)
-    , mTimaSubcounter(0)
-    , mTma(0)
-    , mTimaEnabled(false)
-    , mClockSelect(ClockSelect::N1024)
-    , mBus(bus)
-{}
+    : mBus(bus)
+{
+    reset();
+}
 
 // TODO: handle "Timer obscure behavior": https://gbdev.io/pandocs/Timer_Obscure_Behaviour.html
 
+
+void Timer::reset()
+{
+    mDiv = 0;
+    mTima = 0;
+    mTimaSubcounter = 0;
+    mTma = 0;
+    mTimaEnabled = false;
+    mClockSelect = ClockSelect::N1024;
+}
 
 void Timer::step(uint16_t mCycles)
 {

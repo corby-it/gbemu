@@ -20,6 +20,8 @@ public:
 
     Timer(Bus& bus);
 
+    void reset();
+
     void step(uint16_t mCycles);
 
     uint8_t readDIV() const { return mDiv >> 8; }
