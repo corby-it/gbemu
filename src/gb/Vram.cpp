@@ -4,10 +4,63 @@
 #include <cassert>
 
 
-TileData VRam::getObjTile(uint8_t id, bool doubleHeight) const
+
+uint8_t TileData::pix(uint8_t x, uint8_t y) const
 {
-    // the data for a tile is 16 bytes long, each tile is an 8x8 or 8x16 bitmap
-    // where each pixel is 2 bits deep (8x8x2 = 128 bits = 16 bytes or 8x16x2 = 256 bits = 32 bytes)
+    // see https://gbdev.io/pandocs/Tile_Data.html for an explanation of 
+    // how pixel data is stored in memory
+
+    assert(x < w);
+    assert(y < h);
+
+    auto* data = ptr + (y * 2);
+
+    // pixel data is stored in "reverse", e.g: for x == 0 the data is in bit 7
+    uint8_t i = 7 - x;
+
+    uint8_t bitLo = (data[0] >> i) & 1;
+    uint8_t bitHi = (data[1] >> i) & 1;
+
+    return bitLo | (bitHi << 1);
+}
+
+
+uint8_t ObjTileData::pix(uint8_t x, uint8_t y) const
+{
+    assert(x < TileData::w);
+    assert(y < TileData::h * 2);
+    
+    const TileData *data;
+
+    if (y >= TileData::h) {
+        data = &tdh;
+        y -= TileData::h;
+    }
+    else {
+        data = &td;
+    }
+
+    return data->pix(x, y);
+}
+
+
+
+uint8_t TileMap::getTileId(uint8_t x, uint8_t y) const
+{
+    assert(x < TileMap::w);
+    assert(y < TileMap::h);
+
+    // a tile map is a 32x32 grid where each cell contains the id of 
+    // a background tile
+
+    return ptr[y * TileMap::w + x];
+}
+
+
+
+
+ObjTileData VRam::getObjTile(uint8_t id, bool doubleHeight) const
+{
     // each tile is identified by an id between 0 and 255
     // OBJ tiles are all located between 0x8000 and 0x8FFF
     // the address of a specific tile is 0x8000 + (id * 16)
@@ -15,19 +68,12 @@ TileData VRam::getObjTile(uint8_t id, bool doubleHeight) const
     // if we're using double height mode, an odd id is rounded down to the previous even id
     // (hence the bitwise AND with 0xFE)
     
-    size_t len;
-    uint16_t addr;
+    if (doubleHeight)
+        id &= 0xFE;
 
-    if (doubleHeight) {
-        len = 32;
-        addr = mStartAddr + ((id & 0xFE) * 16);
-    }
-    else {
-        len = 16;
-        addr = mStartAddr + (id * 16);
-    }
+    uint16_t addr = mStartAddr + (id * 16);
 
-    return TileData(addr, getPtr(addr), len);
+    return ObjTileData(addr, getPtr(addr));
 }
 
 TileData VRam::getBgTile(uint8_t id, bool hiMemArea, bool /*doubleHeight*/) const
@@ -46,7 +92,7 @@ TileData VRam::getBgTile(uint8_t id, bool hiMemArea, bool /*doubleHeight*/) cons
     else 
         addr = mStartAddr + id * 16;
 
-    return TileData(addr, getPtr(addr), 16);
+    return TileData(addr, getPtr(addr));
 }
 
 TileMap VRam::getTileMap(bool hi) const
@@ -82,3 +128,4 @@ OAMData OAMRam::getOAMData(uint8_t id) const
 
     return OAMData(addr, getPtr(addr));
 }
+

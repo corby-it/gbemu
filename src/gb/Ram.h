@@ -49,6 +49,7 @@ public:
         return mData[addr];
     }
 
+    constexpr size_t size() const { return Size; }
 
 protected:
     const uint8_t* getPtr(uint16_t addr) const

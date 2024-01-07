@@ -9,22 +9,49 @@
 
 struct MemoryMappedObj {
     MemoryMappedObj(uint16_t gbAddr, const uint8_t* p, size_t l)
-        : addr(gbAddr)
+        : gbAddr(gbAddr)
         , ptr(p)
         , len(l)
     {}
 
-    uint16_t addr;
+    uint16_t gbAddr;
     const uint8_t* ptr;
     size_t len;
 };
 
 
 struct TileData : public MemoryMappedObj {
-    TileData(uint16_t gbAddr, const uint8_t* p, size_t len)
-        : MemoryMappedObj(gbAddr, p, len)
+    TileData(uint16_t gbAddr, const uint8_t* p)
+        : MemoryMappedObj(gbAddr, p, size)
     {}
     
+    // the data for a tile is 16 bytes long, each tile is an 8x8 bitmap
+    // where each pixel is 2 bits deep (8x8x2 = 128 bits = 16 bytes)
+
+    uint8_t pix(uint8_t x, uint8_t y) const;
+
+    static constexpr uint8_t w = 8;
+    static constexpr uint8_t h = 8;
+
+    static constexpr size_t size = 16;
+};
+
+
+
+struct ObjTileData {
+    ObjTileData(uint16_t gbAddr, const uint8_t* p)
+        : td(gbAddr, p)
+        , tdh(gbAddr + TileData::size , td.ptr + TileData::size)
+    {}
+
+    // since obj can be made of 1 or 2 tiles we always store two tile data
+    // references here, the rest of the rendering logic will know when to use 
+    // the additional tile
+
+    uint8_t pix(uint8_t x, uint8_t y) const;
+
+    TileData td;
+    TileData tdh;
 };
 
 
@@ -32,6 +59,11 @@ struct TileMap : public MemoryMappedObj {
     TileMap(uint16_t gbAddr, const uint8_t* p)
         : MemoryMappedObj(gbAddr, p, size)
     {}
+
+    uint8_t getTileId(uint8_t x, uint8_t y) const;
+
+    static constexpr uint8_t w = 32;
+    static constexpr uint8_t h = 32;
 
     static constexpr size_t size = 1024;
 };
@@ -81,7 +113,7 @@ public:
     VRam() : LockableRam(mmap::vram::start) {}
 
 
-    TileData getObjTile(uint8_t id, bool doubleHeight) const;
+    ObjTileData getObjTile(uint8_t id, bool doubleHeight) const;
     TileData getBgTile(uint8_t id, bool hiMemArea, bool doubleHeight) const;
 
     TileMap getTileMap(bool hi) const;
