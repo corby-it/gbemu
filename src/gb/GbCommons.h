@@ -90,7 +90,9 @@ public:
 
 
 
-// Generic class for matrix-like objects
+// Generic classes for matrix-like objects
+
+
 class Matrix {
 public:
     Matrix(uint8_t w, uint8_t h)
@@ -117,6 +119,8 @@ public:
     uint32_t width() const { return mWidth; }
     uint32_t height() const { return mHeight; }
 
+
+    
 
 protected:
     virtual uint8_t getImpl(uint32_t x, uint32_t y) const = 0;
