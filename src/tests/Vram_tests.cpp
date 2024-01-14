@@ -4,7 +4,7 @@
 #include "doctest/doctest.h"
 
 
-TEST_CASE("Test TileData pix() function")
+TEST_CASE("Test TileData.get() function")
 {
     // test data from https://www.huderlem.com/demos/gameboy2bpp.html
 
@@ -21,11 +21,11 @@ TEST_CASE("Test TileData pix() function")
     
     TileData td1(0x2222, data1);
     
-    CHECK(td1.pix(0, 0) == 1);
-    CHECK(td1.pix(0, 1) == 2);
-    CHECK(td1.pix(1, 1) == 3);
-    CHECK(td1.pix(2, 6) == 0);
-    CHECK(td1.pix(7, 7) == 2);
+    CHECK(td1.get(0, 0) == 1);
+    CHECK(td1.get(0, 1) == 2);
+    CHECK(td1.get(1, 1) == 3);
+    CHECK(td1.get(2, 6) == 0);
+    CHECK(td1.get(7, 7) == 2);
 
 
     uint8_t data2[] = { 
@@ -41,15 +41,40 @@ TEST_CASE("Test TileData pix() function")
 
     TileData td2(0x2222, data2);
 
-    CHECK(td2.pix(0, 0) == 0);
-    CHECK(td2.pix(3, 0) == 3);
-    CHECK(td2.pix(1, 3) == 2);
-    CHECK(td2.pix(1, 6) == 1);
-    CHECK(td2.pix(7, 7) == 0);
+    CHECK(td2.get(0, 0) == 0);
+    CHECK(td2.get(3, 0) == 3);
+    CHECK(td2.get(1, 3) == 2);
+    CHECK(td2.get(1, 6) == 1);
+    CHECK(td2.get(7, 7) == 0);
+}
+
+TEST_CASE("Test TileData.set() function")
+{
+    uint8_t data1[TileData::size] = { 0 };
+
+    TileData td(0x2222, data1);
+
+    td.set(0, 0, 3);
+    td.set(2, 3, 3);
+    td.set(6, 5, 3);
+    td.set(7, 7, 3);
+
+    CHECK(td.ptr[0] == 0x80);
+    CHECK(td.ptr[1] == 0x80);
+
+    CHECK(td.ptr[6] == 0x20);
+    CHECK(td.ptr[7] == 0x20);
+
+    CHECK(td.ptr[10] == 0x02);
+    CHECK(td.ptr[11] == 0x02);
+
+    CHECK(td.ptr[14] == 0x01);
+    CHECK(td.ptr[15] == 0x01);
 }
 
 
-TEST_CASE("Test ObjTileData pix() function")
+
+TEST_CASE("Test ObjTileData.get() function")
 {
     // test data from https://www.huderlem.com/demos/gameboy2bpp.html
 
@@ -76,24 +101,59 @@ TEST_CASE("Test ObjTileData pix() function")
     ObjTileData otd(0x2222, data);
 
     // check upper 8x8 tile
-    CHECK(otd.pix(0, 0) == 1);
-    CHECK(otd.pix(0, 1) == 2);
-    CHECK(otd.pix(1, 1) == 3);
-    CHECK(otd.pix(2, 6) == 0);
-    CHECK(otd.pix(7, 7) == 2);
+    CHECK(otd.get(0, 0) == 1);
+    CHECK(otd.get(0, 1) == 2);
+    CHECK(otd.get(1, 1) == 3);
+    CHECK(otd.get(2, 6) == 0);
+    CHECK(otd.get(7, 7) == 2);
 
     // check lower 8x8 tile
-    CHECK(otd.pix(0, 8 + 0) == 0);
-    CHECK(otd.pix(3, 8 + 0) == 3);
-    CHECK(otd.pix(1, 8 + 3) == 2);
-    CHECK(otd.pix(1, 8 + 6) == 1);
-    CHECK(otd.pix(7, 8 + 7) == 0);
+    CHECK(otd.get(0, 8 + 0) == 0);
+    CHECK(otd.get(3, 8 + 0) == 3);
+    CHECK(otd.get(1, 8 + 3) == 2);
+    CHECK(otd.get(1, 8 + 6) == 1);
+    CHECK(otd.get(7, 8 + 7) == 0);
 }
 
 
-TEST_CASE("Test TileMap getTileId() function")
+TEST_CASE("Test ObjTileData.set() function")
 {
-    uint8_t data[1024] = { 0 };
+    uint8_t data[ObjTileData::size] = { 0 };
+
+    ObjTileData otd(0x2222, data);
+
+    // check upper 8x8 tile
+    otd.set(0, 0, 1);
+    otd.set(0, 1, 2);
+    otd.set(1, 1, 3);
+    otd.set(2, 6, 0);
+    otd.set(7, 7, 2);
+
+    CHECK(otd.get(0, 0) == 1);
+    CHECK(otd.get(0, 1) == 2);
+    CHECK(otd.get(1, 1) == 3);
+    CHECK(otd.get(2, 6) == 0);
+    CHECK(otd.get(7, 7) == 2);
+
+    // check lower 8x8 tile
+    otd.set(0, 8 + 0, 0);
+    otd.set(3, 8 + 0, 3);
+    otd.set(1, 8 + 3, 2);
+    otd.set(1, 8 + 6, 1);
+    otd.set(7, 8 + 7, 0);
+
+    CHECK(otd.get(0, 8 + 0) == 0);
+    CHECK(otd.get(3, 8 + 0) == 3);
+    CHECK(otd.get(1, 8 + 3) == 2);
+    CHECK(otd.get(1, 8 + 6) == 1);
+    CHECK(otd.get(7, 8 + 7) == 0);
+}
+
+
+
+TEST_CASE("Test TileMap get() function")
+{
+    uint8_t data[TileMap::size] = { 0 };
 
     data[0] = 2;        // 0, 0
     data[35] = 12;      // 3, 1
@@ -105,11 +165,34 @@ TEST_CASE("Test TileMap getTileId() function")
 
     TileMap tm(0x2222, data);
 
-    CHECK(tm.getTileId(0, 0) == 2);
-    CHECK(tm.getTileId(3, 1) == 12);
-    CHECK(tm.getTileId(9, 7) == 22);
-    CHECK(tm.getTileId(27, 14) == 99);
-    CHECK(tm.getTileId(27, 20) == 203);
-    CHECK(tm.getTileId(30, 30) == 11);
-    CHECK(tm.getTileId(31, 31) == 74);
+    CHECK(tm.get(0, 0) == 2);
+    CHECK(tm.get(3, 1) == 12);
+    CHECK(tm.get(9, 7) == 22);
+    CHECK(tm.get(27, 14) == 99);
+    CHECK(tm.get(27, 20) == 203);
+    CHECK(tm.get(30, 30) == 11);
+    CHECK(tm.get(31, 31) == 74);
+}
+
+TEST_CASE("Test TileMap set() function")
+{
+    uint8_t data[TileMap::size] = { 0 };
+
+    TileMap tm(0x2222, data);
+
+    tm.set(0, 0, 2);
+    tm.set(3, 1, 12);
+    tm.set(9, 7, 22);
+    tm.set(27, 14, 99);
+    tm.set(27, 20, 203);
+    tm.set(30, 30, 11);
+    tm.set(31, 31, 74);
+
+    CHECK(tm.get(0, 0) == 2);
+    CHECK(tm.get(3, 1) == 12);
+    CHECK(tm.get(9, 7) == 22);
+    CHECK(tm.get(27, 14) == 99);
+    CHECK(tm.get(27, 20) == 203);
+    CHECK(tm.get(30, 30) == 11);
+    CHECK(tm.get(31, 31) == 74);
 }

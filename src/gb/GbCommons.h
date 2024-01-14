@@ -90,4 +90,42 @@ public:
 
 
 
+// Generic class for matrix-like objects
+class Matrix {
+public:
+    Matrix(uint8_t w, uint8_t h)
+        : mWidth(w)
+        , mHeight(h)
+    {}
+
+    virtual ~Matrix() {}
+
+    uint8_t get(uint32_t x, uint32_t y) const {
+        assert(x < mWidth);
+        assert(y < mHeight);
+
+        return getImpl(x, y);
+    }
+
+    void set(uint32_t x, uint32_t y, uint8_t val) {
+        assert(x < mWidth);
+        assert(y < mHeight);
+
+        setImpl(x, y, val);
+    }
+
+    uint32_t width() const { return mWidth; }
+    uint32_t height() const { return mHeight; }
+
+
+protected:
+    virtual uint8_t getImpl(uint32_t x, uint32_t y) const = 0;
+    virtual void setImpl(uint32_t x, uint32_t y, uint8_t val) = 0;
+
+
+    const uint32_t mWidth;
+    const uint32_t mHeight;
+
+};
+
 #endif // GBEMU_SRC_GB_GBCOMMONS_H_

@@ -5,18 +5,15 @@
 
 
 
-uint8_t TileData::pix(uint8_t x, uint8_t y) const
+uint8_t TileData::getImpl(uint32_t x, uint32_t y) const
 {
     // see https://gbdev.io/pandocs/Tile_Data.html for an explanation of 
     // how pixel data is stored in memory
 
-    assert(x < w);
-    assert(y < h);
-
     auto* data = ptr + (y * 2);
 
     // pixel data is stored in "reverse", e.g: for x == 0 the data is in bit 7
-    uint8_t i = 7 - x;
+    uint32_t i = 7 - x;
 
     uint8_t bitLo = (data[0] >> i) & 1;
     uint8_t bitHi = (data[1] >> i) & 1;
@@ -24,38 +21,61 @@ uint8_t TileData::pix(uint8_t x, uint8_t y) const
     return bitLo | (bitHi << 1);
 }
 
-
-uint8_t ObjTileData::pix(uint8_t x, uint8_t y) const
+void TileData::setImpl(uint32_t x, uint32_t y, uint8_t val)
 {
-    assert(x < TileData::w);
-    assert(y < TileData::h * 2);
-    
-    const TileData *data;
+    if (val > 3)
+        val = 3;
 
-    if (y >= TileData::h) {
-        data = &tdh;
-        y -= TileData::h;
-    }
-    else {
-        data = &td;
-    }
+    auto* data = ptr + (y * 2);
+    uint32_t i = 7 - x;
 
-    return data->pix(x, y);
+    uint8_t byteHi = (val >> 1) & 1;
+    uint8_t byteLo = val & 1;
+
+    data[0] |= byteLo << i;
+    data[1] |= byteHi << i;
 }
 
 
 
-uint8_t TileMap::getTileId(uint8_t x, uint8_t y) const
+uint8_t ObjTileData::getImpl(uint32_t x, uint32_t y) const
 {
-    assert(x < TileMap::w);
-    assert(y < TileMap::h);
+    if (y >= TileData::h) {
+        y -= TileData::h;
+        return tdh.get(x, y);
+    }
+    else {
+        return td.get(x, y);
+    }
+}
 
+void ObjTileData::setImpl(uint32_t x, uint32_t y, uint8_t val)
+{
+    if (y >= TileData::h) {
+        y -= TileData::h;
+        tdh.set(x, y, val);
+    }
+    else {
+        td.set(x, y, val);
+    }
+}
+
+
+
+
+
+uint8_t TileMap::getImpl(uint32_t x, uint32_t y) const
+{
     // a tile map is a 32x32 grid where each cell contains the id of 
     // a background tile
 
     return ptr[y * TileMap::w + x];
 }
 
+void TileMap::setImpl(uint32_t x, uint32_t y, uint8_t val)
+{
+    ptr[y * TileMap::w + x] = val;
+}
 
 
 

@@ -8,27 +8,29 @@
 
 
 struct MemoryMappedObj {
-    MemoryMappedObj(uint16_t gbAddr, const uint8_t* p, size_t l)
+    MemoryMappedObj(uint16_t gbAddr, uint8_t* p, size_t l)
         : gbAddr(gbAddr)
         , ptr(p)
         , len(l)
     {}
 
     uint16_t gbAddr;
-    const uint8_t* ptr;
+    uint8_t* ptr;
     size_t len;
 };
 
 
-struct TileData : public MemoryMappedObj {
-    TileData(uint16_t gbAddr, const uint8_t* p)
+struct TileData : public MemoryMappedObj, public Matrix {
+    TileData(uint16_t gbAddr, uint8_t* p)
         : MemoryMappedObj(gbAddr, p, size)
+        , Matrix(w, h)
     {}
     
     // the data for a tile is 16 bytes long, each tile is an 8x8 bitmap
     // where each pixel is 2 bits deep (8x8x2 = 128 bits = 16 bytes)
 
-    uint8_t pix(uint8_t x, uint8_t y) const;
+    uint8_t getImpl(uint32_t x, uint32_t y) const override;
+    void setImpl(uint32_t x, uint32_t y, uint8_t val) override;
 
     static constexpr uint8_t w = 8;
     static constexpr uint8_t h = 8;
@@ -38,9 +40,10 @@ struct TileData : public MemoryMappedObj {
 
 
 
-struct ObjTileData {
-    ObjTileData(uint16_t gbAddr, const uint8_t* p)
-        : td(gbAddr, p)
+struct ObjTileData : public Matrix {
+    ObjTileData(uint16_t gbAddr, uint8_t* p)
+        : Matrix(TileData::w, TileData::h * 2)
+        , td(gbAddr, p)
         , tdh(gbAddr + TileData::size , td.ptr + TileData::size)
     {}
 
@@ -48,19 +51,24 @@ struct ObjTileData {
     // references here, the rest of the rendering logic will know when to use 
     // the additional tile
 
-    uint8_t pix(uint8_t x, uint8_t y) const;
+    uint8_t getImpl(uint32_t x, uint32_t y) const override;
+    void setImpl(uint32_t x, uint32_t y, uint8_t val) override;
 
     TileData td;
     TileData tdh;
+
+    static constexpr size_t size = TileData::size * 2;
 };
 
 
-struct TileMap : public MemoryMappedObj {
-    TileMap(uint16_t gbAddr, const uint8_t* p)
-        : MemoryMappedObj(gbAddr, p, size)
+struct TileMap : public MemoryMappedObj, public Matrix {
+    TileMap(uint16_t gbAddr, uint8_t* p)
+        : Matrix(w, h)
+        , MemoryMappedObj(gbAddr, p, size)
     {}
 
-    uint8_t getTileId(uint8_t x, uint8_t y) const;
+    uint8_t getImpl(uint32_t x, uint32_t y) const override;
+    void setImpl(uint32_t x, uint32_t y, uint8_t val) override;
 
     static constexpr uint8_t w = 32;
     static constexpr uint8_t h = 32;
@@ -94,7 +102,7 @@ struct OAMAttr {
 
 
 struct OAMData : public MemoryMappedObj {
-    OAMData(uint16_t gbAddr, const uint8_t* p)
+    OAMData(uint16_t gbAddr, uint8_t* p)
         : MemoryMappedObj(gbAddr, p, size)
     {}
 
