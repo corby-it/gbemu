@@ -70,7 +70,7 @@ template<size_t Size>
 class LockableRam : public Ram<Size> {
 public:
     LockableRam(uint16_t startAddr = 0)
-        : Ram(startAddr)
+        : Ram<Size>(startAddr)
         , mLocked(false)
     {}
 
@@ -81,7 +81,7 @@ public:
         if (mLocked)
             return 0xFF;
 
-        return Ram::read8(addr);
+        return Ram<Size>::read8(addr);
     }
 
     virtual void write8(uint16_t addr, uint8_t val) override
@@ -89,7 +89,7 @@ public:
         if (mLocked)
             return;
 
-        Ram::write8(addr, val);
+        Ram<Size>::write8(addr, val);
     }
 
     void lock(bool l) { mLocked = l; }

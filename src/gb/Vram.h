@@ -63,8 +63,8 @@ struct ObjTileData : public Matrix {
 
 struct TileMap : public MemoryMappedObj, public Matrix {
     TileMap(uint16_t gbAddr, uint8_t* p)
-        : Matrix(w, h)
-        , MemoryMappedObj(gbAddr, p, size)
+        : MemoryMappedObj(gbAddr, p, size)
+        , Matrix(w, h)
     {}
 
     uint8_t getImpl(uint32_t x, uint32_t y) const override;

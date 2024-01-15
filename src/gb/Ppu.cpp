@@ -50,10 +50,10 @@ uint8_t STATReg::asU8() const
 void STATReg::fromU8(uint8_t b)
 {
     // PPU mode and lyc==ly are read-only
-    mode0IrqEnable = (b & 0x08) << 3;
-    mode1IrqEnable = (b & 0x10) << 4;
-    mode2IrqEnable = (b & 0x20) << 5;
-    lycIrqEnable = (b & 0x40) << 6;
+    mode0IrqEnable = (b & 0x08u) << 3;
+    mode1IrqEnable = (b & 0x10u) << 4;
+    mode2IrqEnable = (b & 0x20u) << 5;
+    lycIrqEnable = (b & 0x40u) << 6;
 }
 
 
