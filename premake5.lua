@@ -117,7 +117,7 @@ workspace(project_name)
 
 
     project(project_name)
-        kind "ConsoleApp"
+        kind "WindowedApp"
         language "C++"
         cppdialect "C++17"
         

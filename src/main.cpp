@@ -10,11 +10,39 @@
 
 #include "ui/App.h"
 
-// Main code
-int main(int /*argc*/, char** /*argv*/)
+
+int commonMain(int /*argc*/, char** /*argv*/)
 {
     App app;
     app.run();
 
     return 0;
 }
+
+
+#ifdef _WIN32
+
+int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
+    _In_opt_ HINSTANCE hPrevInstance,
+    _In_ LPWSTR    lpCmdLine,
+    _In_ int       nCmdShow)
+{
+    UNREFERENCED_PARAMETER(hInstance);
+    UNREFERENCED_PARAMETER(hPrevInstance);
+    UNREFERENCED_PARAMETER(lpCmdLine);
+    UNREFERENCED_PARAMETER(nCmdShow);
+
+    return commonMain(0, nullptr);
+}
+
+#endif // _WIN32
+
+
+#ifdef __linux__
+
+int main(int argc, char** argv)
+{
+    return commonMain(argc, argv);
+}
+
+#endif // __linux__
