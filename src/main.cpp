@@ -3,6 +3,7 @@
 #include <cstdio>
 
 
+
 // this is required to implement a test runner for doctest, otherwise it won't compile
 // in release mode everything will be stripped away
 #define DOCTEST_CONFIG_IMPLEMENT
@@ -32,7 +33,9 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     UNREFERENCED_PARAMETER(lpCmdLine);
     UNREFERENCED_PARAMETER(nCmdShow);
 
-    return commonMain(0, nullptr);
+    static char* fakeArgv[] = { "gbemu" };
+
+    return commonMain(1, fakeArgv);
 }
 
 #endif // _WIN32

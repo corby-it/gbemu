@@ -83,7 +83,7 @@ void PPURegs::reset()
     // from: https://gbdev.gg8.se/wiki/articles/Power_Up_Sequence
 
     LCDC.fromU8(0x91);
-    STAT.fromU8(0);
+    STAT.fromU8(0x00);
 
     SCY = 0;
     SCX = 0;
@@ -119,6 +119,10 @@ void PPU::reset()
     mDotCounter = 0;
 
     regs.reset();
+
+    // at reset update the STAT register to actually reflect the current
+    // status of the PPU
+    updateSTAT();
 }
 
 void PPU::step(uint16_t mCycles)
@@ -175,20 +179,9 @@ void PPU::step(uint16_t mCycles)
             }
         }
 
-        // update the current PPU mode
-        if (regs.LY >= 144) {
-            regs.STAT.ppuMode = PPUMode::VBlank;
-        }
-        else {
-            // TODO handle mode 3 length differences
-            if (mDotCounter < 80)
-                regs.STAT.ppuMode = PPUMode::OAMScan;
-            if (mDotCounter >= 80 && mDotCounter < 252)
-                regs.STAT.ppuMode = PPUMode::Draw;
-            if (mDotCounter >= 252)
-                regs.STAT.ppuMode = PPUMode::HBlank;
-        }
-
+        // updated the STAT register to reflect the current status of the PPU
+        updateSTAT();
+        
         // if we are in mode 3 we have to draw the corresponding pixels
         // if we are in a different mode there is nothing to do as OAM scan
         // is handled all at once at the beginning of a new line
@@ -216,4 +209,46 @@ void PPU::step(uint16_t mCycles)
         break;
     }
 
+}
+
+void PPU::OAMScan(std::array<OAMData, 10>& oams, size_t& count)
+{
+    // during the OAM scan phase the ppu checks which of the 40 possible OAMs
+    // should be drawn on the current line LY
+
+    // OAMs are scanned sequentially and up to 10 OAMs can be selected for each scanline
+
+    count = 0;
+
+    for (uint8_t id = 0; id < OAMRam::oamCount && count < 10; ++id) {
+        auto oam = mOamRam.getOAMData(id);
+
+        // yTop is the first line of the object
+        // yBottom is the first line AFTER the object
+        auto yTop = oam.y();
+        auto yBottom = oam.y() + (regs.LCDC.objDoubleH ? 16 : 8);
+
+        if (regs.LY >= yTop && regs.LY < yBottom) 
+            oams[count++] = oam;
+    }
+}
+
+void PPU::updateSTAT()
+{
+    // the first 3 bits of the STAT register are updated depending on the 
+    // internal status of the PPU
+    regs.STAT.lycEqual = (regs.LY == regs.LYC);
+
+    if (regs.LY >= 144) {
+        regs.STAT.ppuMode = PPUMode::VBlank;
+    }
+    else {
+        // TODO handle mode 3 length differences
+        if (mDotCounter < 80)
+            regs.STAT.ppuMode = PPUMode::OAMScan;
+        if (mDotCounter >= 80 && mDotCounter < 252)
+            regs.STAT.ppuMode = PPUMode::Draw;
+        if (mDotCounter >= 252)
+            regs.STAT.ppuMode = PPUMode::HBlank;
+    }
 }

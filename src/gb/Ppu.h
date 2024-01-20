@@ -7,23 +7,9 @@
 #include "Bus.h"
 #include "Vram.h"
 #include "GbCommons.h"
+#include <array>
 
 
-
-
-
-// ------------------------------------------------------------------------------------------------
-// Display
-// ------------------------------------------------------------------------------------------------
-
-class Display {
-public:
-
-
-private:
-
-
-};
 
 
 
@@ -184,6 +170,10 @@ public:
     uint32_t getDotCounter() const { return mDotCounter; }
 
 private:
+    void OAMScan(std::array<OAMData, 10>& oams, size_t& count);
+
+    void updateSTAT();
+
     Bus& mBus;
 
     uint32_t mDotCounter;

@@ -20,6 +20,11 @@ struct MemoryMappedObj {
 };
 
 
+
+// ------------------------------------------------------------------------------------------------
+// TileData
+// ------------------------------------------------------------------------------------------------
+
 struct TileData : public MemoryMappedObj, public Matrix {
     TileData(uint16_t gbAddr, uint8_t* p)
         : MemoryMappedObj(gbAddr, p, size)
@@ -29,16 +34,23 @@ struct TileData : public MemoryMappedObj, public Matrix {
     // the data for a tile is 16 bytes long, each tile is an 8x8 bitmap
     // where each pixel is 2 bits deep (8x8x2 = 128 bits = 16 bytes)
 
-    uint8_t getImpl(uint32_t x, uint32_t y) const override;
-    void setImpl(uint32_t x, uint32_t y, uint8_t val) override;
-
     static constexpr uint8_t w = 8;
     static constexpr uint8_t h = 8;
 
     static constexpr size_t size = 16;
+
+private:
+    uint8_t getImpl(uint32_t x, uint32_t y) const override;
+    void setImpl(uint32_t x, uint32_t y, uint8_t val) override;
+
 };
 
 
+
+
+// ------------------------------------------------------------------------------------------------
+// ObjTileData
+// ------------------------------------------------------------------------------------------------
 
 struct ObjTileData : public Matrix {
     ObjTileData(uint16_t gbAddr, uint8_t* p)
@@ -51,16 +63,23 @@ struct ObjTileData : public Matrix {
     // references here, the rest of the rendering logic will know when to use 
     // the additional tile
 
-    uint8_t getImpl(uint32_t x, uint32_t y) const override;
-    void setImpl(uint32_t x, uint32_t y, uint8_t val) override;
-
-
     TileData td;
     TileData tdh;
 
     static constexpr size_t size = TileData::size * 2;
+
+
+private:
+    uint8_t getImpl(uint32_t x, uint32_t y) const override;
+    void setImpl(uint32_t x, uint32_t y, uint8_t val) override;
+
 };
 
+
+
+// ------------------------------------------------------------------------------------------------
+// TileMap
+// ------------------------------------------------------------------------------------------------
 
 struct TileMap : public MemoryMappedObj, public Matrix {
     TileMap(uint16_t gbAddr, uint8_t* p)
@@ -68,18 +87,27 @@ struct TileMap : public MemoryMappedObj, public Matrix {
         , Matrix(w, h)
     {}
 
-    uint8_t getImpl(uint32_t x, uint32_t y) const override;
-    void setImpl(uint32_t x, uint32_t y, uint8_t val) override;
-
     void fillRgbBuffer(RgbBuffer& buf) const override;
+
 
     static constexpr uint8_t w = 32;
     static constexpr uint8_t h = 32;
 
     static constexpr size_t size = 1024;
+
+
+private:
+    uint8_t getImpl(uint32_t x, uint32_t y) const override;
+    void setImpl(uint32_t x, uint32_t y, uint8_t val) override;
+
 };
 
 
+
+
+// ------------------------------------------------------------------------------------------------
+// OAMAttr
+// ------------------------------------------------------------------------------------------------
 
 struct OAMAttr {
     // Display attributes for a an object
@@ -104,6 +132,11 @@ struct OAMAttr {
 };
 
 
+
+// ------------------------------------------------------------------------------------------------
+// OAMData
+// ------------------------------------------------------------------------------------------------
+
 struct OAMData : public MemoryMappedObj {
     OAMData(uint16_t gbAddr, uint8_t* p)
         : MemoryMappedObj(gbAddr, p, size)
@@ -118,6 +151,11 @@ struct OAMData : public MemoryMappedObj {
 };
 
 
+
+
+// ------------------------------------------------------------------------------------------------
+// VRam
+// ------------------------------------------------------------------------------------------------
 
 class VRam : public LockableRam<8 * 1024> {
 public:
@@ -134,16 +172,48 @@ private:
 };
 
 
+
+// ------------------------------------------------------------------------------------------------
+// OAMRam
+// ------------------------------------------------------------------------------------------------
+
 class OAMRam : public LockableRam<160> {
 public:
     OAMRam() : LockableRam(mmap::oam::start) {}
 
     OAMData getOAMData(uint8_t id) const;
 
+    static constexpr uint8_t oamCount = 40;
+
 private:
 
 
 };
+
+
+
+
+// ------------------------------------------------------------------------------------------------
+// Display
+// ------------------------------------------------------------------------------------------------
+
+class Display : public Matrix {
+public:
+    Display();
+
+
+    static constexpr uint8_t w = 160;
+    static constexpr uint8_t h = 144;
+
+private:
+    uint8_t getImpl(uint32_t x, uint32_t y) const override;
+    void setImpl(uint32_t x, uint32_t y, uint8_t val) override;
+
+
+    std::unique_ptr<uint8_t[]> mData;
+
+};
+
 
 
 

@@ -196,3 +196,21 @@ TEST_CASE("Test TileMap set() function")
     CHECK(tm.get(30, 30) == 11);
     CHECK(tm.get(31, 31) == 74);
 }
+
+
+TEST_CASE("Test Dispaly get/set functions")
+{
+    Display d;
+
+    d.set(0, 0, 0);
+    d.set(10, 10, 1);
+    d.set(50, 40, 2);
+    d.set(130, 100, 0);
+    d.set(159, 143, 3);
+
+    CHECK(d.get(0, 0) == 0);
+    CHECK(d.get(10, 10) == 1);
+    CHECK(d.get(50, 40) == 2);
+    CHECK(d.get(130, 100) == 0);
+    CHECK(d.get(159, 143) == 3);
+}

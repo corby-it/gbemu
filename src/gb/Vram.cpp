@@ -5,6 +5,10 @@
 
 
 
+// ------------------------------------------------------------------------------------------------
+// TileData
+// ------------------------------------------------------------------------------------------------
+
 uint8_t TileData::getImpl(uint32_t x, uint32_t y) const
 {
     // see https://gbdev.io/pandocs/Tile_Data.html for an explanation of 
@@ -39,6 +43,10 @@ void TileData::setImpl(uint32_t x, uint32_t y, uint8_t val)
 
 
 
+// ------------------------------------------------------------------------------------------------
+// ObjTileData
+// ------------------------------------------------------------------------------------------------
+
 uint8_t ObjTileData::getImpl(uint32_t x, uint32_t y) const
 {
     if (y >= TileData::h) {
@@ -64,6 +72,10 @@ void ObjTileData::setImpl(uint32_t x, uint32_t y, uint8_t val)
 
 
 
+// ------------------------------------------------------------------------------------------------
+// TileMap
+// ------------------------------------------------------------------------------------------------
+
 uint8_t TileMap::getImpl(uint32_t x, uint32_t y) const
 {
     // a tile map is a 32x32 grid where each cell contains the id of 
@@ -88,6 +100,10 @@ void TileMap::fillRgbBuffer(RgbBuffer& buf) const
 }
 
 
+
+// ------------------------------------------------------------------------------------------------
+// VRam
+// ------------------------------------------------------------------------------------------------
 
 ObjTileData VRam::getObjTile(uint8_t id, bool doubleHeight) const
 {
@@ -144,7 +160,9 @@ TileMap VRam::getTileMap(bool hi) const
 
 
 
-
+// ------------------------------------------------------------------------------------------------
+// OAMRam
+// ------------------------------------------------------------------------------------------------
 
 OAMData OAMRam::getOAMData(uint8_t id) const
 {
@@ -152,10 +170,41 @@ OAMData OAMRam::getOAMData(uint8_t id) const
     // each OAM record is 4-bytes long so we 40 OAM record that can be 
     // stored simultaneously
 
-    assert(id < 40);
+    assert(id < oamCount);
 
     uint16_t addr = mStartAddr + (id * OAMData::size);
 
     return OAMData(addr, getPtr(addr));
 }
+
+
+
+// ------------------------------------------------------------------------------------------------
+// Display
+// ------------------------------------------------------------------------------------------------
+
+Display::Display()
+    : Matrix(w, h)
+    , mData(std::make_unique<uint8_t[]>(w* h))
+{}
+
+
+uint8_t Display::getImpl(uint32_t x, uint32_t y) const
+{
+    assert(x < w);
+    assert(y < h);
+    return mData[y * w + x];
+}
+
+void Display::setImpl(uint32_t x, uint32_t y, uint8_t val)
+{
+    assert(x < w);
+    assert(y < h);
+    
+    if (val > 3)
+        val = 3;
+
+    mData[y * w + x] = val;
+}
+
 
