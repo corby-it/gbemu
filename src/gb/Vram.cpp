@@ -38,6 +38,7 @@ void TileData::setImpl(uint32_t x, uint32_t y, uint8_t val)
 
 
 
+
 uint8_t ObjTileData::getImpl(uint32_t x, uint32_t y) const
 {
     if (y >= TileData::h) {
@@ -63,7 +64,6 @@ void ObjTileData::setImpl(uint32_t x, uint32_t y, uint8_t val)
 
 
 
-
 uint8_t TileMap::getImpl(uint32_t x, uint32_t y) const
 {
     // a tile map is a 32x32 grid where each cell contains the id of 
@@ -75,6 +75,16 @@ uint8_t TileMap::getImpl(uint32_t x, uint32_t y) const
 void TileMap::setImpl(uint32_t x, uint32_t y, uint8_t val)
 {
     ptr[y * TileMap::w + x] = val;
+}
+
+void TileMap::fillRgbBuffer(RgbBuffer& buf) const
+{
+    for (uint32_t y = 0; y < mHeight; ++y) {
+        for (uint32_t x = 0; x < mWidth; ++x) {
+            auto val = get(x, y);
+            buf(x, y) = { val, val, val };
+        }
+    }
 }
 
 

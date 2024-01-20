@@ -17,10 +17,15 @@ public:
 
 
 private:
-    bool LoadTextureFromTile(const TileData tile, GLuint* out_texture);
 
-    uint8_t mData[TileData::size];
+    uint8_t mTileData[TileData::size];
     TileData mTile;
+
+    uint8_t mTileMapData[TileMap::size];
+    TileMap mMap;
+
+    RgbBuffer mTileRgbBuffer;
+    RgbBuffer mMapRgbBuffer;
 
 };
 

@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <cstring>
 #include <cassert>
+#include <memory>
 
 
 
@@ -14,14 +15,12 @@ class Ram {
 public:
     Ram(uint16_t startAddr = 0)
         : mStartAddr(startAddr)
+        , mData(std::make_unique<uint8_t[]>(Size))
     {
-        mData = new uint8_t[Size];
-        memset(mData, 0, Size);
+        memset(mData.get(), 0, Size);
     }
 
-    virtual ~Ram() {
-        delete[] mData;
-    }
+    virtual ~Ram() {}
 
     virtual uint8_t read8(uint16_t addr) const
     {
@@ -56,11 +55,11 @@ protected:
     {
         addr -= mStartAddr;
         assert(addr < Size);
-        return mData + addr;
+        return mData.get() + addr;
     }
 
     uint16_t mStartAddr;
-    uint8_t* mData;
+    std::unique_ptr<uint8_t[]> mData;
 
 };
 

@@ -54,6 +54,7 @@ struct ObjTileData : public Matrix {
     uint8_t getImpl(uint32_t x, uint32_t y) const override;
     void setImpl(uint32_t x, uint32_t y, uint8_t val) override;
 
+
     TileData td;
     TileData tdh;
 
@@ -69,6 +70,8 @@ struct TileMap : public MemoryMappedObj, public Matrix {
 
     uint8_t getImpl(uint32_t x, uint32_t y) const override;
     void setImpl(uint32_t x, uint32_t y, uint8_t val) override;
+
+    void fillRgbBuffer(RgbBuffer& buf) const override;
 
     static constexpr uint8_t w = 32;
     static constexpr uint8_t h = 32;

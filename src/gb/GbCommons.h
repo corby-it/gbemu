@@ -3,6 +3,9 @@
 #define GBEMU_SRC_GB_GBCOMMONS_H_
 
 #include <cstdint>
+#include <array>
+#include <memory>
+
 
 // the gb cpu actually runs at 4.194304 MHz but, since we are not counting actual clock
 // cycles but machine cycles (clock cycles / 4) we have to use the clock frequency
@@ -93,9 +96,73 @@ public:
 // Generic classes for matrix-like objects
 
 
+
+struct RgbPixel {
+
+    uint8_t R;
+    uint8_t G;
+    uint8_t B;
+};
+
+static constexpr RgbPixel grey0 = { 0, 0, 0 };
+static constexpr RgbPixel grey1 = { 85, 85, 85 };
+static constexpr RgbPixel grey2 = { 171, 171, 171 };
+static constexpr RgbPixel grey3 = { 255, 255, 255 };
+
+
+class RgbPixelRef {
+public:
+    RgbPixelRef(uint8_t* ptr)
+        : mPtr(ptr)
+    {}
+
+    uint8_t& R() { return mPtr[0]; }
+    uint8_t& G() { return mPtr[1]; }
+    uint8_t& B() { return mPtr[2]; }
+
+    RgbPixelRef& operator=(RgbPixel pix) {
+        mPtr[0] = pix.R;
+        mPtr[1] = pix.G;
+        mPtr[2] = pix.B;
+        return *this;
+    }
+
+private:
+    uint8_t* mPtr;
+
+};
+
+
+class RgbBuffer {
+public:
+    RgbBuffer(uint32_t w, uint32_t h)
+        : mWidth(w)
+        , mHeight(h)
+        , mSize(w* h * 3)
+        , mData(std::make_unique<uint8_t[]>(mSize))
+    {}
+
+    uint8_t* ptr() { return mData.get(); }
+    size_t size() const { return mSize; }
+
+    RgbPixelRef operator()(uint32_t x, uint32_t y)
+    {
+        x %= mWidth;
+        y %= mHeight;
+        return RgbPixelRef(ptr() + (y * mWidth * 3) + (x * 3));
+    }
+
+private:
+    const uint32_t mWidth;
+    const uint32_t mHeight;
+    const size_t mSize;
+    std::unique_ptr<uint8_t[]> mData;
+};
+
+
 class Matrix {
 public:
-    Matrix(uint8_t w, uint8_t h)
+    Matrix(uint32_t w, uint32_t h)
         : mWidth(w)
         , mHeight(h)
     {}
@@ -120,6 +187,20 @@ public:
     uint32_t height() const { return mHeight; }
 
 
+    virtual void fillRgbBuffer(RgbBuffer& buf) const
+    {
+        for (uint32_t y = 0; y < mHeight; ++y) {
+            for (uint32_t x = 0; x < mWidth; ++x) {
+                switch (get(x, y)) {
+                default:
+                case 0: buf(x, y) = grey0; break;
+                case 1: buf(x, y) = grey1; break;
+                case 2: buf(x, y) = grey2; break;
+                case 3: buf(x, y) = grey3; break;
+                }
+            }
+        }
+    }
     
 
 protected:
