@@ -22,24 +22,24 @@ struct LCDCReg : public RegU8 {
     // 0xFF40
     // LCDC - LCD Control register
     // This is the main LCD control register. Its bits toggle what elements are displayed on the screen, and how
+
     // bit  function
     // 0    BG and window enable/priority: if 0 both background and window are blank (white)
+    bool bgWinEnable;
     // 1    OBJ enable: if 0 objects are not rendered (can be changed mid scanline)
+    bool objEnable;
     // 2    OBJ size: if 0 objs are 8x8, if 1 objs are 8x16
+    bool objDoubleH;
     // 3    BG tile map area: if 0 tile map at 0x9800 will be used, if 1 tile map at 0x9C00 will be used
+    bool bgTileMapArea;
     // 4    BG and window tile data area: addressing mode for BG and window, if 1 address will start at 0x8000,
     //          if 0 addresses will start at 0x9000 and the tile ID will be signed
-    // 5    Window enable: if 0 the window will not be rendered
-    // 6    Window tile map area: if 0 tile map at 0x9800 will be used, if 1 tile map at 0x9C00 will be used
-    // 7    LCD enable: Enables or disable the LCD and the PPU, when disabled the screen is blank (white)
-
-    bool bgWinEnable;
-    bool objEnable;
-    bool objDoubleH;
-    bool bgTileMapArea;
     bool bgWinTileDataArea;
+    // 5    Window enable: if 0 the window will not be rendered
     bool winEnable;
+    // 6    Window tile map area: if 0 tile map at 0x9800 will be used, if 1 tile map at 0x9C00 will be used
     bool winTileMapArea;
+    // 7    LCD enable: Enables or disable the LCD and the PPU, when disabled the screen is blank (white)
     bool lcdEnable;
 
     uint8_t asU8() const override;
@@ -59,21 +59,21 @@ struct STATReg :public RegU8 {
     // 0xFF41
     // STAT - LCD Status register
     // this register contains the status of the lcd and ppu
+
     // bit  function
     // 0..1 PPU mode (read-only): contains the PPU current status (modes 0, 1, 2 or 3)
-    // 2    LYC == LY (read-only): true if the current value of LYC is equal to the value of LY
-    // 3    mode 0 interrupt selected: if set, selects mode 0 for interrupt triggering
-    // 4    mode 1 interrupt selected: if set, selects mode 1 for interrupt triggering
-    // 5    mode 2 interrupt selected: if set, selects mode 2 for interrupt triggering
-    // 6    LYC interrupt select: if set, selects LYC==LY for interrupt triggering
-    // 7    unused
-
     PPUMode ppuMode : 2;
+    // 2    LYC == LY (read-only): true if the current value of LYC is equal to the value of LY
     bool lycEqual;
+    // 3    mode 0 interrupt selected: if set, selects mode 0 for interrupt triggering
     bool mode0IrqEnable;
+    // 4    mode 1 interrupt selected: if set, selects mode 1 for interrupt triggering
     bool mode1IrqEnable;
+    // 5    mode 2 interrupt selected: if set, selects mode 2 for interrupt triggering
     bool mode2IrqEnable;
+    // 6    LYC interrupt select: if set, selects LYC==LY for interrupt triggering
     bool lycIrqEnable;
+    // 7    unused
 
     uint8_t asU8() const override;
     void fromU8(uint8_t b) override;
@@ -84,12 +84,12 @@ struct PaletteReg : public RegU8 {
     // this register assigns gray shades to the 3 possible colors for a pixel
     // bit  function
     // 0..1 Color ID 0
-    // 2..3 Color ID 1
-    // 4..5 Color ID 2
-    // 6..7 Color ID 3
     uint8_t id0 : 2;
+    // 2..3 Color ID 1
     uint8_t id1 : 2;
+    // 4..5 Color ID 2
     uint8_t id2 : 2;
+    // 6..7 Color ID 3
     uint8_t id3 : 2;
 
     uint8_t asU8() const override;
@@ -157,6 +157,16 @@ struct PPURegs {
 // PPU
 // ------------------------------------------------------------------------------------------------
 
+struct OAMRegister {
+    OAMRegister()
+        : count(0)
+    {}
+
+    std::array<OAMData, 10> oams;
+    size_t count;
+};
+
+
 class PPU {
 public:
     PPU(Bus& bus);
@@ -170,13 +180,18 @@ public:
     uint32_t getDotCounter() const { return mDotCounter; }
 
 private:
-    void OAMScan(std::array<OAMData, 10>& oams, size_t& count);
-
     void updateSTAT();
+    void oamScan();
+
+    void renderPixel(uint32_t dispX);
+    void renderPixelGetBgVal(uint32_t dispX, uint8_t& val);
+    bool renderPixelGetWinVal(uint32_t dispX, uint8_t& val);
+    bool renderPixelGetObjVal(uint32_t dispX, uint8_t& val);
 
     Bus& mBus;
 
     uint32_t mDotCounter;
+    OAMRegister mOamScanRegister;
 
     VRam mVram;
     OAMRam mOamRam;

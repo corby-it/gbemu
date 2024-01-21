@@ -174,9 +174,8 @@ void PPU::step(uint16_t mCycles)
             regs.LY = (regs.LY + 1) % 154;
 
             // at the beginning of a non-vblank new line the ppu enters mode 2 so we scan the OAM now
-            if (regs.LY < 144) {
-                // TODO actually do the OAM scan
-            }
+            if (regs.LY < 144) 
+                oamScan();
         }
 
         // updated the STAT register to reflect the current status of the PPU
@@ -185,8 +184,12 @@ void PPU::step(uint16_t mCycles)
         // if we are in mode 3 we have to draw the corresponding pixels
         // if we are in a different mode there is nothing to do as OAM scan
         // is handled all at once at the beginning of a new line
-        if (regs.STAT.ppuMode == PPUMode::Draw) {
-            // TODO handle drawing
+        // 
+        // the draw mode is 172 dots long, rendering starts after the first 12 dots
+        // during which the gpu fetches stuff, after that, the 160 screen dots are actually rendered
+        if (regs.STAT.ppuMode == PPUMode::Draw && mDotCounter >= 80 + 12) {
+            uint32_t currX = mDotCounter - (80 + 12);
+            renderPixel(currX);
         }
     }
 
@@ -211,28 +214,6 @@ void PPU::step(uint16_t mCycles)
 
 }
 
-void PPU::OAMScan(std::array<OAMData, 10>& oams, size_t& count)
-{
-    // during the OAM scan phase the ppu checks which of the 40 possible OAMs
-    // should be drawn on the current line LY
-
-    // OAMs are scanned sequentially and up to 10 OAMs can be selected for each scanline
-
-    count = 0;
-
-    for (uint8_t id = 0; id < OAMRam::oamCount && count < 10; ++id) {
-        auto oam = mOamRam.getOAMData(id);
-
-        // yTop is the first line of the object
-        // yBottom is the first line AFTER the object
-        auto yTop = oam.y();
-        auto yBottom = oam.y() + (regs.LCDC.objDoubleH ? 16 : 8);
-
-        if (regs.LY >= yTop && regs.LY < yBottom) 
-            oams[count++] = oam;
-    }
-}
-
 void PPU::updateSTAT()
 {
     // the first 3 bits of the STAT register are updated depending on the 
@@ -251,4 +232,99 @@ void PPU::updateSTAT()
         if (mDotCounter >= 252)
             regs.STAT.ppuMode = PPUMode::HBlank;
     }
+}
+
+void PPU::oamScan()
+{
+    // during the OAM scan phase the ppu checks which of the 40 possible OAMs
+    // should be drawn on the current line LY
+
+    // OAMs are scanned sequentially and up to 10 OAMs can be selected for each scanline
+
+    auto& count = mOamScanRegister.count;
+    auto& oams = mOamScanRegister.oams;
+
+    count = 0;
+
+    for (uint8_t id = 0; id < OAMRam::oamCount && count < oams.size(); ++id) {
+        auto oam = mOamRam.getOAMData(id);
+
+        // yTop is the first line of the object
+        // yBottom is the first line AFTER the object
+        auto yTop = oam.y();
+        auto yBottom = oam.y() + (regs.LCDC.objDoubleH ? 16 : 8);
+
+        if (regs.LY >= yTop && regs.LY < yBottom)
+            oams[count++] = oam;
+    }
+}
+
+void PPU::renderPixel(uint32_t dispX)
+{
+    uint8_t bgVal = 0;
+    renderPixelGetBgVal(dispX, bgVal);
+
+    uint8_t winVal = 0;
+    bool hasWindow = renderPixelGetWinVal(dispX, winVal);
+
+    uint8_t objVal = 0;
+    bool hasObj = renderPixelGetObjVal(dispX, objVal);
+
+    // TODO determine final pixel color
+    (void)hasWindow;
+    (void)hasObj;
+}
+
+void PPU::renderPixelGetBgVal(uint32_t dispX, uint8_t& val)
+{
+    // if bit 0 of the LCDC reg is false the background and window will be blank (white)
+    if (!regs.LCDC.bgWinEnable) {
+        val = 0;
+        return;
+    }
+
+    // we are rendering the display pixel with coordinates (dispX, dispY)
+    uint32_t dispY = regs.LY;
+
+    // the background is always displayed
+    // get the coordinates of the bg corresponding to the current display coordinates
+    uint32_t bgX = (dispX + regs.SCX) % 256;
+    uint32_t bgY = (dispY + regs.SCY) % 256;
+
+    // get the current background tile map
+    auto bgTileMap = mVram.getTileMap(regs.LCDC.bgTileMapArea);
+    // get the current tile id 
+    auto bgTileId = bgTileMap.get(bgX / 8, bgY / 8);
+    // get tile data
+    auto bgTile = mVram.getBgTile(bgTileId, regs.LCDC.bgWinTileDataArea);
+
+    val = bgTile.get(bgX % 8, bgY % 8);
+}
+
+bool PPU::renderPixelGetWinVal(uint32_t dispX, uint8_t& val)
+{
+    // if bit 0 of the LCDC reg is false the background and window will be blank (white)
+    // if bit 5 of the LCDC reg is false the window is disabled
+    if (!regs.LCDC.bgWinEnable || !regs.LCDC.winEnable) {
+        val = 0;
+        return false;
+    }
+
+    // check if the current display coordinate is inside the window
+    uint32_t dispY = regs.LY;
+
+    if (dispY < regs.WY || dispX < regs.WX) {
+        val = 0;
+        return false;
+    }
+
+    // TODO finish this
+
+
+    return true;
+}
+
+bool PPU::renderPixelGetObjVal(uint32_t /*currX*/, uint8_t& /*val*/)
+{
+    return true;
 }

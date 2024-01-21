@@ -138,6 +138,10 @@ struct OAMAttr {
 // ------------------------------------------------------------------------------------------------
 
 struct OAMData : public MemoryMappedObj {
+    OAMData()
+        : MemoryMappedObj(0, nullptr, size)
+    {}
+
     OAMData(uint16_t gbAddr, uint8_t* p)
         : MemoryMappedObj(gbAddr, p, size)
     {}
@@ -163,7 +167,7 @@ public:
 
 
     ObjTileData getObjTile(uint8_t id, bool doubleHeight) const;
-    TileData getBgTile(uint8_t id, bool hiMemArea, bool doubleHeight) const;
+    TileData getBgTile(uint8_t id, bool hiMemArea) const;
 
     TileMap getTileMap(bool hi) const;
 

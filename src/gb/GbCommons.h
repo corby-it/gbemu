@@ -193,10 +193,10 @@ public:
             for (uint32_t x = 0; x < mWidth; ++x) {
                 switch (get(x, y)) {
                 default:
-                case 0: buf(x, y) = grey0; break;
-                case 1: buf(x, y) = grey1; break;
-                case 2: buf(x, y) = grey2; break;
-                case 3: buf(x, y) = grey3; break;
+                case 0: buf(x, y) = grey3; break;
+                case 1: buf(x, y) = grey2; break;
+                case 2: buf(x, y) = grey1; break;
+                case 3: buf(x, y) = grey0; break;
                 }
             }
         }

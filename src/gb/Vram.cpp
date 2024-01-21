@@ -122,7 +122,7 @@ ObjTileData VRam::getObjTile(uint8_t id, bool doubleHeight) const
     return ObjTileData(addr, getPtr(addr));
 }
 
-TileData VRam::getBgTile(uint8_t id, bool hiMemArea, bool /*doubleHeight*/) const
+TileData VRam::getBgTile(uint8_t id, bool hiMemArea) const
 {
     // the location in VRAM of a background tile is determined by its id and the addressing
     // mode (bit 4 of the LCDC register):
