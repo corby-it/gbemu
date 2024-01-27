@@ -2,7 +2,7 @@
 
 #include "Vram.h"
 #include <cassert>
-
+#include <algorithm>
 
 
 // ------------------------------------------------------------------------------------------------
@@ -205,6 +205,12 @@ void Display::setImpl(uint32_t x, uint32_t y, uint8_t val)
         val = 3;
 
     mData[y * w + x] = val;
+}
+
+void Display::clear()
+{
+    // to clear the display we fill the memory with zeros (white)
+    std::fill(mData.get(), mData.get() + (w * h), 0);
 }
 
 

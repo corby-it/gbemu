@@ -83,17 +83,28 @@ struct STATReg :public RegU8 {
 struct PaletteReg : public RegU8 {
     // this register assigns gray shades to the 3 possible colors for a pixel
     // bit  function
-    // 0..1 Color ID 0
-    uint8_t id0 : 2;
-    // 2..3 Color ID 1
-    uint8_t id1 : 2;
-    // 4..5 Color ID 2
-    uint8_t id2 : 2;
-    // 6..7 Color ID 3
-    uint8_t id3 : 2;
+    // 0..1 Color value for color ID 0
+    uint8_t valForId0 : 2;
+    // 2..3 Color value for color ID 1
+    uint8_t valForId1 : 2;
+    // 4..5 Color value for color ID 2
+    uint8_t valForId2 : 2;
+    // 6..7 Color value for color ID 3
+    uint8_t valForId3 : 2;
 
     uint8_t asU8() const override;
     void fromU8(uint8_t b) override;
+
+    uint8_t id2val(uint8_t colorId)
+    {
+        switch (colorId) {
+        default:
+        case 0: return valForId0; 
+        case 1: return valForId1;
+        case 2: return valForId2;
+        case 3: return valForId3;
+        }
+    }
 };
 
 
@@ -162,7 +173,18 @@ struct OAMRegister {
         : count(0)
     {}
 
-    std::array<OAMData, 10> oams;
+    static constexpr size_t maxCount = 10;
+
+    void reset() {
+        count = 0;
+    }
+
+    void add(const OAMData& oam) {
+        if(count < maxCount)
+            oams[count++] = oam;
+    }
+
+    std::array<OAMData, maxCount> oams;
     size_t count;
 };
 
@@ -179,14 +201,41 @@ public:
 
     uint32_t getDotCounter() const { return mDotCounter; }
 
+    uint8_t readLCDC() const { return regs.LCDC.asU8(); }
+    uint8_t readSTAT() const { return regs.STAT.asU8(); }
+    uint8_t readSCY() const { return regs.SCY; }
+    uint8_t readSCX() const { return regs.SCX; }
+    uint8_t readLY() const { return regs.LY; }
+    uint8_t readLYC() const { return regs.LYC; }
+    uint8_t readBGP() const { return regs.BGP.asU8(); }
+    uint8_t readOBP0() const { return regs.OBP0.asU8(); }
+    uint8_t readOBP1() const { return regs.OBP1.asU8(); }
+    uint8_t readWY() const { return regs.WY; }
+    uint8_t readWX() const { return regs.WX; }
+
+    void writeLCDC(uint8_t val);
+    void writeSTAT(uint8_t val) { regs.STAT.fromU8(val); }
+    void writeSCY(uint8_t val) { regs.SCY = val; }
+    void writeSCX(uint8_t val) { regs.SCX = val; }
+    void writeLY(uint8_t /*val*/) { } // LY is read-only
+    void writeLYC(uint8_t val) { regs.LYC = val; }
+    void writeBGP(uint8_t val) { regs.BGP.fromU8(val); }
+    void writeOBP0(uint8_t val) { regs.OBP0.fromU8(val); }
+    void writeOBP1(uint8_t val) { regs.OBP1.fromU8(val); }
+    void writeWY(uint8_t val) { regs.WY = val; }
+    void writeWX(uint8_t val) { regs.WX = val; }
+
 private:
+
+
     void updateSTAT();
     void oamScan();
+    bool findCurrOam(OAMData& oam, uint32_t currX) const;
 
     void renderPixel(uint32_t dispX);
-    void renderPixelGetBgVal(uint32_t dispX, uint8_t& val);
-    bool renderPixelGetWinVal(uint32_t dispX, uint8_t& val);
-    bool renderPixelGetObjVal(uint32_t dispX, uint8_t& val);
+    uint8_t renderPixelGetBgVal(uint32_t dispX);
+    bool renderPixelGetWinVal(uint32_t dispX, uint8_t& colorId);
+    bool renderPixelGetObjVal(uint32_t dispX, uint8_t& colorId, bool& palette, bool& priority);
 
     Bus& mBus;
 
@@ -195,6 +244,7 @@ private:
 
     VRam mVram;
     OAMRam mOamRam;
+    Display mDisplay;
 
 };
 

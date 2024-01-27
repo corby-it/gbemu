@@ -148,9 +148,13 @@ struct OAMData : public MemoryMappedObj {
 
     static constexpr size_t size = 4;
 
+    // Y position of the object -16
     uint8_t y() const { return ptr[0]; }
+    // X position of the object -8
     uint8_t x() const { return ptr[1]; }
+    // ID of the object in the OAM memory
     uint8_t id() const { return ptr[2]; }
+    // Attributes
     OAMAttr attr() const { return OAMAttr(ptr[3]); }
 };
 
@@ -205,6 +209,7 @@ class Display : public Matrix {
 public:
     Display();
 
+    void clear();
 
     static constexpr uint8_t w = 160;
     static constexpr uint8_t h = 144;
