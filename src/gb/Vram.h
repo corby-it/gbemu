@@ -184,6 +184,16 @@ struct OAMData : public MemoryMappedObj {
     uint8_t& tileId() const { return ptr[2]; }
     // Attributes
     OAMAttr attr() const { return OAMAttr(gbAddr + 3, ptr + 3); }
+
+    bool isInside(uint32_t dispX, uint32_t dispY, bool doubleHeight = false) const 
+    {
+        int32_t xl = x() - 8;
+        int32_t xr = x();
+        int32_t yt = y() - 16;
+        int32_t yb = doubleHeight ? y() : y() - 8;
+
+        return (int32_t)dispX >= xl && (int32_t)dispX < xr && (int32_t)dispY >= yt && (int32_t)dispY < yb;
+    }
 };
 
 
@@ -199,7 +209,7 @@ public:
 
 
     ObjTileData getObjTile(uint8_t id, bool doubleHeight) const;
-    TileData getBgTile(uint8_t id, bool hiMemArea) const;
+    TileData getBgTile(uint8_t id, bool addressingMode) const;
 
     TileMap getTileMap(bool hi) const;
 

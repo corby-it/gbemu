@@ -119,7 +119,7 @@ TEST_CASE("PPU test OAM scan function")
     // check if we have the first 4 oams in the register
     auto& scanReg = p.getOamScanRegister();
 
-    CHECK(scanReg.size() == 4);
+    REQUIRE(scanReg.size() == 4);
     
     CHECK(scanReg[0].tileId() == 3);
     CHECK(scanReg[1].tileId() == 8);
@@ -130,9 +130,118 @@ TEST_CASE("PPU test OAM scan function")
     p.stepLine(100);
 
     // check if the current oams are correct
-    CHECK(scanReg.size() == 3);
+    REQUIRE(scanReg.size() == 3);
 
     CHECK(scanReg[0].tileId() == 6);
     CHECK(scanReg[1].tileId() == 19);
     CHECK(scanReg[2].tileId() == 30);
+}
+
+
+TEST_CASE("PPU test drawing functions")
+{
+    TestBus bus;
+    PPU p(bus);
+
+    // set all palettes to default so that color id corresponds to color value
+    p.regs.BGP.setToDefault();
+    p.regs.OBP0.setToDefault();
+    p.regs.OBP1.setToDefault();
+
+    // set the ppu to share the same vram area for both bg/win and objects
+    bool bgTileAreaFlag = true;
+    p.regs.LCDC.bgWinTileDataArea = bgTileAreaFlag;
+    p.regs.LCDC.objDoubleH = false;
+
+    uint8_t bgColor = 0;
+    uint8_t objColors[3] = { 1, 2, 3 };
+    
+    // background will use only one tile
+    auto bgTile = p.vram.getBgTile(0, bgTileAreaFlag);
+    for (uint32_t y = 0; y < TileData::h; ++y) {
+        for (uint32_t x = 0; x < TileData::w; ++x) {
+            bgTile.set(x, y, bgColor);
+        }
+    }
+
+    // setup object tiles
+    for (uint8_t i = 0; i < 3; i++) {
+        auto colorVal = objColors[i];
+        auto objTile = p.vram.getObjTile(i + 1, false);
+
+        for (uint32_t y = 0; y < TileData::h; ++y) {
+            for (uint32_t x = 0; x < TileData::w; ++x) {
+                objTile.set(x, y, colorVal);
+            }
+        }
+    }
+
+    // put all oams at the bottom of the screen (y = 160)
+    for (uint8_t i = 0; i < OAMRam::oamCount; ++i) {
+        auto oam = p.oamRam.getOAMData(i);
+
+        oam.tileId() = i;
+        oam.x() = 0;
+        oam.y() = 160;
+    }
+
+    std::vector<OAMData> objs = {
+        p.oamRam.getOAMData(0),
+        p.oamRam.getOAMData(1),
+        p.oamRam.getOAMData(2),
+    };
+
+    // put oam 0 at (30, 50) in the display
+    objs[0].x() = 58;
+    objs[0].y() = 46;
+    objs[0].tileId() = 1;
+
+    // put oam 1 at (2, 2) in the display
+    objs[1].x() = 10;
+    objs[1].y() = 18;
+    objs[1].tileId() = 2;
+
+    // put oam 2 at (100, 80) in the display
+    objs[2].x() = 108;
+    objs[2].y() = 96;
+    objs[2].tileId() = 3;
+
+    // draw one frame
+    p.stepFrame();
+
+    // check if the areas corresponding the objects are of the right color
+    auto checkObjDisplayArea = [&](OAMData& oam, uint8_t color) {
+        for (uint32_t y = oam.y() - 16; (int32_t)y < oam.y() - 8; ++y) {
+            for (uint32_t x = oam.x() - 8; x < oam.x(); ++x) {
+                if (p.display.get(x, y) != color)
+                    return false;
+            }
+        }
+        return true;
+    };
+
+    CHECK(checkObjDisplayArea(objs[0], objColors[0]));
+    CHECK(checkObjDisplayArea(objs[1], objColors[1]));
+    CHECK(checkObjDisplayArea(objs[2], objColors[2]));
+
+    // check if the background is of the right color
+    auto checkBgDisplayArea = [&]() {
+        for (uint32_t y = 0; y < Display::h; ++y) {
+            for (uint32_t x = 0; x < Display::w; ++x) {
+                bool insideObj = false;
+                for (const auto& obj : objs) {
+                    if (obj.isInside(x, y)) {
+                        insideObj = true;
+                        break;
+                    }
+                }
+
+                if (!insideObj && p.display.get(x, y) != bgColor)
+                    return false;
+            }
+        }
+        return true;
+    };
+
+    CHECK(checkBgDisplayArea());
 }

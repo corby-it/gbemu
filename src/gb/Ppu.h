@@ -105,6 +105,24 @@ struct PaletteReg : public RegU8 {
         case 3: return valForId3;
         }
     }
+
+    void setValForId(uint8_t colorId, uint8_t val)
+    {
+        switch (colorId) {
+        default:
+        case 0: valForId0 = val; break;
+        case 1: valForId1 = val; break;
+        case 2: valForId2 = val; break;
+        case 3: valForId3 = val; break;
+        }
+    }
+
+    void setToDefault() {
+        valForId0 = 0;
+        valForId1 = 1;
+        valForId2 = 2;
+        valForId3 = 3;
+    }
 };
 
 
@@ -209,6 +227,7 @@ public:
 
     void step(uint32_t mCycles);
     void stepLine(uint32_t n = 1);
+    void stepFrame(uint32_t n = 1);
 
     uint32_t getDotCounter() const { return mDotCounter; }
     const OAMRegister& getOamScanRegister() const { return mOamScanRegister; }

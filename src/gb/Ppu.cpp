@@ -141,6 +141,14 @@ void PPU::stepLine(uint32_t n)
     }
 }
 
+void PPU::stepFrame(uint32_t n)
+{
+    // step to the next frame(s)
+    while (n--) {
+        stepLine(154 - regs.LY);
+    }
+}
+
 
 void PPU::step(uint32_t mCycles)
 {

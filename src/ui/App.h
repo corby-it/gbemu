@@ -4,7 +4,7 @@
 
 
 #include "AppBase.h"
-#include "gb/Vram.h"
+#include "gb/Ppu.h"
 
 
 class App : public AppBase {
@@ -18,14 +18,10 @@ public:
 
 private:
 
-    uint8_t mTileData[TileData::size];
-    TileData mTile;
+    TestBus bus;
+    PPU p;
 
-    uint8_t mTileMapData[TileMap::size];
-    TileMap mMap;
-
-    RgbBuffer mTileRgbBuffer;
-    RgbBuffer mMapRgbBuffer;
+    RgbBuffer mDisplayBuffer;
 
 };
 

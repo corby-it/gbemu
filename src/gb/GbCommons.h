@@ -98,16 +98,15 @@ public:
 
 
 struct RgbPixel {
-
     uint8_t R;
     uint8_t G;
     uint8_t B;
 };
 
-static constexpr RgbPixel grey0 = { 0, 0, 0 };
-static constexpr RgbPixel grey1 = { 85, 85, 85 };
-static constexpr RgbPixel grey2 = { 171, 171, 171 };
-static constexpr RgbPixel grey3 = { 255, 255, 255 };
+static constexpr RgbPixel black = { 0, 0, 0 };
+static constexpr RgbPixel darkGrey = { 120, 120, 120 };
+static constexpr RgbPixel lightGrey = { 200, 200, 200 };
+static constexpr RgbPixel white = { 255, 255, 255 };
 
 
 class RgbPixelRef {
@@ -138,7 +137,7 @@ public:
     RgbBuffer(uint32_t w, uint32_t h)
         : mWidth(w)
         , mHeight(h)
-        , mSize(w* h * 3)
+        , mSize(w * h * 3)
         , mData(std::make_unique<uint8_t[]>(mSize))
     {}
 
@@ -193,10 +192,10 @@ public:
             for (uint32_t x = 0; x < mWidth; ++x) {
                 switch (get(x, y)) {
                 default:
-                case 0: buf(x, y) = grey3; break;
-                case 1: buf(x, y) = grey2; break;
-                case 2: buf(x, y) = grey1; break;
-                case 3: buf(x, y) = grey0; break;
+                case 0: buf(x, y) = white; break;
+                case 1: buf(x, y) = lightGrey; break;
+                case 2: buf(x, y) = darkGrey; break;
+                case 3: buf(x, y) = black; break;
                 }
             }
         }

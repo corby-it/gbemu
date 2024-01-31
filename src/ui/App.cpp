@@ -3,27 +3,71 @@
 
 
 App::App()
-    : mTileData{ 
-        0xFF, 0x00,
-        0x7E, 0xFF,
-        0x85, 0x81,
-        0x89, 0x83,
-        0x93, 0x85,
-        0xA5, 0x8B,
-        0xC9, 0x97,
-        0x7E, 0xFF }
-    , mTile(0x2222, mTileData)
-    , mTileMapData{ 0 }
-    , mMap(0x2222, mTileMapData)
-    , mTileRgbBuffer(TileData::w, TileData::h)
-    , mMapRgbBuffer(TileMap::w, TileMap::h)
+    : p(bus)
+    , mDisplayBuffer(Display::w, Display::h)
 {
-    uint32_t i = 0;
-    for (uint32_t y = 0; y < mMap.h; ++y) {
-        for (uint32_t x = 0; x < mMap.w; ++x) {
-            mTileMapData[i++] = i % 256;
+    // set all palettes to default so that color id corresponds to color value
+    p.regs.BGP.setToDefault();
+    p.regs.OBP0.setToDefault();
+    p.regs.OBP1.setToDefault();
+
+    // set the ppu to share the same vram area for both bg/win and objects
+    bool bgTileAreaFlag = true;
+    p.regs.LCDC.bgWinTileDataArea = bgTileAreaFlag;
+    p.regs.LCDC.objDoubleH = false;
+
+    uint8_t bgColor = 0;
+    uint8_t objColors[3] = { 1, 2, 3 };
+
+    // background will use only one tile
+    auto bgTile = p.vram.getBgTile(0, bgTileAreaFlag);
+    for (uint32_t y = 0; y < TileData::h; ++y) {
+        for (uint32_t x = 0; x < TileData::w; ++x) {
+            bgTile.set(x, y, bgColor);
         }
     }
+
+    // setup object tiles
+    for (uint8_t i = 0; i < 3; i++) {
+        auto colorVal = objColors[i];
+        auto objTile = p.vram.getObjTile(i + 1, false);
+
+        for (uint32_t y = 0; y < TileData::h; ++y) {
+            for (uint32_t x = 0; x < TileData::w; ++x) {
+                objTile.set(x, y, colorVal);
+            }
+        }
+    }
+
+    // put all oams at the bottom of the screen (y = 160)
+    for (uint8_t i = 0; i < OAMRam::oamCount; ++i) {
+        auto oam = p.oamRam.getOAMData(i);
+
+        oam.tileId() = i;
+        oam.x() = 0;
+        oam.y() = 160;
+    }
+
+    // put oam 0 at (30, 50) in the display
+    auto obj1Data = p.oamRam.getOAMData(0);
+    obj1Data.x() = 58;
+    obj1Data.y() = 46;
+    obj1Data.tileId() = 1;
+
+    // put oam 1 at (2, 2) in the display
+    auto obj2Data = p.oamRam.getOAMData(1);
+    obj2Data.x() = 10;
+    obj2Data.y() = 18;
+    obj2Data.tileId() = 2;
+
+    // put oam 2 at (100, 80) in the display
+    auto obj3Data = p.oamRam.getOAMData(2);
+    obj3Data.x() = 108;
+    obj3Data.y() = 96;
+    obj3Data.tileId() = 3;
+
+    // draw one frame
+    p.stepFrame();
 }
 
 
@@ -57,19 +101,13 @@ bool LoadTextureFromMatrix(const Matrix& mat, GLuint* out_texture, RgbBuffer& bu
 
 void App::update()
 {
-    GLuint tileTexture, mapTexture;
-    LoadTextureFromMatrix(mTile, &tileTexture, mTileRgbBuffer);
-    LoadTextureFromMatrix(mMap, &mapTexture, mMapRgbBuffer);
+    GLuint displayTexture;
+    LoadTextureFromMatrix(p.display, &displayTexture, mDisplayBuffer);
 
 
-    ImGui::Begin("TileData display");
-    ImGui::Text("size: %ux%u", TileData::w, TileData::h);
-    ImGui::Image((void*)(intptr_t)tileTexture, ImVec2(256, 256));
-    ImGui::End();
-
-    ImGui::Begin("TileMap display");
-    ImGui::Text("size: %ux%u", TileMap::w, TileMap::h);
-    ImGui::Image((void*)(intptr_t)mapTexture, ImVec2(256, 256));
+    ImGui::Begin("GB Display");
+    ImGui::Text("size: %ux%u", p.display.width(), p.display.height());
+    ImGui::Image((void*)(intptr_t)displayTexture, ImVec2(640, 576));
     ImGui::End();
 
 }

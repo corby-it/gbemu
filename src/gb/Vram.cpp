@@ -122,21 +122,23 @@ ObjTileData VRam::getObjTile(uint8_t id, bool doubleHeight) const
     return ObjTileData(addr, getPtr(addr));
 }
 
-TileData VRam::getBgTile(uint8_t id, bool hiMemArea) const
+TileData VRam::getBgTile(uint8_t id, bool addressingMode) const
 {
     // the location in VRAM of a background tile is determined by its id and the addressing
     // mode (bit 4 of the LCDC register):
-    // - when the bit is 0 the location is 0x8000 + (id * 16), the range is 0x8000 - 0x8FFF
-    // - when the bit is 1 the location is 0x9000 + ((int8)id * 16), the range is 0x8800 - 0x97FF 
+    // - when the bit is 1 the location is 0x8000 + (id * 16), the range is 0x8000 - 0x8FFF
+    //      and bg/win tiles completely share the same address space as that of obj tiles
+    // - when the bit is 0 the location is 0x9000 + ((int8)id * 16), the range is 0x8800 - 0x97FF 
+    //      and bg/win tiles share the only half address space with obj tiles
 
     // background and window tiles can't be 8x16, only 8x8
 
     uint16_t addr;
 
-    if (hiMemArea) 
-        addr = (mStartAddr + 0x1000) + ((int8_t)id * 16);
-    else 
+    if (addressingMode)
         addr = mStartAddr + id * 16;
+    else 
+        addr = (mStartAddr + 0x1000) + ((int8_t)id * 16);
 
     return TileData(addr, getPtr(addr));
 }
