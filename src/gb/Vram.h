@@ -109,7 +109,7 @@ private:
 // OAMAttr
 // ------------------------------------------------------------------------------------------------
 
-struct OAMAttr {
+struct OAMAttr : public MemoryMappedObj {
     // Display attributes for a an object
     // bit  function
     // 0..2 CGB palette: CGB-only
@@ -121,14 +121,45 @@ struct OAMAttr {
     // 7    priority:   0 = no
     //                  1 = BG and window colors 1 to 3 are drawn over this object
 
-    OAMAttr(uint8_t val) : val(val) {}
+    OAMAttr(uint16_t gbAddr, uint8_t* p)
+        : MemoryMappedObj(gbAddr, p, size)
+    {}
 
-    bool dmgPalette() { return (val & 0x10) >> 4; }
-    bool hFlip() { return (val & 0x20) >> 5; }
-    bool vFlip() { return (val & 0x40) >> 6; }
-    bool priority() { return (val & 0x80) >> 7; }
+    static constexpr size_t size = 1;
 
-    uint8_t val;
+
+    bool dmgPalette() { return (*ptr & 0x10) >> 4; }
+    bool hFlip() { return (*ptr & 0x20) >> 5; }
+    bool vFlip() { return (*ptr & 0x40) >> 6; }
+    bool priority() { return (*ptr & 0x80) >> 7; }
+
+    void setDmgPalette(bool val) {
+        if (val)
+            *ptr |= 0x10;
+        else 
+            *ptr &= ~0x10;
+    }
+
+    void setHFlip(bool val) {
+        if (val)
+            *ptr |= 0x20;
+        else
+            *ptr &= ~0x20;
+    }
+
+    void setVFlip(bool val) {
+        if (val)
+            *ptr |= 0x40;
+        else
+            *ptr &= ~0x40;
+    }
+
+    void setPriority(bool val) {
+        if (val)
+            *ptr |= 0x80;
+        else
+            *ptr &= ~0x80;
+    }
 };
 
 
@@ -138,9 +169,6 @@ struct OAMAttr {
 // ------------------------------------------------------------------------------------------------
 
 struct OAMData : public MemoryMappedObj {
-    OAMData()
-        : MemoryMappedObj(0, nullptr, size)
-    {}
 
     OAMData(uint16_t gbAddr, uint8_t* p)
         : MemoryMappedObj(gbAddr, p, size)
@@ -149,13 +177,13 @@ struct OAMData : public MemoryMappedObj {
     static constexpr size_t size = 4;
 
     // Y position of the object -16
-    uint8_t y() const { return ptr[0]; }
+    uint8_t& y() const { return ptr[0]; }
     // X position of the object -8
-    uint8_t x() const { return ptr[1]; }
-    // ID of the object in the OAM memory
-    uint8_t id() const { return ptr[2]; }
+    uint8_t& x() const { return ptr[1]; }
+    // tile ID associated with this object 
+    uint8_t& tileId() const { return ptr[2]; }
     // Attributes
-    OAMAttr attr() const { return OAMAttr(ptr[3]); }
+    OAMAttr attr() const { return OAMAttr(gbAddr + 3, ptr + 3); }
 };
 
 

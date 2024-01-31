@@ -117,17 +117,32 @@ PPU::PPU(Bus& bus)
 void PPU::reset()
 {
     mDotCounter = 0;
+    mOamScanRegister.reset();
+    mFirstStep = true;
 
     regs.reset();
 
-    mDisplay.clear();
+    display.clear();
     
     // at reset update the STAT register to actually reflect the current
     // status of the PPU
     updateSTAT();
+
+    // lock ram to correctly reflect the current ppu mode and the lcd enable status
+    lockRamAreas(regs.LCDC.lcdEnable);
 }
 
-void PPU::step(uint16_t mCycles)
+
+void PPU::stepLine(uint32_t n)
+{
+    // step to the next line(s)
+    while (n--) {
+        step((456 - mDotCounter) / 4);
+    }
+}
+
+
+void PPU::step(uint32_t mCycles)
 {
     // the PPU goes through a cycle of its own, separate from that of the CPU.
     // it draws 153 lines, top to bottom and left to right, from line 0 to 143 it 
@@ -159,64 +174,53 @@ void PPU::step(uint16_t mCycles)
     
     // mDotCounter counts the dots for the current line while the LY register counts the lines,
     // each line has 456 dots
+    
+    // do nothing if the lcd and ppu are not enabled 
+    if(regs.LCDC.lcdEnable) {
 
-    if (!regs.LCDC.lcdEnable)
-        return;
+        // before doing anything we have to unlock the memory, the PPU can always access it
+        lockRamAreas(false);
 
-    // before doing anything we have to unlock the memory, the PPU can always access it
-    mOamRam.lock(false);
-    mVram.lock(false);
+        // since the last call 'cCycles' have passed, act accordingly
+        uint32_t cCycles = mCycles * 4;
 
-    // since the last call 'cCycles' have passed, act accordingly
-    uint32_t cCycles = mCycles * 4;
+        while (cCycles--) {
+            mDotCounter = (mDotCounter + 1) % 456;
 
-    while (cCycles--) {
-        mDotCounter = (mDotCounter + 1) % 456;
+            if (mDotCounter == 0) {
+                // if the new value of the dot counter is zero it means it wrapped around 
+                // and a new line just started
+                regs.LY = (regs.LY + 1) % 154;
 
-        if (mDotCounter == 0) {
-            // if the new value of the dot counter is zero it means it wrapped around 
-            // and a new line just started
-            regs.LY = (regs.LY + 1) % 154;
-
-            // at the beginning of a non-vblank new line the ppu enters mode 2 so we scan the OAM now
-            if (regs.LY < 144) 
+                // at the beginning of a non-vblank new line the ppu enters mode 2 so we scan the OAM now
+                if (regs.LY < 144) 
+                    oamScan();
+            }
+            if (mFirstStep) {
+                mFirstStep = false;
                 oamScan();
-        }
+            }
 
-        // updated the STAT register to reflect the current status of the PPU
-        updateSTAT();
+            // updated the STAT register to reflect the current status of the PPU
+            updateSTAT();
         
-        // if we are in mode 3 we have to draw the corresponding pixels
-        // if we are in a different mode there is nothing to do as OAM scan
-        // is handled all at once at the beginning of a new line
-        // 
-        // the draw mode is 172 dots long, rendering starts after the first 12 dots
-        // during which the gpu fetches stuff, after that, the 160 screen dots are actually rendered
-        if (regs.STAT.ppuMode == PPUMode::Draw && mDotCounter >= 80 + 12) {
-            uint32_t currX = mDotCounter - (80 + 12);
-            renderPixel(currX);
+            // if we are in mode 3 we have to draw the corresponding pixels
+            // if we are in a different mode there is nothing to do as OAM scan
+            // is handled all at once at the beginning of a new line
+            // 
+            // the draw mode is 172 dots long, rendering starts after the first 12 dots
+            // during which the gpu fetches stuff, after that, the 160 screen dots are actually rendered
+            if (regs.STAT.ppuMode == PPUMode::Draw && mDotCounter >= 80 + 12) {
+                uint32_t currX = mDotCounter - (80 + 12);
+                renderPixel(currX);
+            }
         }
     }
 
     // before returning control to the main loop we have to lock 
     // or unlock video related memory depending on the current PPU mode
-    switch (regs.STAT.ppuMode) {
-    default:
-    case PPUMode::HBlank:
-    case PPUMode::VBlank:
-        mOamRam.lock(false);
-        mVram.lock(false);
-        break;
-    case PPUMode::OAMScan:
-        mOamRam.lock(true);
-        mVram.lock(false);
-        break;
-    case PPUMode::Draw:
-        mOamRam.lock(true);
-        mVram.lock(true);
-        break;
-    }
-
+    // and on the lcd enable flag
+    lockRamAreas(regs.LCDC.lcdEnable);
 }
 
 void PPU::writeLCDC(uint8_t val)
@@ -229,7 +233,34 @@ void PPU::writeLCDC(uint8_t val)
     // when lcd enable will go back to true, everything will start working again
     // using the step() function
     if (old.lcdEnable && !regs.LCDC.lcdEnable)
-        reset();
+        onDisabled();
+}
+
+void PPU::lockRamAreas(bool lock)
+{
+    if (lock) {
+        // ram areas are lock depending on the current ppu mode
+        switch (regs.STAT.ppuMode) {
+        default:
+        case PPUMode::HBlank:
+        case PPUMode::VBlank:
+            oamRam.lock(false);
+            vram.lock(false);
+            break;
+        case PPUMode::OAMScan:
+            oamRam.lock(true);
+            vram.lock(false);
+            break;
+        case PPUMode::Draw:
+            oamRam.lock(true);
+            vram.lock(true);
+            break;
+        }
+    }
+    else {
+        oamRam.lock(false);
+        vram.lock(false);
+    }
 }
 
 void PPU::updateSTAT()
@@ -265,7 +296,7 @@ void PPU::oamScan()
     int32_t currY = regs.LY;
 
     for (uint8_t id = 0; id < OAMRam::oamCount; ++id) {
-        auto oam = mOamRam.getOAMData(id);
+        auto oam = oamRam.getOAMData(id);
 
         int32_t objY = oam.y() - 16;
 
@@ -281,31 +312,33 @@ void PPU::oamScan()
 
 
 
-static bool oamEqualX(const OAMData& lhs, const OAMData& rhs)
+static bool oamEqualX(const OAMData* lhs, const OAMData* rhs)
 {
-    return lhs.x() == rhs.x();
+    return lhs->x() == rhs->x();
 }
 
-static bool oamCompareId(const OAMData& lhs, const OAMData& rhs)
+static bool oamCompareTileId(const OAMData* lhs, const OAMData* rhs)
 {
-    return lhs.id() < rhs.id();
+    return lhs->tileId() < rhs->tileId();
 }
 
-static bool oamCompareX(const OAMData& lhs, const OAMData& rhs)
+static bool oamCompareX(const OAMData* lhs, const OAMData* rhs)
 {
-    return lhs.x() < rhs.x();
+    return lhs->x() < rhs->x();
 }
 
 
-bool PPU::findCurrOam(OAMData& oam, uint32_t currX) const
+const OAMData* PPU::findCurrOam(uint32_t currX) const
 {
-    // we scan the register to find if we have an object whose x-range corresponds the
+    // we scan the register to find if we have objects whose x-range corresponds the
     // the currX position of the screen
    
-    OAMRegister reg;
+    const OAMData* reg[OAMRegister::maxCount] = { nullptr };
+    size_t count = 0;
 
-    for (size_t i = 0; i < mOamScanRegister.count; ++i) {
-        auto& currOam = mOamScanRegister.oams[i];
+
+    for (size_t i = 0; i < mOamScanRegister.size(); ++i) {
+        auto& currOam = mOamScanRegister[i];
 
         int32_t objX = currOam.x() - 8;
 
@@ -313,17 +346,16 @@ bool PPU::findCurrOam(OAMData& oam, uint32_t currX) const
         auto xRight = objX + 8;
 
         if ((int32_t)currX >= xLeft && (int32_t)currX < xRight)
-            reg.add(currOam);
+            reg[count++] = &currOam;
     }
 
-    if (reg.count == 0) {
+    if (count == 0) {
         // no objects found
-        return false;
+        return nullptr;
     }
-    else if (reg.count == 1) {
+    else if (count == 1) {
         // only 1 object found
-        oam = reg.oams[0];
-        return true;
+        return reg[0];
     }
     else {
         // multiple objects found
@@ -331,11 +363,23 @@ bool PPU::findCurrOam(OAMData& oam, uint32_t currX) const
         // - if objects have different X coordinates: priority is given to the one with the lowest X
         // - if objects have the same X coordinates: priority is given to the one with the lowest ID
 
-        bool allSameX = std::equal(reg.oams.begin() + 1, reg.oams.begin() + reg.count, reg.oams.begin(), oamEqualX);
+        bool allSameX = std::equal(reg + 1, reg + count, reg, oamEqualX);
 
-        oam = *std::min_element(reg.oams.begin(), reg.oams.begin() + reg.count, allSameX ? oamCompareId : oamCompareX);
-        return true;
+        return *std::min_element(reg, reg + count, allSameX ? oamCompareTileId : oamCompareX);
     }
+}
+
+void PPU::onDisabled()
+{
+    // when the ppu and lcd are disabled we have to unlock all ram areas, reset the internals,
+    // registers won't be touched
+    mDotCounter = 0;
+    mOamScanRegister.reset();
+    mFirstStep = true;
+
+    display.clear();
+
+    updateSTAT();
 }
 
 void PPU::renderPixel(uint32_t dispX)
@@ -361,22 +405,21 @@ void PPU::renderPixel(uint32_t dispX)
 
     if (!hasObj) {
         // if there is no object in this pixel we draw the bg pixel
-        mDisplay.set(dispX, regs.LY, bgColorVal);
+        display.set(dispX, regs.LY, bgColorVal);
     }
     else {
-        // if we have an object we draw the object pixel value unless:
-        // - if priority is 1 we draw the object pixel only if the background is 0 (that is,
-        //      consider a white background (value 0) as transparent)
-        // - if the object color value is 0 (white) its considered transparent
-
+        // if we have an object we draw the object pixel over the background unless the object 
+        // pixel has color 0 (white) which means transparent
+        // the object priority bit, if true, inverts this behavior, that is: we draw the background pixel
+        // over the object unless the background has color 0, which means transparent
+        
         auto& obp = objPalette ? regs.OBP1 : regs.OBP0;
         auto objColorVal = obp.id2val(objColorId);
 
-        // the object priority basically inverts how background and object pixels values behave
         if (objPriority)
-            mDisplay.set(dispX, regs.LY, bgColorVal == 0 ? objColorVal : bgColorVal);
+            display.set(dispX, regs.LY, bgColorVal == 0 ? objColorVal : bgColorVal);
         else 
-            mDisplay.set(dispX, regs.LY, objColorVal == 0 ? bgColorVal : objColorVal);
+            display.set(dispX, regs.LY, objColorVal == 0 ? bgColorVal : objColorVal);
     }
 }
 
@@ -394,11 +437,11 @@ uint8_t PPU::renderPixelGetBgVal(uint32_t dispX)
     uint32_t bgY = (dispY + regs.SCY) % 256;
         
     // get the current background tile map
-    auto bgTileMap = mVram.getTileMap(regs.LCDC.bgTileMapArea);
+    auto bgTileMap = vram.getTileMap(regs.LCDC.bgTileMapArea);
     // get the current tile id 
     auto bgTileId = bgTileMap.get(bgX / 8, bgY / 8);
     // get tile data
-    auto bgTile = mVram.getBgTile(bgTileId, regs.LCDC.bgWinTileDataArea);
+    auto bgTile = vram.getBgTile(bgTileId, regs.LCDC.bgWinTileDataArea);
 
     return bgTile.get(bgX % 8, bgY % 8);
 }
@@ -425,11 +468,11 @@ bool PPU::renderPixelGetWinVal(uint32_t dispX, uint8_t& colorId)
     uint32_t bgY = dispY - regs.WY;
 
     // get the current background tile map
-    auto bgTileMap = mVram.getTileMap(regs.LCDC.winTileMapArea);
+    auto bgTileMap = vram.getTileMap(regs.LCDC.winTileMapArea);
     // get the current tile id 
     auto bgTileId = bgTileMap.get(bgX / 8, bgY / 8);
     // get tile data
-    auto bgTile = mVram.getBgTile(bgTileId, regs.LCDC.bgWinTileDataArea);
+    auto bgTile = vram.getBgTile(bgTileId, regs.LCDC.bgWinTileDataArea);
 
     colorId = bgTile.get(bgX % 8, bgY % 8);
 
@@ -442,32 +485,33 @@ bool PPU::renderPixelGetObjVal(uint32_t currX, uint8_t& colorId, bool& palette, 
     // object we have to extract color data
 
     // get the object involved in the current pixel
-    OAMData oam;
-    if (!findCurrOam(oam, currX)) {
+    auto oam = findCurrOam(currX);
+    if (!oam) {
         // no object is involved in the current pixel
         colorId = 0;
         return false;
     }
 
     // TODO check signed/unsigned math
+    auto oamAttr = oam->attr();
 
     // find coordinates inside the object
-    uint32_t objX = currX - (oam.x() - 8);
-    uint32_t objY = regs.LY - (oam.y() - 16);
+    uint32_t objX = currX - (oam->x() - 8);
+    uint32_t objY = regs.LY - (oam->y() - 16);
 
     // flip x and y coordinates if needed
-    if (oam.attr().hFlip())
+    if (oamAttr.hFlip())
         objX = 7 - objX;
 
-    if (oam.attr().vFlip())
+    if (oamAttr.vFlip())
         objY = (regs.LCDC.objDoubleH ? 15 : 7) - objY;
 
     // get tile data from vram
-    auto tile = mVram.getObjTile(oam.id(), regs.LCDC.objDoubleH);
+    auto tile = vram.getObjTile(oam->tileId(), regs.LCDC.objDoubleH);
 
     colorId = tile.get(objX, objY);
-    palette = oam.attr().dmgPalette();
-    priority = oam.attr().priority();
+    palette = oamAttr.dmgPalette();
+    priority = oamAttr.priority();
 
     return true;
 }

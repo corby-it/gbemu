@@ -7,7 +7,7 @@
 #include "Bus.h"
 #include "Vram.h"
 #include "GbCommons.h"
-#include <array>
+#include <vector>
 
 
 
@@ -169,23 +169,35 @@ struct PPURegs {
 // ------------------------------------------------------------------------------------------------
 
 struct OAMRegister {
-    OAMRegister()
-        : count(0)
-    {}
+    OAMRegister() {
+        oams.reserve(maxCount);
+    }
 
     static constexpr size_t maxCount = 10;
 
     void reset() {
-        count = 0;
+        oams.clear();
     }
 
     void add(const OAMData& oam) {
-        if(count < maxCount)
-            oams[count++] = oam;
+        if (oams.size() < maxCount)
+            oams.push_back(oam);
     }
 
-    std::array<OAMData, maxCount> oams;
-    size_t count;
+    size_t size() const { return oams.size(); }
+
+    OAMData& operator[](size_t i) { return oams[i]; }
+    const OAMData& operator[](size_t i) const { return oams[i]; }
+
+    std::vector<OAMData>::iterator begin() { return oams.begin(); }
+    std::vector<OAMData>::iterator end() { return oams.end(); }
+
+    std::vector<OAMData>::const_iterator begin() const { return oams.begin(); }
+    std::vector<OAMData>::const_iterator end() const { return oams.end(); }
+
+private:
+    std::vector<OAMData> oams;
+
 };
 
 
@@ -195,11 +207,12 @@ public:
 
     void reset();
 
-    void step(uint16_t mCycles);
-
-    PPURegs regs;
+    void step(uint32_t mCycles);
+    void stepLine(uint32_t n = 1);
 
     uint32_t getDotCounter() const { return mDotCounter; }
+    const OAMRegister& getOamScanRegister() const { return mOamScanRegister; }
+
 
     uint8_t readLCDC() const { return regs.LCDC.asU8(); }
     uint8_t readSTAT() const { return regs.STAT.asU8(); }
@@ -225,12 +238,22 @@ public:
     void writeWY(uint8_t val) { regs.WY = val; }
     void writeWX(uint8_t val) { regs.WX = val; }
 
+
+    PPURegs regs;
+    VRam vram;
+    OAMRam oamRam;
+    Display display;
+
+
 private:
 
+    void lockRamAreas(bool lock);
 
     void updateSTAT();
     void oamScan();
-    bool findCurrOam(OAMData& oam, uint32_t currX) const;
+    const OAMData* findCurrOam(uint32_t currX) const;
+
+    void onDisabled();
 
     void renderPixel(uint32_t dispX);
     uint8_t renderPixelGetBgVal(uint32_t dispX);
@@ -242,10 +265,7 @@ private:
     uint32_t mDotCounter;
     OAMRegister mOamScanRegister;
 
-    VRam mVram;
-    OAMRam mOamRam;
-    Display mDisplay;
-
+    bool mFirstStep;
 };
 
 

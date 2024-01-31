@@ -214,3 +214,37 @@ TEST_CASE("Test Dispaly get/set functions")
     CHECK(d.get(130, 100) == 0);
     CHECK(d.get(159, 143) == 3);
 }
+
+
+TEST_CASE("Test OAMData and OAMAttr functions")
+{
+    uint8_t mem[OAMData::size] = { 0 };
+    OAMData oam(0x2222, mem);
+
+    CHECK(oam.x() == 0);
+    CHECK(oam.y() == 0);
+    CHECK(oam.tileId() == 0);
+
+    oam.x() = 25;
+    oam.y() = 12;
+    oam.tileId() = 77;
+
+    CHECK(oam.x() == 25);
+    CHECK(oam.y() == 12);
+    CHECK(oam.tileId() == 77);
+
+    OAMAttr attr = oam.attr();
+
+    CHECK_FALSE(attr.dmgPalette());
+    CHECK_FALSE(attr.hFlip());
+    CHECK_FALSE(attr.vFlip());
+    CHECK_FALSE(attr.priority());
+
+    attr.setHFlip(true);
+    attr.setPriority(true);
+
+    CHECK_FALSE(attr.dmgPalette());
+    CHECK(attr.hFlip());
+    CHECK_FALSE(attr.vFlip());
+    CHECK(attr.priority());
+}
