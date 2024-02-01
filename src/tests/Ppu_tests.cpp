@@ -138,7 +138,7 @@ TEST_CASE("PPU test OAM scan function")
 }
 
 
-TEST_CASE("PPU test drawing functions")
+TEST_CASE("PPU test drawing simple objects, no window, no overlaps")
 {
     TestBus bus;
     PPU p(bus);
@@ -192,7 +192,7 @@ TEST_CASE("PPU test drawing functions")
     };
 
     // put oam 0 at (30, 50) in the display
-    objs[0].x() = 58;
+    objs[0].x() = 38;
     objs[0].y() = 46;
     objs[0].tileId() = 1;
 
@@ -245,3 +245,223 @@ TEST_CASE("PPU test drawing functions")
 
     CHECK(checkBgDisplayArea());
 }
+
+TEST_CASE("PPU test object overlaps (different x coordinates)")
+{
+    TestBus bus;
+    PPU p(bus);
+
+    // set all palettes to default so that color id corresponds to color value
+    p.regs.BGP.setToDefault();
+    p.regs.OBP0.setToDefault();
+    p.regs.OBP1.setToDefault();
+
+    // set the ppu to share the same vram area for both bg/win and objects
+    bool bgTileAreaFlag = true;
+    p.regs.LCDC.bgWinTileDataArea = bgTileAreaFlag;
+    p.regs.LCDC.objDoubleH = false;
+
+    uint8_t bgColor = 0;
+    uint8_t objColors[3] = { 1, 2, 3 };
+
+    // background will use only one tile
+    auto bgTile = p.vram.getBgTile(0, bgTileAreaFlag);
+    for (uint32_t y = 0; y < TileData::h; ++y) {
+        for (uint32_t x = 0; x < TileData::w; ++x) {
+            bgTile.set(x, y, bgColor);
+        }
+    }
+
+    // setup object tiles
+    for (uint8_t i = 0; i < 3; i++) {
+        auto colorVal = objColors[i];
+        auto objTile = p.vram.getObjTile(i + 1, false);
+
+        for (uint32_t y = 0; y < TileData::h; ++y) {
+            for (uint32_t x = 0; x < TileData::w; ++x) {
+                objTile.set(x, y, colorVal);
+            }
+        }
+    }
+
+    // put all oams at the bottom of the screen (y = 160)
+    for (uint8_t i = 0; i < OAMRam::oamCount; ++i) {
+        auto oam = p.oamRam.getOAMData(i);
+
+        oam.tileId() = i;
+        oam.x() = 0;
+        oam.y() = 160;
+    }
+
+    std::vector<OAMData> objs = {
+        p.oamRam.getOAMData(0),
+        p.oamRam.getOAMData(1),
+        p.oamRam.getOAMData(2),
+    };
+
+    // put oam 0 at (30, 50) in the display
+    objs[0].x() = 38;
+    objs[0].y() = 66;
+    objs[0].tileId() = 1;
+
+    // put oam 1 at (35, 50) in the display
+    objs[1].x() = 43;
+    objs[1].y() = 66;
+    objs[1].tileId() = 2;
+
+    // put oam 2 at (40, 50) in the display
+    objs[2].x() = 48;
+    objs[2].y() = 66;
+    objs[2].tileId() = 3;
+
+    // draw one frame
+    p.stepFrame();
+
+    // check if the areas corresponding the objects are of the right color,
+    auto checkObjDisplayArea = [&](uint32_t xl, uint32_t xr, uint32_t yt, uint32_t yb, uint8_t color)
+    {
+        for (uint32_t y = yt; y < yb; ++y) {
+            for (uint32_t x = xl; x < xr; ++x) {
+                if (p.display.get(x, y) != color)
+                    return false;
+            }
+        }
+        return true;
+    };
+
+    CHECK(checkObjDisplayArea(30, 38, 50, 58, objColors[0]));
+    CHECK(checkObjDisplayArea(38, 43, 50, 58, objColors[1]));
+    CHECK(checkObjDisplayArea(43, 48, 50, 58, objColors[2]));
+
+    // check if the background is of the right color
+    auto checkBgDisplayArea = [&]() {
+        for (uint32_t y = 0; y < Display::h; ++y) {
+            for (uint32_t x = 0; x < Display::w; ++x) {
+                bool insideObj = false;
+                for (const auto& obj : objs) {
+                    if (obj.isInside(x, y)) {
+                        insideObj = true;
+                        break;
+                    }
+                }
+
+                if (!insideObj && p.display.get(x, y) != bgColor)
+                    return false;
+            }
+        }
+        return true;
+    };
+
+    CHECK(checkBgDisplayArea());
+}
+
+
+TEST_CASE("PPU test object overlaps (same x coordinates)")
+{
+    TestBus bus;
+    PPU p(bus);
+
+    // set all palettes to default so that color id corresponds to color value
+    p.regs.BGP.setToDefault();
+    p.regs.OBP0.setToDefault();
+    p.regs.OBP1.setToDefault();
+
+    // set the ppu to share the same vram area for both bg/win and objects
+    bool bgTileAreaFlag = true;
+    p.regs.LCDC.bgWinTileDataArea = bgTileAreaFlag;
+    p.regs.LCDC.objDoubleH = false;
+
+    uint8_t bgColor = 0;
+    uint8_t objColors[3] = { 1, 2, 3 };
+
+    // background will use only one tile
+    auto bgTile = p.vram.getBgTile(0, bgTileAreaFlag);
+    for (uint32_t y = 0; y < TileData::h; ++y) {
+        for (uint32_t x = 0; x < TileData::w; ++x) {
+            bgTile.set(x, y, bgColor);
+        }
+    }
+
+    // setup object tiles
+    for (uint8_t i = 0; i < 3; i++) {
+        auto colorVal = objColors[i];
+        auto objTile = p.vram.getObjTile(i + 1, false);
+
+        for (uint32_t y = 0; y < TileData::h; ++y) {
+            for (uint32_t x = 0; x < TileData::w; ++x) {
+                objTile.set(x, y, colorVal);
+            }
+        }
+    }
+
+    // put all oams at the bottom of the screen (y = 160)
+    for (uint8_t i = 0; i < OAMRam::oamCount; ++i) {
+        auto oam = p.oamRam.getOAMData(i);
+
+        oam.tileId() = i;
+        oam.x() = 0;
+        oam.y() = 160;
+    }
+
+    std::vector<OAMData> objs = {
+        p.oamRam.getOAMData(0),
+        p.oamRam.getOAMData(1),
+        p.oamRam.getOAMData(2),
+    };
+
+    // put oam 0 at (30, 50) in the display
+    objs[0].x() = 38;
+    objs[0].y() = 66;
+    objs[0].tileId() = 1;
+
+    // put oam 1 at (30, 55) in the display
+    objs[1].x() = 38;
+    objs[1].y() = 71;
+    objs[1].tileId() = 2;
+
+    // put oam 2 at (30, 60) in the display
+    objs[2].x() = 38;
+    objs[2].y() = 76;
+    objs[2].tileId() = 3;
+
+    // draw one frame
+    p.stepFrame();
+
+    // check if the areas corresponding the objects are of the right color,
+    auto checkObjDisplayArea = [&](uint32_t xl, uint32_t xr, uint32_t yt, uint32_t yb, uint8_t color)
+    {
+        for (uint32_t y = yt; y < yb; ++y) {
+            for (uint32_t x = xl; x < xr; ++x) {
+                if (p.display.get(x, y) != color)
+                    return false;
+            }
+        }
+        return true;
+    };
+
+    CHECK(checkObjDisplayArea(30, 38, 50, 58, objColors[0]));
+    CHECK(checkObjDisplayArea(30, 38, 58, 63, objColors[1]));
+    CHECK(checkObjDisplayArea(30, 38, 63, 68, objColors[2]));
+
+    // check if the background is of the right color
+    auto checkBgDisplayArea = [&]() {
+        for (uint32_t y = 0; y < Display::h; ++y) {
+            for (uint32_t x = 0; x < Display::w; ++x) {
+                bool insideObj = false;
+                for (const auto& obj : objs) {
+                    if (obj.isInside(x, y)) {
+                        insideObj = true;
+                        break;
+                    }
+                }
+
+                if (!insideObj && p.display.get(x, y) != bgColor)
+                    return false;
+            }
+        }
+        return true;
+    };
+
+    CHECK(checkBgDisplayArea());
+}
+

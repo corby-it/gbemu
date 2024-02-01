@@ -6,6 +6,7 @@ App::App()
     : p(bus)
     , mDisplayBuffer(Display::w, Display::h)
 {
+
     // set all palettes to default so that color id corresponds to color value
     p.regs.BGP.setToDefault();
     p.regs.OBP0.setToDefault();
@@ -48,23 +49,26 @@ App::App()
         oam.y() = 160;
     }
 
+    std::vector<OAMData> objs = {
+        p.oamRam.getOAMData(0),
+        p.oamRam.getOAMData(1),
+        p.oamRam.getOAMData(2),
+    };
+
     // put oam 0 at (30, 50) in the display
-    auto obj1Data = p.oamRam.getOAMData(0);
-    obj1Data.x() = 58;
-    obj1Data.y() = 46;
-    obj1Data.tileId() = 1;
+    objs[0].x() = 38;
+    objs[0].y() = 66;
+    objs[0].tileId() = 1;
 
-    // put oam 1 at (2, 2) in the display
-    auto obj2Data = p.oamRam.getOAMData(1);
-    obj2Data.x() = 10;
-    obj2Data.y() = 18;
-    obj2Data.tileId() = 2;
+    // put oam 1 at (30, 55) in the display
+    objs[1].x() = 38;
+    objs[1].y() = 71;
+    objs[1].tileId() = 2;
 
-    // put oam 2 at (100, 80) in the display
-    auto obj3Data = p.oamRam.getOAMData(2);
-    obj3Data.x() = 108;
-    obj3Data.y() = 96;
-    obj3Data.tileId() = 3;
+    // put oam 2 at (30, 60) in the display
+    objs[2].x() = 38;
+    objs[2].y() = 76;
+    objs[2].tileId() = 3;
 
     // draw one frame
     p.stepFrame();
