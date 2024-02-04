@@ -1,6 +1,7 @@
 
 #include "gb/Ppu.h"
 #include "gb/GbCommons.h"
+#include "gb/Irqs.h"
 #include "doctest/doctest.h"
 
 
@@ -85,6 +86,90 @@ TEST_CASE("PPU test PPU mode progression and memory locking")
     CHECK_FALSE(p.vram.isLocked());
 
 }
+
+TEST_CASE("PPU test V-Blank interrupt generation")
+{
+    TestBus bus;
+    PPU p(bus);
+
+    auto vblankIrqMask = Irqs::mask(Irqs::Type::VBlank);
+
+    // the vblank irq is triggered every time the ppu enters vblank mode
+    p.stepLine(143);
+
+    CHECK_FALSE(vblankIrqMask == (bus.read8(mmap::regs::IF) & vblankIrqMask));
+
+    p.stepLine();
+
+    CHECK(vblankIrqMask == (bus.read8(mmap::regs::IF) & vblankIrqMask));
+}
+
+
+TEST_CASE("PPU test STAT interrupt generation")
+{
+    TestBus bus;
+    PPU p(bus);
+
+    auto lcdIrqMask = Irqs::mask(Irqs::Type::Lcd);
+
+    SUBCASE("Test LY == LYC interrupt generation") {
+        p.regs.LYC = 50;
+        p.regs.STAT.lycIrqEnable = true;
+
+        // this interrupt is triggered when the internal LY register value is equal
+        // to the value of the LYC register
+        p.stepLine(49);
+
+        CHECK_FALSE(lcdIrqMask == (bus.read8(mmap::regs::IF) & lcdIrqMask));
+
+        p.stepLine();
+
+        CHECK(lcdIrqMask == (bus.read8(mmap::regs::IF) & lcdIrqMask));
+    }
+
+    SUBCASE("Test Mode 0 interrupt generation (H-Blank)") {
+        p.regs.STAT.mode0IrqEnable = true;
+
+        // this interrupt is triggered when the ppu enters H-Blank mode
+        // it takes 63 m-cycles to reach h-blank mode
+
+        p.step(62);
+
+        CHECK_FALSE(lcdIrqMask == (bus.read8(mmap::regs::IF) & lcdIrqMask));
+
+        p.step(1);
+
+        CHECK(lcdIrqMask == (bus.read8(mmap::regs::IF) & lcdIrqMask));
+    }
+
+    SUBCASE("Test Mode 1 interrupt generation (V-Blank)") {
+        p.regs.STAT.mode1IrqEnable = true;
+
+        // the vblank irq is triggered every time the ppu enters vblank mode
+        // after 143 lines
+        p.stepLine(143);
+
+        CHECK_FALSE(lcdIrqMask == (bus.read8(mmap::regs::IF) & lcdIrqMask));
+
+        p.stepLine();
+
+        CHECK(lcdIrqMask == (bus.read8(mmap::regs::IF) & lcdIrqMask));
+    }
+
+    SUBCASE("Test Mode 2 interrupt generation (OAM Scan)") {
+        // don't trigger the irq right away, wait until the start of the next line
+        p.step(30);
+
+        p.regs.STAT.mode2IrqEnable = true;
+
+        CHECK_FALSE(lcdIrqMask == (bus.read8(mmap::regs::IF) & lcdIrqMask));
+
+        p.stepLine();
+
+        CHECK(lcdIrqMask == (bus.read8(mmap::regs::IF) & lcdIrqMask));
+    }
+}
+
 
 
 TEST_CASE("PPU test OAM scan function")

@@ -1,6 +1,7 @@
 
 
 #include "Ppu.h"
+#include "Irqs.h"
 #include <algorithm>
 
 
@@ -201,8 +202,38 @@ void PPU::step(uint32_t mCycles)
                 regs.LY = (regs.LY + 1) % 154;
 
                 // at the beginning of a non-vblank new line the ppu enters mode 2 so we scan the OAM now
-                if (regs.LY < 144) 
+                if (regs.LY < 144) {
                     oamScan();
+
+                    // check if we have to trigger mode 2 (OAM Scan) STAT irq
+                    if (regs.STAT.mode2IrqEnable) {
+                        auto currIF = mBus.read8(mmap::regs::IF);
+                        mBus.write8(mmap::regs::IF, Irqs::mask(Irqs::Type::Lcd) | currIF);
+                    }
+                }
+                
+                // as soon as we enter v-blank mode the ppu triggers the v-blank interrupt in the cpu
+                if (regs.LY == 144) {
+                    auto currIF = mBus.read8(mmap::regs::IF);
+                    uint8_t newIrqMask = Irqs::mask(Irqs::Type::VBlank);
+
+                    // check if we also have to trigger mode 1 (V-Blank) STAT irq
+                    if (regs.STAT.mode1IrqEnable)
+                        newIrqMask |= Irqs::mask(Irqs::Type::Lcd);
+
+                    mBus.write8(mmap::regs::IF, newIrqMask | currIF);
+                }
+
+                // check if we have to trigger the LY==LYC irq
+                if (regs.STAT.lycIrqEnable && regs.LY == regs.LYC) {
+                    auto currIF = mBus.read8(mmap::regs::IF);
+                    mBus.write8(mmap::regs::IF, Irqs::mask(Irqs::Type::Lcd) | currIF);
+                }
+            }
+            // check if we have to trigger mode 0 (H-Blank) STAT irq
+            if (regs.STAT.mode0IrqEnable && mDotCounter == 252) {
+                auto currIF = mBus.read8(mmap::regs::IF);
+                mBus.write8(mmap::regs::IF, Irqs::mask(Irqs::Type::Lcd) | currIF);
             }
             if (mFirstStep) {
                 mFirstStep = false;
@@ -344,14 +375,9 @@ const OAMData* PPU::findCurrOam(uint32_t currX) const
     const OAMData* reg[OAMRegister::maxCount] = { nullptr };
     size_t count = 0;
 
-
-    for (size_t i = 0; i < mOamScanRegister.size(); ++i) {
-        auto& currOam = mOamScanRegister[i];
-
-        int32_t objX = currOam.x() - 8;
-
-        auto xLeft = objX;
-        auto xRight = objX + 8;
+    for (auto& currOam : mOamScanRegister) {
+        auto xLeft = currOam.x() - 8;
+        auto xRight = xLeft + 8;
 
         if ((int32_t)currX >= xLeft && (int32_t)currX < xRight)
             reg[count++] = &currOam;
