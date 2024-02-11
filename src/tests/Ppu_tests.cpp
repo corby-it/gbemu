@@ -550,3 +550,32 @@ TEST_CASE("PPU test object overlaps (same x coordinates)")
     CHECK(checkBgDisplayArea());
 }
 
+
+TEST_CASE("PPU test disabling the display")
+{
+    TestBus bus;
+    PPU p(bus);
+
+    auto lcdc = p.readLCDC();
+    lcdc &= ~(1 << 7);
+    p.writeLCDC(lcdc);
+
+    // step for a random number of lines and steps
+    p.stepLine(45);
+    p.step(43);
+
+    auto checkDisplay = [](const Display& disp) {
+        for (uint32_t y = 0; y < Display::h; ++y) {
+            for (uint32_t x = 0; x < Display::w; ++x) {
+                if (disp.get(x, y) != 0)
+                    return false;
+            }
+        }
+        return true;
+    };
+
+    CHECK(checkDisplay(p.display));
+
+    CHECK(p.getDotCounter() == 0);
+
+}

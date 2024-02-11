@@ -1,0 +1,158 @@
+
+#include "gb/Cartridge.h"
+#include <filesystem>
+#include <vector>
+#include <fstream>
+#include "doctest/doctest.h"
+
+
+namespace fs = std::filesystem;
+
+static fs::path getTestRoot()
+{
+    auto curr = fs::current_path();
+    fs::path ret;
+
+    for (const auto& sub : curr) {
+        ret /= sub;
+
+        if (sub == "gbemu")
+            break;
+    }
+
+    ret /= "test-files";
+
+    return ret;
+}
+
+static const fs::path testFilesRoot = getTestRoot();
+
+
+
+static std::vector<uint8_t> readFile(const fs::path& path)
+{
+    if (fs::exists(path) && fs::is_regular_file(path)) {
+        auto size = fs::file_size(path);
+
+        std::vector<uint8_t> data;
+        data.resize(size);
+
+        std::ifstream ifs(path, std::ios::in | std::ios::binary);
+        ifs.read((char*)data.data(), size);
+
+        return data;
+    }
+    else {
+        return {};
+    }
+}
+
+static constexpr EntryPointData expectedEntryPoint = { 0x00, 0xC3, 0x50, 0x01 };
+
+
+static constexpr LogoData expectedLogoData = {
+    0xCE, 0xED, 0x66, 0x66, 0xCC, 0x0D, 0x00, 0x0B, 0x03, 0x73, 0x00, 0x83, 0x00, 0x0C, 0x00, 0x0D,
+    0x00, 0x08, 0x11, 0x1F, 0x88, 0x89, 0x00, 0x0E, 0xDC, 0xCC, 0x6E, 0xE6, 0xDD, 0xDD, 0xD9, 0x99,
+    0xBB, 0xBB, 0x67, 0x63, 0x6E, 0x0E, 0xEC, 0xCC, 0xDD, 0xDC, 0x99, 0x9F, 0xBB, 0xB9, 0x33, 0x3E,
+};
+
+
+TEST_CASE("Cartridge header parsing - Tetris")
+{
+    auto romData = readFile(testFilesRoot / "tetris-header.gb");
+
+    REQUIRE(romData.size() > 0);
+
+    CartridgeHeader header(romData.data());
+
+    CHECK(header.entryPoint() == expectedEntryPoint);
+    CHECK(header.logoData() == expectedLogoData);
+    CHECK(header.title() == "TETRIS");
+    CHECK(header.cgbFlag() == CGBFlag::CGBIncompatible);
+    CHECK(header.newLicenseeCode() == "");
+    CHECK(header.sgbFlag() == SGBFlag::GB);
+    CHECK(header.cartType() == CartridgeType::NoMBC);
+    CHECK(header.romSize() == 32 * 1024);
+    CHECK(header.ramSize() == 0);
+    CHECK(header.destCode() == DestCode::Japan);
+    CHECK(header.oldLicenseeCode() == "Nintendo");
+    CHECK(header.maskRomVersionNum() == 0x01);
+    CHECK(header.headerChecksum() == 0x0A);
+    CHECK(header.globalChecksum() == 0x16BF);
+    CHECK(header.verifyHeaderChecksum());
+}
+
+TEST_CASE("Cartridge header parsing - Pokemon Red")
+{
+    auto romData = readFile(testFilesRoot / "pokemon-red-header.gb");
+
+    REQUIRE(romData.size() > 0);
+
+    CartridgeHeader header(romData.data());
+
+    CHECK(header.entryPoint() == expectedEntryPoint);
+    CHECK(header.logoData() == expectedLogoData);
+    CHECK(header.title() == "POKEMON RED");
+    CHECK(header.cgbFlag() == CGBFlag::CGBIncompatible);
+    CHECK(header.newLicenseeCode() == "Nintendo R&D1");
+    CHECK(header.sgbFlag() == SGBFlag::SGB);
+    CHECK(header.cartType() == CartridgeType::MBC3RamBattery);
+    CHECK(header.romSize() == 1 * 1024 * 1024);
+    CHECK(header.ramSize() == 32 * 1024);
+    CHECK(header.destCode() == DestCode::World);
+    CHECK(header.oldLicenseeCode() == "Refer to the \"New licensee code\"");
+    CHECK(header.maskRomVersionNum() == 0x00);
+    CHECK(header.headerChecksum() == 0x20);
+    CHECK(header.globalChecksum() == 0x91E6);
+    CHECK(header.verifyHeaderChecksum());
+}
+
+TEST_CASE("Cartridge header parsing - Super Mario Land")
+{
+    auto romData = readFile(testFilesRoot / "super-mario-land-header.gb");
+
+    REQUIRE(romData.size() > 0);
+
+    CartridgeHeader header(romData.data());
+
+    CHECK(header.entryPoint() == expectedEntryPoint);
+    CHECK(header.logoData() == expectedLogoData);
+    CHECK(header.title() == "SUPER MARIOLAND");
+    CHECK(header.cgbFlag() == CGBFlag::CGBIncompatible);
+    CHECK(header.newLicenseeCode() == "");
+    CHECK(header.sgbFlag() == SGBFlag::GB);
+    CHECK(header.cartType() == CartridgeType::MBC1);
+    CHECK(header.romSize() == 64 * 1024);
+    CHECK(header.ramSize() == 0);
+    CHECK(header.destCode() == DestCode::Japan);
+    CHECK(header.oldLicenseeCode() == "Nintendo");
+    CHECK(header.maskRomVersionNum() == 0x01);
+    CHECK(header.headerChecksum() == 0x9D);
+    CHECK(header.globalChecksum() == 0x5ECF);
+    CHECK(header.verifyHeaderChecksum());
+}
+
+TEST_CASE("Cartridge header parsing - Zelda Link's Awakening")
+{
+    auto romData = readFile(testFilesRoot / "zelda-links-awakening-header.gb");
+
+    REQUIRE(romData.size() > 0);
+
+    CartridgeHeader header(romData.data());
+
+    CHECK(header.entryPoint() == expectedEntryPoint);
+    CHECK(header.logoData() == expectedLogoData);
+    CHECK(header.title() == "ZELDA");
+    CHECK(header.cgbFlag() == CGBFlag::CGBIncompatible);
+    CHECK(header.newLicenseeCode() == "");
+    CHECK(header.sgbFlag() == SGBFlag::GB);
+    CHECK(header.cartType() == CartridgeType::MBC1RamBattery);
+    CHECK(header.romSize() == 512 * 1024);
+    CHECK(header.ramSize() == 8 * 1024);
+    CHECK(header.destCode() == DestCode::World);
+    CHECK(header.oldLicenseeCode() == "Nintendo");
+    CHECK(header.maskRomVersionNum() == 0x02);
+    CHECK(header.headerChecksum() == 0x6A);
+    CHECK(header.globalChecksum() == 0x3AEE);
+    CHECK(header.verifyHeaderChecksum());
+}
