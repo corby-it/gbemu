@@ -62,7 +62,7 @@ struct STATReg :public RegU8 {
 
     // bit  function
     // 0..1 PPU mode (read-only): contains the PPU current status (modes 0, 1, 2 or 3)
-    PPUMode ppuMode : 2;
+    PPUMode ppuMode;
     // 2    LYC == LY (read-only): true if the current value of LYC is equal to the value of LY
     bool lycEqual;
     // 3    mode 0 interrupt selected: if set, selects mode 0 for interrupt triggering

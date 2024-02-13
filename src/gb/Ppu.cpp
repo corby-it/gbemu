@@ -38,7 +38,7 @@ void LCDCReg::fromU8(uint8_t b)
 
 uint8_t STATReg::asU8() const
 {
-    uint8_t val = ppuMode
+    uint8_t val = (ppuMode & 0x03)
         | lycEqual << 2
         | mode0IrqEnable << 3
         | mode1IrqEnable << 4

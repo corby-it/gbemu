@@ -1,6 +1,7 @@
 
 
 #include "Cartridge.h"
+#include <cstring>
 #include <algorithm>
 #include <unordered_map>
 
@@ -63,7 +64,7 @@ static const std::unordered_map<std::string_view, std::string_view> newLicenseeC
     { "92", "Video system" },
     { "93", "Ocean/Acclaim" },
     { "95", "Varie" },
-    { "96", "Yonezawa/s’pal" },
+    { "96", "Yonezawa/s'pal" },
     { "97", "Kaneko" },
     { "99", "Pack in soft" },
     { "9H", "Bottom Up" },
@@ -175,12 +176,12 @@ static const std::unordered_map<uint8_t, std::string_view> oldLicenseeCodeMap = 
     { 0x8B, "Bullet-Proof Software" },
     { 0x8C, "Vic Tokai" },
     { 0x8E, "Ape" },
-    { 0x8F, "I’Max" },
+    { 0x8F, "I'Max" },
     { 0x91, "Chunsoft Co." },
     { 0x92, "Video System" },
     { 0x93, "Tsubaraya Productions Co." },
     { 0x95, "Varie Corporation" },
-    { 0x96, "Yonezawa/S’Pal" },
+    { 0x96, "Yonezawa/S'Pal" },
     { 0x97, "Kaneko" },
     { 0x99, "Arc" },
     { 0x9A, "Nihon Bussan" },
