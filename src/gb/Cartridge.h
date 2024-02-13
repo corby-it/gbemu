@@ -3,10 +3,21 @@
 #ifndef GBEMU_SRC_GB_CARTRIDGE_H_
 #define GBEMU_SRC_GB_CARTRIDGE_H_
 
+#include "Ram.h"
 #include <cstdint>
 #include <array>
 #include <string_view>
+#include <memory>
+#include <filesystem>
 
+
+namespace fs = std::filesystem;
+
+
+
+// ------------------------------------------------------------------------------------------------
+// CartridgeHeader
+// ------------------------------------------------------------------------------------------------
 
 typedef std::array<uint8_t, 4>  EntryPointData;
 typedef std::array<uint8_t, 48> LogoData;
@@ -96,9 +107,76 @@ private:
 
     const uint8_t* mRomBaseAddr;
 
+};
 
+
+
+// ------------------------------------------------------------------------------------------------
+// MBC
+// ------------------------------------------------------------------------------------------------
+
+class MbcInterface {
+public:
+    MbcInterface(uint8_t *romPtr, uint32_t romSize, uint8_t *ramPtr, uint32_t ramSize);
+    virtual ~MbcInterface() {}
+
+    virtual uint8_t read8(uint16_t addr) const = 0;
+    virtual void write8(uint16_t addr, uint8_t val) = 0;
+
+
+protected:
+    uint8_t *mRomPtr;
+    const uint32_t mRomSize;
+
+    uint8_t *mRamPtr;
+    const uint32_t mRamSize;
+
+    uint8_t mRomCurrBank;
+    uint8_t mRamCurrBank;
+};
+
+
+class MbcNone : public MbcInterface {
+public:
+    MbcNone(uint8_t *romPtr, uint32_t romSize);
+
+    uint8_t read8(uint16_t addr) const override;
+    void write8(uint16_t addr, uint8_t val) override;
 
 };
+
+
+
+
+
+// ------------------------------------------------------------------------------------------------
+// Cartridge
+// ------------------------------------------------------------------------------------------------
+
+class Cartridge {
+public:
+    Cartridge();
+
+    bool parseRomFile(const fs::path& romPath);
+
+
+    uint8_t read8(uint16_t addr) const;
+    void write8(uint16_t addr, uint8_t val);
+
+
+    MbcInterface* getMbc() { return mMbc.get(); }
+
+
+private:
+    std::unique_ptr<uint8_t[]> mRom;
+    Ram<128 * 1024> mRam;
+
+    std::unique_ptr<MbcInterface> mMbc;
+
+    CartridgeHeader mHeader;
+};
+
+
 
 
 

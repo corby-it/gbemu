@@ -29,7 +29,7 @@ namespace mmap {
         MMAP_T start = 0x8000;
         MMAP_T end = 0x9FFF;
     }
-    namespace xram {
+    namespace external_ram {
         MMAP_T start = 0xA000;
         MMAP_T end = 0xBFFF;
     }

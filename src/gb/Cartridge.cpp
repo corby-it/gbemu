@@ -1,10 +1,17 @@
 
 
 #include "Cartridge.h"
+#include "GbCommons.h"
 #include <cstring>
 #include <algorithm>
 #include <unordered_map>
+#include <fstream>
 
+
+
+// ------------------------------------------------------------------------------------------------
+// CartridgeHeader
+// ------------------------------------------------------------------------------------------------
 
 static const std::unordered_map<std::string_view, std::string_view> newLicenseeCodeMap = {
     { "00", "None" },
@@ -466,3 +473,109 @@ bool CartridgeHeader::verifyGlobalChecksum() const
 
     return globalChecksum() == sum;
 }
+
+
+
+
+// ------------------------------------------------------------------------------------------------
+// MBC
+// ------------------------------------------------------------------------------------------------
+
+MbcInterface::MbcInterface(uint8_t *romPtr, uint32_t romSize, uint8_t *ramPtr, uint32_t ramSize)
+    : mRomPtr(romPtr)
+    , mRomSize(romSize)
+    , mRamPtr(ramPtr)
+    , mRamSize(ramSize)
+    , mRomCurrBank(0)
+    , mRamCurrBank(0)
+{}
+
+
+
+MbcNone::MbcNone(uint8_t *romPtr, uint32_t romSize)
+    : MbcInterface(romPtr, romSize, nullptr, 0)
+{}
+
+uint8_t MbcNone::read8(uint16_t addr) const 
+{
+    if(addr > mmap::rom::end)
+        return 0x00;
+
+    return mRomPtr[addr];
+}
+
+void MbcNone::write8(uint16_t /*addr*/, uint8_t /*val*/)
+{
+    // with no MBC there are no register to write to
+    // so writes have no effect
+}
+
+
+
+// ------------------------------------------------------------------------------------------------
+// Cartridge
+// ------------------------------------------------------------------------------------------------
+
+Cartridge::Cartridge()
+    : mRom(std::make_unique<uint8_t[]>(32 * 1024))
+    , mRam(mmap::external_ram::start)
+    , mMbc(std::make_unique<MbcNone>(mRom.get(), 32 * 1024))
+    , mHeader(mRom.get())
+{}
+
+bool Cartridge::parseRomFile(const fs::path& romPath)
+{
+    // read a rom file from disk and set it up into this cartridge instance 
+    auto size = fs::file_size(romPath);
+
+    if(size < 32 * 1024)
+        return false;
+
+    // read the first 512 bytes to parse the cartridge header
+    std::array<uint8_t, 512> firstBytes;
+
+    std::ifstream ifs(romPath, std::ios::in | std::ios::binary);
+    ifs.read((char*)firstBytes.data(), firstBytes.size());
+
+    CartridgeHeader header(firstBytes.data());
+
+    // TODO verify if header makes sense
+
+    // re-initialize rom, ram, mbc, etc.
+    mRom = std::make_unique<uint8_t[]>(header.romSize());
+    mRam.clear();
+
+    switch (header.cartType()) {
+    case CartridgeType::NoMBC:
+        mMbc = std::make_unique<MbcNone>(mRom.get(), 32 * 1024);
+        break;
+    
+    default:
+        // MBC type not supported yet
+        return false;
+    }
+
+    // read rom file content into mRom
+    ifs.seekg(0);
+    ifs.read((char*)mRom.get(), header.romSize());
+
+    // ready to go
+    return true;
+}
+
+
+uint8_t Cartridge::read8(uint16_t addr) const
+{
+    return mMbc->read8(addr);
+}
+
+void Cartridge::write8(uint16_t addr, uint8_t val)
+{
+    mMbc->write8(addr, val);
+}
+
+
+
+
+
+

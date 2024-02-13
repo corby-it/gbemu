@@ -50,6 +50,11 @@ public:
 
     constexpr size_t size() const { return Size; }
 
+    void clear()
+    {
+        memset(mData.get(), 0, Size);
+    }
+
 protected:
     uint8_t* getPtr(uint16_t addr) const
     {
