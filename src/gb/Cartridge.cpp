@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <unordered_map>
 #include <fstream>
+#include <limits>
 
 
 
@@ -378,7 +379,7 @@ uint32_t CartridgeHeader::romSize() const
 uint32_t CartridgeHeader::ramSize() const
 {
     if (!mRomBaseAddr)
-        return 0;
+        return std::numeric_limits<uint32_t>::max(); // not 0 because it's a valid value for ram size
     
     switch (mRomBaseAddr[0x149]) {
     case 0x02: return 8 * 1024;
@@ -474,6 +475,37 @@ bool CartridgeHeader::verifyGlobalChecksum() const
     return globalChecksum() == sum;
 }
 
+bool CartridgeHeader::canLoad() const
+{
+    if (!mRomBaseAddr)
+        return false;
+
+    // to make sure we can load a rom file in memory we must check the
+    // rom and ram sizes, otherwise there's the risk allocating random
+    // amount of memory
+    auto rom = romSize();
+    auto ram = ramSize();
+
+    // both rom and ram sizes must be powers of 2
+    if ((rom & (rom - 1)) != 0 || (ram - (ram - 1)) != 0)
+        return false;
+
+    // rom must be lower or equal than 8MB and cannot be 0
+    if (rom == 0 || rom > 8 * 1024 * 1024)
+        return false;
+
+    // ram must be lower or equal than 128KB (but can be 0)
+    if (ram > 128 * 1024)
+        return false;
+
+    // also, the MBC type must be known
+    if (cartType() == CartridgeType::Unknown)
+        return false;
+
+    // all good
+    return true;
+}
+
 
 
 
@@ -481,7 +513,7 @@ bool CartridgeHeader::verifyGlobalChecksum() const
 // MBC
 // ------------------------------------------------------------------------------------------------
 
-MbcInterface::MbcInterface(uint8_t *romPtr, uint32_t romSize, uint8_t *ramPtr, uint32_t ramSize)
+MbcInterface::MbcInterface(uint8_t *romPtr, size_t romSize, uint8_t *ramPtr, size_t ramSize)
     : mRomPtr(romPtr)
     , mRomSize(romSize)
     , mRamPtr(ramPtr)
@@ -492,7 +524,7 @@ MbcInterface::MbcInterface(uint8_t *romPtr, uint32_t romSize, uint8_t *ramPtr, u
 
 
 
-MbcNone::MbcNone(uint8_t *romPtr, uint32_t romSize)
+MbcNone::MbcNone(uint8_t *romPtr, size_t romSize)
     : MbcInterface(romPtr, romSize, nullptr, 0)
 {}
 
@@ -517,18 +549,17 @@ void MbcNone::write8(uint16_t /*addr*/, uint8_t /*val*/)
 // ------------------------------------------------------------------------------------------------
 
 Cartridge::Cartridge()
-    : mRom(std::make_unique<uint8_t[]>(32 * 1024))
+    : mRom(32 * 1024, 0)
     , mRam(mmap::external_ram::start)
-    , mMbc(std::make_unique<MbcNone>(mRom.get(), 32 * 1024))
-    , mHeader(mRom.get())
+    , mMbc(std::make_unique<MbcNone>(mRom.data(), mRom.size()))
 {}
 
-bool Cartridge::parseRomFile(const fs::path& romPath)
+bool Cartridge::loadRomFile(const fs::path& romPath)
 {
     // read a rom file from disk and set it up into this cartridge instance 
-    auto size = fs::file_size(romPath);
+    auto romFileSize = fs::file_size(romPath);
 
-    if(size < 32 * 1024)
+    if(romFileSize < 32 * 1024)
         return false;
 
     // read the first 512 bytes to parse the cartridge header
@@ -539,15 +570,19 @@ bool Cartridge::parseRomFile(const fs::path& romPath)
 
     CartridgeHeader header(firstBytes.data());
 
-    // TODO verify if header makes sense
+    // the rom file size must be the same as the one we read
+    // from the cartridge header, otherwise something is corrupted
+    // we also have to check if the header doesn't contain garbage ram or rom sizes
+    if (header.romSize() != romFileSize || !header.canLoad())
+        return false;
 
     // re-initialize rom, ram, mbc, etc.
-    mRom = std::make_unique<uint8_t[]>(header.romSize());
+    mRom.resize(header.romSize());
     mRam.clear();
 
     switch (header.cartType()) {
     case CartridgeType::NoMBC:
-        mMbc = std::make_unique<MbcNone>(mRom.get(), 32 * 1024);
+        mMbc = std::make_unique<MbcNone>(mRom.data(), mRom.size());
         break;
     
     default:
@@ -557,7 +592,7 @@ bool Cartridge::parseRomFile(const fs::path& romPath)
 
     // read rom file content into mRom
     ifs.seekg(0);
-    ifs.read((char*)mRom.get(), header.romSize());
+    ifs.read((char*)mRom.data(), header.romSize());
 
     // ready to go
     return true;

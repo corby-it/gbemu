@@ -79,7 +79,7 @@ enum class CartridgeType {
 
 class CartridgeHeader {
 public:
-    CartridgeHeader(const uint8_t* romBaseAddr)
+    CartridgeHeader(const uint8_t* romBaseAddr = nullptr)
         : mRomBaseAddr(romBaseAddr)
     {}
 
@@ -102,6 +102,7 @@ public:
     bool verifyHeaderChecksum() const;
     bool verifyGlobalChecksum() const;
 
+    bool canLoad() const;
 
 private:
 
@@ -117,19 +118,21 @@ private:
 
 class MbcInterface {
 public:
-    MbcInterface(uint8_t *romPtr, uint32_t romSize, uint8_t *ramPtr, uint32_t ramSize);
+    MbcInterface(uint8_t *romPtr, size_t romSize, uint8_t *ramPtr, size_t ramSize);
     virtual ~MbcInterface() {}
 
     virtual uint8_t read8(uint16_t addr) const = 0;
     virtual void write8(uint16_t addr, uint8_t val) = 0;
 
+    uint8_t getRomBankId() const { return mRomCurrBank; }
+    uint8_t getRamBankId() const { return mRamCurrBank; }
 
 protected:
     uint8_t *mRomPtr;
-    const uint32_t mRomSize;
+    const size_t mRomSize;
 
     uint8_t *mRamPtr;
-    const uint32_t mRamSize;
+    const size_t mRamSize;
 
     uint8_t mRomCurrBank;
     uint8_t mRamCurrBank;
@@ -138,7 +141,7 @@ protected:
 
 class MbcNone : public MbcInterface {
 public:
-    MbcNone(uint8_t *romPtr, uint32_t romSize);
+    MbcNone(uint8_t *romPtr, size_t romSize);
 
     uint8_t read8(uint16_t addr) const override;
     void write8(uint16_t addr, uint8_t val) override;
@@ -157,7 +160,7 @@ class Cartridge {
 public:
     Cartridge();
 
-    bool parseRomFile(const fs::path& romPath);
+    bool loadRomFile(const fs::path& romPath);
 
 
     uint8_t read8(uint16_t addr) const;
@@ -168,7 +171,7 @@ public:
 
 
 private:
-    std::unique_ptr<uint8_t[]> mRom;
+    std::vector<uint8_t> mRom;
     Ram<128 * 1024> mRam;
 
     std::unique_ptr<MbcInterface> mMbc;

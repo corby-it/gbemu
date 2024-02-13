@@ -3,6 +3,7 @@
 #include <filesystem>
 #include <vector>
 #include <fstream>
+#include <vector>
 #include "doctest/doctest.h"
 
 
@@ -156,3 +157,83 @@ TEST_CASE("Cartridge header parsing - Zelda Link's Awakening")
     CHECK(header.globalChecksum() == 0x3AEE);
     CHECK(header.verifyHeaderChecksum());
 }
+
+
+TEST_CASE("Cartridge header - check if can load")
+{
+    uint8_t headerData[512] = { 0 };
+
+    // fill the header data with meaningful values
+    headerData[0x147] = 0; // no MBC
+    headerData[0x148] = 0; // 32K rom
+    headerData[0x149] = 0; // 0K ram
+
+    SUBCASE("Check nullptr") {
+        CartridgeHeader hd;
+
+        CHECK_FALSE(hd.canLoad());
+    }
+
+    SUBCASE("Check MBC type") {
+        headerData[0x147] = 0x25; // random value
+
+        CartridgeHeader hd(headerData);
+
+        CHECK_FALSE(hd.canLoad());
+    }
+
+    SUBCASE("Check rom sizes") {
+        headerData[0x148] = 45; // random value
+
+        CartridgeHeader hd(headerData);
+        
+        CHECK_FALSE(hd.canLoad());
+    }
+
+    SUBCASE("Check ram sizes") {
+        headerData[0x149] = 45; // random value
+
+        CartridgeHeader hd(headerData);
+
+        CHECK_FALSE(hd.canLoad());
+    }
+}
+
+
+// ------------------------------------------------------------------------------------------------
+
+
+
+
+TEST_CASE("MbcNone test")
+{
+    std::vector<uint8_t> mem(32 * 1024, 0);
+
+    // write some values in specific locations
+    mem[0x0000] = 1;
+    mem[0x3FA4] = 2;
+    mem[0x4DC1] = 3;
+    mem[0x544F] = 4;
+    mem[0x7FFF] = 5;
+    
+    MbcNone mbc(mem.data(), mem.size());
+
+    // try reading the values back
+    CHECK(mbc.read8(0x0000) == 1);
+    CHECK(mbc.read8(0x3FA4) == 2);
+    CHECK(mbc.read8(0x4DC1) == 3);
+    CHECK(mbc.read8(0x544F) == 4);
+    CHECK(mbc.read8(0x7FFF) == 5);
+
+    // try writing something and verify that there is no effect
+    mbc.write8(0x0000, 50);
+    mbc.write8(0x3FA4, 50);
+
+    CHECK(mbc.read8(0x0000) == 1);
+    CHECK(mbc.read8(0x3FA4) == 2);
+
+    // rom and ram banks must be 0
+    CHECK(mbc.getRomBankId() == 0);
+    CHECK(mbc.getRamBankId() == 0);
+}
+
