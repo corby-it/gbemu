@@ -9,6 +9,9 @@
 #include <limits>
 
 
+namespace fs = std::filesystem;
+
+
 
 // ------------------------------------------------------------------------------------------------
 // CartridgeHeader
@@ -382,12 +385,13 @@ uint32_t CartridgeHeader::ramSize() const
         return std::numeric_limits<uint32_t>::max(); // not 0 because it's a valid value for ram size
     
     switch (mRomBaseAddr[0x149]) {
+    case 0x00: return 0;
     case 0x02: return 8 * 1024;
     case 0x03: return 32 * 1024;
     case 0x04: return 128 * 1024;
     case 0x05: return 64 * 1024;
     default:
-        return 0;
+        return std::numeric_limits<uint32_t>::max();
     }
 }
 
@@ -487,7 +491,7 @@ bool CartridgeHeader::canLoad() const
     auto ram = ramSize();
 
     // both rom and ram sizes must be powers of 2
-    if ((rom & (rom - 1)) != 0 || (ram - (ram - 1)) != 0)
+    if ((rom & (rom - 1)) != 0 || (ram & (ram - 1)) != 0)
         return false;
 
     // rom must be lower or equal than 8MB and cannot be 0
@@ -513,19 +517,18 @@ bool CartridgeHeader::canLoad() const
 // MBC
 // ------------------------------------------------------------------------------------------------
 
-MbcInterface::MbcInterface(uint8_t *romPtr, size_t romSize, uint8_t *ramPtr, size_t ramSize)
-    : mRomPtr(romPtr)
-    , mRomSize(romSize)
-    , mRamPtr(ramPtr)
-    , mRamSize(ramSize)
+MbcInterface::MbcInterface(MbcType type, const std::vector<uint8_t>& rom, std::vector<uint8_t>& ram)
+    : mType(type)
+    , mRom(rom)
+    , mRam(ram)
     , mRomCurrBank(0)
     , mRamCurrBank(0)
 {}
 
 
 
-MbcNone::MbcNone(uint8_t *romPtr, size_t romSize)
-    : MbcInterface(romPtr, romSize, nullptr, 0)
+MbcNone::MbcNone(const std::vector<uint8_t>& rom, std::vector<uint8_t>& ram)
+    : MbcInterface(MbcType::None, rom, ram)
 {}
 
 uint8_t MbcNone::read8(uint16_t addr) const 
@@ -533,7 +536,7 @@ uint8_t MbcNone::read8(uint16_t addr) const
     if(addr > mmap::rom::end)
         return 0x00;
 
-    return mRomPtr[addr];
+    return mRom[addr];
 }
 
 void MbcNone::write8(uint16_t /*addr*/, uint8_t /*val*/)
@@ -550,8 +553,8 @@ void MbcNone::write8(uint16_t /*addr*/, uint8_t /*val*/)
 
 Cartridge::Cartridge()
     : mRom(32 * 1024, 0)
-    , mRam(mmap::external_ram::start)
-    , mMbc(std::make_unique<MbcNone>(mRom.data(), mRom.size()))
+    , mRam()
+    , mMbc(std::make_unique<MbcNone>(mRom, mRam))
 {}
 
 bool Cartridge::loadRomFile(const fs::path& romPath)
@@ -578,11 +581,14 @@ bool Cartridge::loadRomFile(const fs::path& romPath)
 
     // re-initialize rom, ram, mbc, etc.
     mRom.resize(header.romSize());
-    mRam.clear();
+    
+    mRam.resize(header.ramSize());
+    std::fill(mRam.begin(), mRam.end(), 0);
+    
 
     switch (header.cartType()) {
     case CartridgeType::NoMBC:
-        mMbc = std::make_unique<MbcNone>(mRom.data(), mRom.size());
+        mMbc = std::make_unique<MbcNone>(mRom, mRam);
         break;
     
     default:
@@ -594,20 +600,13 @@ bool Cartridge::loadRomFile(const fs::path& romPath)
     ifs.seekg(0);
     ifs.read((char*)mRom.data(), header.romSize());
 
+    // update the actual cartridge header
+    mHeader = CartridgeHeader(mRom.data());
+
     // ready to go
     return true;
 }
 
-
-uint8_t Cartridge::read8(uint16_t addr) const
-{
-    return mMbc->read8(addr);
-}
-
-void Cartridge::write8(uint16_t addr, uint8_t val)
-{
-    mMbc->write8(addr, val);
-}
 
 
 

@@ -1,5 +1,6 @@
 
 #include "gb/Cartridge.h"
+#include "gb/GbCommons.h"
 #include <filesystem>
 #include <vector>
 #include <fstream>
@@ -207,16 +208,17 @@ TEST_CASE("Cartridge header - check if can load")
 
 TEST_CASE("MbcNone test")
 {
-    std::vector<uint8_t> mem(32 * 1024, 0);
+    std::vector<uint8_t> rom(32 * 1024, 0);
+    std::vector<uint8_t> ram;
 
     // write some values in specific locations
-    mem[0x0000] = 1;
-    mem[0x3FA4] = 2;
-    mem[0x4DC1] = 3;
-    mem[0x544F] = 4;
-    mem[0x7FFF] = 5;
+    rom[0x0000] = 1;
+    rom[0x3FA4] = 2;
+    rom[0x4DC1] = 3;
+    rom[0x544F] = 4;
+    rom[0x7FFF] = 5;
     
-    MbcNone mbc(mem.data(), mem.size());
+    MbcNone mbc(rom, ram);
 
     // try reading the values back
     CHECK(mbc.read8(0x0000) == 1);
@@ -237,3 +239,32 @@ TEST_CASE("MbcNone test")
     CHECK(mbc.getRamBankId() == 0);
 }
 
+
+
+
+// ------------------------------------------------------------------------------------------------
+
+
+
+TEST_CASE("Test Cartridge")
+{
+    Cartridge c;
+
+    SUBCASE("Tetris - no MBC") {
+        auto parsing = c.loadRomFile(testFilesRoot / "tetris-fake-rom.gb");
+
+        REQUIRE(parsing);
+        
+        CHECK(c.getHeader().romSize() == 32 * 1024);
+        CHECK(c.getRom().size() == c.getHeader().romSize());
+
+        CHECK(c.getHeader().ramSize() == 0);
+        CHECK(c.getRam().size() == c.getHeader().ramSize());
+
+        // the first byte of the rom must be C3 and the last must be F5
+        CHECK(c.read8(mmap::rom::start) == 0xC3);
+        CHECK(c.read8(mmap::rom::end) == 0xF5);
+    }
+
+
+}

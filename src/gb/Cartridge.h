@@ -8,10 +8,9 @@
 #include <array>
 #include <string_view>
 #include <memory>
+#include <vector>
 #include <filesystem>
 
-
-namespace fs = std::filesystem;
 
 
 
@@ -116,24 +115,36 @@ private:
 // MBC
 // ------------------------------------------------------------------------------------------------
 
+enum class  MbcType {
+    None,
+    Mbc1,
+    Mbc2,
+    Mbc3,
+    Mbc5,
+    Mbc6,
+    Mbc7,
+};
+
+
 class MbcInterface {
 public:
-    MbcInterface(uint8_t *romPtr, size_t romSize, uint8_t *ramPtr, size_t ramSize);
+    MbcInterface(MbcType type, const std::vector<uint8_t>& rom, std::vector<uint8_t>& ram);
     virtual ~MbcInterface() {}
 
     virtual uint8_t read8(uint16_t addr) const = 0;
     virtual void write8(uint16_t addr, uint8_t val) = 0;
 
+    MbcType type() const { return mType; }
+
     uint8_t getRomBankId() const { return mRomCurrBank; }
     uint8_t getRamBankId() const { return mRamCurrBank; }
 
 protected:
-    uint8_t *mRomPtr;
-    const size_t mRomSize;
+    const MbcType mType;
 
-    uint8_t *mRamPtr;
-    const size_t mRamSize;
-
+    const std::vector<uint8_t>& mRom;
+    std::vector<uint8_t>& mRam;
+    
     uint8_t mRomCurrBank;
     uint8_t mRamCurrBank;
 };
@@ -141,7 +152,7 @@ protected:
 
 class MbcNone : public MbcInterface {
 public:
-    MbcNone(uint8_t *romPtr, size_t romSize);
+    MbcNone(const std::vector<uint8_t>& rom, std::vector<uint8_t>& ram);
 
     uint8_t read8(uint16_t addr) const override;
     void write8(uint16_t addr, uint8_t val) override;
@@ -160,19 +171,28 @@ class Cartridge {
 public:
     Cartridge();
 
-    bool loadRomFile(const fs::path& romPath);
+    bool loadRomFile(const std::filesystem::path& romPath);
 
 
-    uint8_t read8(uint16_t addr) const;
-    void write8(uint16_t addr, uint8_t val);
+    uint8_t read8(uint16_t addr) const {
+        return mMbc->read8(addr);
+    }
+
+    void write8(uint16_t addr, uint8_t val) {
+        mMbc->write8(addr, val);
+    }
 
 
-    MbcInterface* getMbc() { return mMbc.get(); }
+    MbcInterface& getMbc() { return *mMbc.get(); }
+    CartridgeHeader& getHeader() { return mHeader; }
+
+    std::vector<uint8_t>& getRom() { return mRom; }
+    std::vector<uint8_t>& getRam() { return mRam; }
 
 
 private:
     std::vector<uint8_t> mRom;
-    Ram<128 * 1024> mRam;
+    std::vector<uint8_t> mRam;
 
     std::unique_ptr<MbcInterface> mMbc;
 
