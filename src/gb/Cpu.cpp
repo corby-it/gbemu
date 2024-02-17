@@ -72,7 +72,7 @@ void CPU::reset()
     irqs.reset();
 }
 
-bool CPU::step()
+StepRes CPU::step()
 {
     // in one step we execute one instruction, the instruction can take 1 or more machine cycles
 
@@ -87,7 +87,7 @@ bool CPU::step()
         if ((joypad & 0x0F) != 0x0F) 
             mIsStopped = false;
         else 
-            return true;
+            return { true, 0 };
     }
 
     // check if interrupt occurred
@@ -115,16 +115,17 @@ bool CPU::step()
             irqs.IF &= ~Irqs::mask(irqType);
 
             // calling an interrupt has the same effect as a CALL instruction
-            mCycles += opCallIrq(irqType);
+            auto cycles = opCallIrq(irqType);
+            mCycles += cycles;
 
-            return true;
+            return { true, cycles };
         }
     }
     
     
     // if the cpu is in the HALT state we don't execute instructions and return now
     if (mIsHalted)
-        return true;
+        return { true, 0 };
 
 
     // if ime was scheduled to be set, set it now
@@ -141,9 +142,10 @@ bool CPU::step()
         regs.PC--;
 
     bool ok = true;
-    mCycles += execute(opcode, ok);
+    auto cycles = execute(opcode, ok);
+    mCycles += cycles;
 
-    return ok;
+    return { ok, cycles };
 }
 
 

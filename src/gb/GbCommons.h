@@ -45,10 +45,17 @@ namespace mmap {
         MMAP_T start = 0xFE00;
         MMAP_T end = 0xFE9F;
     }
+    namespace prohibited {
+        MMAP_T start = 0xFEA0;
+        MMAP_T end = 0xFEFF;
+    }
     namespace regs {
         MMAP_T start = 0xFF00;
 
         MMAP_T joypad = 0xFF00;
+
+        MMAP_T serial_data = 0xFF01;
+        MMAP_T serial_ctrl = 0xFF02;
 
         namespace timer {
             MMAP_T start = 0xFF04;
@@ -59,11 +66,30 @@ namespace mmap {
             MMAP_T end = 0xFF07;
         }
 
+        // todo audio registers
+
+        namespace lcd {
+            MMAP_T start = 0xFF40;
+            MMAP_T lcdc = 0xFF40;
+            MMAP_T stat = 0xFF41;
+            MMAP_T scy = 0xFF42;
+            MMAP_T scx = 0xFF43;
+            MMAP_T ly = 0xFF44;
+            MMAP_T lyc = 0xFF45;
+            MMAP_T dma = 0xFF46;
+            MMAP_T bgp = 0xFF47;
+            MMAP_T obp0 = 0xFF48;
+            MMAP_T obp1 = 0xFF49;
+            MMAP_T wy = 0xFF4A;
+            MMAP_T wx = 0xFF4B;
+            MMAP_T end = 0xFF4B;
+        }
+
         MMAP_T IF = 0xFF0F;
 
         MMAP_T end = 0xFF7F;
     }
-    namespace hram {
+    namespace hiram {
         MMAP_T start = 0xFF80;
         MMAP_T end = 0xFFFE;
     }
