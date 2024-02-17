@@ -250,16 +250,24 @@ TEST_CASE("Test Cartridge")
 {
     Cartridge c;
 
+    SUBCASE("Tetris - bad file (too small)") {
+        auto parsing = c.loadRomFile(testFilesRoot / "tetris-fake-rom-bad.gb");
+
+        REQUIRE_FALSE(parsing);
+    }
+
     SUBCASE("Tetris - no MBC") {
-        auto parsing = c.loadRomFile(testFilesRoot / "tetris-fake-rom.gb");
+        auto parsing = c.loadRomFile(testFilesRoot / "tetris-fake-rom-good.gb");
 
         REQUIRE(parsing);
         
-        CHECK(c.getHeader().romSize() == 32 * 1024);
-        CHECK(c.getRom().size() == c.getHeader().romSize());
+        CHECK(c.header.romSize() == 32 * 1024);
+        CHECK(c.rom.size() == c.header.romSize());
 
-        CHECK(c.getHeader().ramSize() == 0);
-        CHECK(c.getRam().size() == c.getHeader().ramSize());
+        CHECK(c.header.ramSize() == 0);
+        CHECK(c.ram.size() == c.header.ramSize());
+
+        CHECK(c.mbc->type() == MbcType::None);
 
         // the first byte of the rom must be C3 and the last must be F5
         CHECK(c.read8(mmap::rom::start) == 0xC3);

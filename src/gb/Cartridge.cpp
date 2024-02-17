@@ -552,9 +552,9 @@ void MbcNone::write8(uint16_t /*addr*/, uint8_t /*val*/)
 // ------------------------------------------------------------------------------------------------
 
 Cartridge::Cartridge()
-    : mRom(32 * 1024, 0)
-    , mRam()
-    , mMbc(std::make_unique<MbcNone>(mRom, mRam))
+    : rom(32 * 1024, 0)
+    , ram()
+    , mbc(std::make_unique<MbcNone>(rom, ram))
 {}
 
 bool Cartridge::loadRomFile(const fs::path& romPath)
@@ -562,33 +562,34 @@ bool Cartridge::loadRomFile(const fs::path& romPath)
     // read a rom file from disk and set it up into this cartridge instance 
     auto romFileSize = fs::file_size(romPath);
 
+    // the smallest possible rom must be at least 32K
     if(romFileSize < 32 * 1024)
         return false;
 
-    // read the first 512 bytes to parse the cartridge header
-    std::array<uint8_t, 512> firstBytes;
+    // read the first 0x150 bytes to parse the cartridge header
+    std::array<uint8_t, CartridgeHeader::headerSize> firstBytes;
 
     std::ifstream ifs(romPath, std::ios::in | std::ios::binary);
     ifs.read((char*)firstBytes.data(), firstBytes.size());
 
-    CartridgeHeader header(firstBytes.data());
+    CartridgeHeader tmpHeader(firstBytes.data());
 
     // the rom file size must be the same as the one we read
     // from the cartridge header, otherwise something is corrupted
     // we also have to check if the header doesn't contain garbage ram or rom sizes
-    if (header.romSize() != romFileSize || !header.canLoad())
+    if (tmpHeader.romSize() != romFileSize || !tmpHeader.canLoad())
         return false;
 
     // re-initialize rom, ram, mbc, etc.
-    mRom.resize(header.romSize());
+    rom.resize(tmpHeader.romSize());
     
-    mRam.resize(header.ramSize());
-    std::fill(mRam.begin(), mRam.end(), 0);
+    ram.resize(tmpHeader.ramSize());
+    std::fill(ram.begin(), ram.end(), 0);
     
 
-    switch (header.cartType()) {
+    switch (tmpHeader.cartType()) {
     case CartridgeType::NoMBC:
-        mMbc = std::make_unique<MbcNone>(mRom, mRam);
+        mbc = std::make_unique<MbcNone>(rom, ram);
         break;
     
     default:
@@ -598,10 +599,10 @@ bool Cartridge::loadRomFile(const fs::path& romPath)
 
     // read rom file content into mRom
     ifs.seekg(0);
-    ifs.read((char*)mRom.data(), header.romSize());
+    ifs.read((char*)rom.data(), tmpHeader.romSize());
 
     // update the actual cartridge header
-    mHeader = CartridgeHeader(mRom.data());
+    header = CartridgeHeader(rom.data());
 
     // ready to go
     return true;

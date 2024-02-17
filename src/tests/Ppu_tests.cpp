@@ -1,5 +1,6 @@
 
 #include "gb/Ppu.h"
+#include "gb/Dma.h"
 #include "gb/GbCommons.h"
 #include "gb/Irqs.h"
 #include "doctest/doctest.h"
@@ -577,5 +578,67 @@ TEST_CASE("PPU test disabling the display")
     CHECK(checkDisplay(p.display));
 
     CHECK(p.getDotCounter() == 0);
+
+}
+
+
+TEST_CASE("DMA transfer")
+{
+    TestBus bus;
+    DMA dma(bus);
+
+    SUBCASE("Check read-write") {
+        CHECK_FALSE(dma.isTransferring());
+        
+        dma.write(0x80);
+
+        CHECK(dma.read() == 0x80);
+        CHECK(dma.isTransferring());
+    }
+
+    SUBCASE("Check data transfer") {
+        uint16_t startAddr = 0xC000;
+
+        // fill the area with the value of i, write one additional value 
+        // (the 161th value) to check that it has not been copied
+        for (uint16_t i = 0; i <= 160; ++i)
+            bus.write8(startAddr + i, (uint8_t)i);
+
+        // also write another known value one byte after the end of the oam area
+        // to be able to check for off-by-one errors
+        bus.write8(mmap::oam::end + 1, 0xFE);
+        
+        // start the transfer
+        dma.write(0xC0);
+
+        CHECK(dma.read() == 0xC0);
+        CHECK(dma.isTransferring());
+
+        // step through the transfer process
+        dma.step(80);
+
+        CHECK(dma.read() == 0xC0);
+        CHECK(dma.isTransferring());
+
+        dma.step(81);
+
+        CHECK(dma.read() == 0xC0);
+        CHECK_FALSE(dma.isTransferring());
+
+        // verify if the data has been copied correctly
+        auto checkMem = [&]() {
+            for (uint16_t i = 0; i < 160; ++i) {
+                if (bus.read8(mmap::oam::start + i) != i)
+                    return false;
+            }
+
+            if (bus.read8(mmap::oam::start + 160) != 0xFE)
+                return false;
+
+            return true;
+        };
+
+        CHECK(checkMem());
+    }
 
 }

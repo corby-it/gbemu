@@ -82,6 +82,8 @@ public:
         : mRomBaseAddr(romBaseAddr)
     {}
 
+    static constexpr size_t headerSize = 0x150;
+
 
     EntryPointData entryPoint() const;
     LogoData logoData() const;
@@ -175,28 +177,21 @@ public:
 
 
     uint8_t read8(uint16_t addr) const {
-        return mMbc->read8(addr);
+        return mbc->read8(addr);
     }
 
     void write8(uint16_t addr, uint8_t val) {
-        mMbc->write8(addr, val);
+        mbc->write8(addr, val);
     }
 
 
-    MbcInterface& getMbc() { return *mMbc.get(); }
-    CartridgeHeader& getHeader() { return mHeader; }
 
-    std::vector<uint8_t>& getRom() { return mRom; }
-    std::vector<uint8_t>& getRam() { return mRam; }
+    std::vector<uint8_t> rom;
+    std::vector<uint8_t> ram;
 
+    std::unique_ptr<MbcInterface> mbc;
 
-private:
-    std::vector<uint8_t> mRom;
-    std::vector<uint8_t> mRam;
-
-    std::unique_ptr<MbcInterface> mMbc;
-
-    CartridgeHeader mHeader;
+    CartridgeHeader header;
 };
 
 
