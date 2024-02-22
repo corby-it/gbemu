@@ -6,6 +6,8 @@
 #include "Joypad.h"
 #include "Dma.h"
 #include "Ppu.h"
+#include "Audio.h"
+#include "Serial.h"
 #include "Cartridge.h"
 #include "GbCommons.h"
 #include <cassert>
@@ -50,6 +52,7 @@ GBBus::GBBus()
     , mCartridge(nullptr)
     , mTimer(nullptr)
     , mJoypad(nullptr)
+    , mAudio(nullptr)
     , mHiRam(nullptr)
 {}
 
@@ -79,6 +82,11 @@ uint8_t GBBus::read8(uint16_t addr) const
     if (addr == mmap::regs::joypad)
         return mJoypad ? mJoypad->read() : 0;
 
+    if (addr == mmap::regs::serial_data)
+        return mSerial ? mSerial->readData() : 0;
+    if (addr == mmap::regs::serial_ctrl)
+        return mSerial ? mSerial->readCtrl() : 0;
+
     if (addr >= mmap::regs::timer::start && addr <= mmap::regs::timer::end) {
         if (!mTimer)
             return 0;
@@ -87,6 +95,13 @@ uint8_t GBBus::read8(uint16_t addr) const
         if (addr == mmap::regs::timer::TIMA) return mTimer->readTIMA();
         if (addr == mmap::regs::timer::TMA) return mTimer->readTMA();
         if (addr == mmap::regs::timer::TAC) return mTimer->readTAC();
+    }
+
+    if (addr >= mmap::regs::audio::start && addr <= mmap::regs::audio::end) {
+        if (!mAudio)
+            return 0;
+
+        return mAudio->read(addr);
     }
 
     if (addr >= mmap::regs::lcd::start && addr <= mmap::regs::lcd::end) {
@@ -144,6 +159,11 @@ void GBBus::write8(uint16_t addr, uint8_t val)
     if (mJoypad && addr == mmap::regs::joypad)
         mJoypad->write(val);
 
+    if (mSerial && addr == mmap::regs::serial_data)
+        mSerial->writeData(val);
+    if (mSerial && addr == mmap::regs::serial_ctrl)
+        mSerial->writeCtrl(val);
+
     if (addr >= mmap::regs::timer::start && addr <= mmap::regs::timer::end) {
         if (!mTimer)
             return;
@@ -152,6 +172,13 @@ void GBBus::write8(uint16_t addr, uint8_t val)
         if (addr == mmap::regs::timer::TIMA) mTimer->writeTIMA(val);
         if (addr == mmap::regs::timer::TMA) mTimer->writeTMA(val);
         if (addr == mmap::regs::timer::TAC) mTimer->writeTAC(val);
+    }
+
+    if (addr >= mmap::regs::audio::start && addr <= mmap::regs::audio::end) {
+        if (!mAudio)
+            return;
+
+        return mAudio->write(addr, val);
     }
 
     if (addr >= mmap::regs::lcd::start && addr <= mmap::regs::lcd::end) {

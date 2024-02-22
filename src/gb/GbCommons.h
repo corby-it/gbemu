@@ -3,6 +3,7 @@
 #define GBEMU_SRC_GB_GBCOMMONS_H_
 
 #include <cstdint>
+#include <cassert>
 #include <array>
 #include <memory>
 
@@ -66,7 +67,10 @@ namespace mmap {
             MMAP_T end = 0xFF07;
         }
 
-        // todo audio registers
+        namespace audio {
+            MMAP_T start = 0xFF10;
+            MMAP_T end = 0xFF3F;
+        }
 
         namespace lcd {
             MMAP_T start = 0xFF40;

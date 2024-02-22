@@ -98,8 +98,8 @@ struct Registers {
     bool equal(const Registers& other);
     bool equalSkipPC(const Registers& other);
 
-    static constexpr const uint16_t PCinitialValue = 0x0000;
-    static constexpr const uint16_t SPinitialValue = 0x0000;
+    static constexpr const uint16_t PCinitialValue = 0x0100;
+    static constexpr const uint16_t SPinitialValue = 0xFFFE;
 
 };
 

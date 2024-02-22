@@ -66,6 +66,8 @@ class DMA;
 class Cartridge;
 class Timer;
 class Joypad;
+class Audio;
+class Serial;
 
 typedef Ram<8 * 1024>   WorkRam;
 typedef Ram<127>        HiRam;
@@ -78,14 +80,16 @@ public:
     uint8_t read8(uint16_t addr) const override;
     void write8(uint16_t addr, uint8_t val) override;
     
-    void connect(CPU* cpu) { mCpu = cpu; }
-    void connect(WorkRam* wram) { mWram = wram; }
-    void connect(PPU* ppu) { mPpu = ppu; }
-    void connect(DMA* dma) { mDma = dma; }
-    void connect(Cartridge* cart) { mCartridge = cart; }
-    void connect(Timer* t) { mTimer = t; }
-    void connect(Joypad* jp) { mJoypad = jp; }
-    void connect(HiRam* hiram) { mHiRam = hiram; }
+    void connect(CPU& cpu) { mCpu = &cpu; }
+    void connect(WorkRam& wram) { mWram = &wram; }
+    void connect(PPU& ppu) { mPpu = &ppu; }
+    void connect(DMA& dma) { mDma = &dma; }
+    void connect(Cartridge& cart) { mCartridge = &cart; }
+    void connect(Timer& t) { mTimer = &t; }
+    void connect(Joypad& jp) { mJoypad = &jp; }
+    void connect(Audio& au) { mAudio = &au; }
+    void connect(Serial& sr) { mSerial = &sr; }
+    void connect(HiRam& hiram) { mHiRam = &hiram; }
 
 
 private:
@@ -98,6 +102,8 @@ private:
     Cartridge* mCartridge;
     Timer* mTimer;
     Joypad* mJoypad;
+    Audio* mAudio;
+    Serial* mSerial;
     HiRam* mHiRam;
 
 };
