@@ -6,6 +6,11 @@
 
 Audio::Audio()
 {
+    reset();
+}
+
+void Audio::reset()
+{
     memset(mData, 0, sizeof(mData));
 
     // initial values from https://gbdev.gg8.se/wiki/articles/Power_Up_Sequence
@@ -27,7 +32,6 @@ Audio::Audio()
     write(0xFF24, 0x77); // NR50
     write(0xFF25, 0xF3); // NR51
     write(0xFF26, 0xF1); // NR52
-
 }
 
 uint8_t Audio::read(uint16_t addr)

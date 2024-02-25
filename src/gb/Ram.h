@@ -17,7 +17,7 @@ public:
         : mStartAddr(startAddr)
         , mData(std::make_unique<uint8_t[]>(Size))
     {
-        memset(mData.get(), 0, Size);
+        reset();
     }
 
     virtual ~Ram() {}
@@ -50,7 +50,7 @@ public:
 
     constexpr size_t size() const { return Size; }
 
-    void clear()
+    void reset()
     {
         memset(mData.get(), 0, Size);
     }

@@ -15,10 +15,10 @@ public:
         Down, Up, Left, Right
     };
 
-
     Joypad(Bus& bus);
 
-    void step(uint16_t mCycles);
+    void reset();
+    void step(uint32_t mCycles);
 
     // GB side
     void write(uint8_t val);
@@ -38,6 +38,7 @@ private:
 
     bool inCurrentSelection(Btn btn) const;
 
+    Bus& mBus;
 
     Selection mSelection;
 
@@ -47,7 +48,6 @@ private:
     bool mCounterEnabled;
     uint32_t mCyclesCounter;
 
-    Bus& mBus;
 };
 
 

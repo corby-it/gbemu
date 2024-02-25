@@ -1,78 +1,12 @@
-#include "App.h"
 
+
+#include "App.h"
+#include "ImGuiFileDialog/ImGuiFileDialog.h"
 
 
 App::App()
-    : p(bus)
-    , mDisplayBuffer(Display::w, Display::h)
-{
-
-    // set all palettes to default so that color id corresponds to color value
-    p.regs.BGP.setToDefault();
-    p.regs.OBP0.setToDefault();
-    p.regs.OBP1.setToDefault();
-
-    // set the ppu to share the same vram area for both bg/win and objects
-    bool bgTileAreaFlag = true;
-    p.regs.LCDC.bgWinTileDataArea = bgTileAreaFlag;
-    p.regs.LCDC.objDoubleH = false;
-
-    uint8_t bgColor = 0;
-    uint8_t objColors[3] = { 1, 2, 3 };
-
-    // background will use only one tile
-    auto bgTile = p.vram.getBgTile(0, bgTileAreaFlag);
-    for (uint32_t y = 0; y < TileData::h; ++y) {
-        for (uint32_t x = 0; x < TileData::w; ++x) {
-            bgTile.set(x, y, bgColor);
-        }
-    }
-
-    // setup object tiles
-    for (uint8_t i = 0; i < 3; i++) {
-        auto colorVal = objColors[i];
-        auto objTile = p.vram.getObjTile(i + 1, false);
-
-        for (uint32_t y = 0; y < TileData::h; ++y) {
-            for (uint32_t x = 0; x < TileData::w; ++x) {
-                objTile.set(x, y, colorVal);
-            }
-        }
-    }
-
-    // put all oams at the bottom of the screen (y = 160)
-    for (uint8_t i = 0; i < OAMRam::oamCount; ++i) {
-        auto oam = p.oamRam.getOAMData(i);
-
-        oam.tileId() = i;
-        oam.x() = 0;
-        oam.y() = 160;
-    }
-
-    std::vector<OAMData> objs = {
-        p.oamRam.getOAMData(0),
-        p.oamRam.getOAMData(1),
-        p.oamRam.getOAMData(2),
-    };
-
-    // put oam 0 at (30, 50) in the display
-    objs[0].x() = 38;
-    objs[0].y() = 66;
-    objs[0].tileId() = 1;
-
-    // put oam 1 at (30, 55) in the display
-    objs[1].x() = 38;
-    objs[1].y() = 71;
-    objs[1].tileId() = 2;
-
-    // put oam 2 at (30, 60) in the display
-    objs[2].x() = 38;
-    objs[2].y() = 76;
-    objs[2].tileId() = 3;
-
-    // draw one frame
-    p.stepFrame();
-}
+    : mDisplayBuffer(Display::w, Display::h)
+{}
 
 
 // Simple helper function to load an image into a OpenGL texture with common settings
@@ -105,14 +39,133 @@ bool LoadTextureFromMatrix(const Matrix& mat, GLuint* out_texture, RgbBuffer& bu
 
 void App::update()
 {
+    mGameboy.emulate();
+
+    UIDraw();
+}
+
+
+
+
+void App::UIDraw()
+{
+    UIDrawMenu();
+    UIDrawControlWindow();
+    UIDrawEmulationWindow();
+}
+
+
+void App::UIDrawMenu()
+{
+    if (ImGui::BeginMainMenuBar())
+    {
+        if (ImGui::BeginMenu("File")) {
+            if (ImGui::MenuItem("Open rom file...", "CTRL+O")) {
+                IGFD::FileDialogConfig config;
+                config.path = ".";
+                config.flags = ImGuiFileDialogFlags_Modal;
+                ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose Rom File", ".gb", config);
+            }
+            ImGui::Separator();
+            if (ImGui::MenuItem("Quit", "Alt+F4")) {}
+            ImGui::EndMenu();
+        }
+        if (ImGui::BeginMenu("Tools")) {
+            if (ImGui::MenuItem("Todo...", false, false)) {} 
+            ImGui::EndMenu();
+        }
+        if (ImGui::BeginMenu("About")) {
+            if (ImGui::MenuItem("About gbemu")) {}
+            ImGui::EndMenu();
+        }
+        ImGui::EndMainMenuBar();
+    }
+
+    // handle file dialog
+    if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey", ImGuiWindowFlags_NoCollapse, ImVec2{ 350, 250 })) {
+        if (ImGuiFileDialog::Instance()->IsOk()) { // action if OK
+            
+            mConfig.currentRomPath = ImGuiFileDialog::Instance()->GetFilePathName();
+            mConfig.loadingRes = mGameboy.cartridge.loadRomFile(mConfig.currentRomPath);
+
+            if (mConfig.loadingRes != CartridgeLoadingRes::Ok) {
+                ImGui::OpenPopup("Loading failed");
+            }
+        }
+        
+        ImGuiFileDialog::Instance()->Close();
+    }
+
+    if (ImGui::BeginPopupModal("Loading failed", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::Text("Rom loading failed! Error:");
+        ImGui::Text("%s", cartridgeLoadingResToStr(mConfig.loadingRes));
+        
+        if (ImGui::Button("OK", ImVec2(120, 0))) {
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+    }
+}
+
+void App::UIDrawControlWindow()
+{
+    ImGui::Begin("Emulation", nullptr, ImGuiWindowFlags_NoCollapse);
+
+    // --------------------------------------------------------------------------------------------
+    ImGui::SeparatorText("Controls");
+    
+    ImGui::PushStyleColor(ImGuiCol_Button, (ImVec4)ImColor::HSV(0.f, 0.71f, 0.6f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, (ImVec4)ImColor::HSV(0.f, 0.71f, 0.7f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, (ImVec4)ImColor::HSV(0.f, 0.81f, 0.8f));
+    if (ImGui::Button("Stop")) { mGameboy.stop(); }
+    ImGui::PopStyleColor(3);
+
+    ImGui::SameLine();
+    
+    ImGui::PushStyleColor(ImGuiCol_Button, (ImVec4)ImColor::HSV(0.33f, 0.71f, 0.6f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, (ImVec4)ImColor::HSV(0.33f, 0.71f, 0.7f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, (ImVec4)ImColor::HSV(0.33f, 0.81f, 0.8f));
+    if (ImGui::Button("Start")) { mGameboy.play(); }
+    ImGui::PopStyleColor(3);
+
+    ImGui::SameLine();
+
+    ImGui::PushStyleColor(ImGuiCol_Button, (ImVec4)ImColor::HSV(0.16f, 0.71f, 0.6f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, (ImVec4)ImColor::HSV(0.16f, 0.71f, 0.7f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, (ImVec4)ImColor::HSV(0.16f, 0.81f, 0.8f));
+    if (ImGui::Button("Pause")) { mGameboy.pause(); }
+    ImGui::PopStyleColor(3);
+
+
+    // --------------------------------------------------------------------------------------------
+    ImGui::SeparatorText("Cartridge info");
+    
+    ImGui::LabelText("Title", "%s", mGameboy.cartridge.header.title().c_str());
+    ImGui::LabelText("CGB Flag", "%s", CGBFlagToStr(mGameboy.cartridge.header.cgbFlag()));
+    ImGui::LabelText("New Licensee Code", "%s", mGameboy.cartridge.header.newLicenseeCode());
+    ImGui::LabelText("SGB Flag", "%s", SGBFlagToStr(mGameboy.cartridge.header.sgbFlag()));
+    ImGui::LabelText("Cartridge Type", "%s", cartTypeToStr(mGameboy.cartridge.header.cartType()));
+    ImGui::LabelText("ROM Size", "%u", mGameboy.cartridge.header.romSize());
+    ImGui::LabelText("RAM Size", "%u", mGameboy.cartridge.header.ramSize());
+    ImGui::LabelText("Destination code", "%s", destCodeToStr(mGameboy.cartridge.header.destCode()));
+    ImGui::LabelText("Old Licensee Code", "%s", mGameboy.cartridge.header.oldLicenseeCode());
+    ImGui::LabelText("Mask ROM version", "%x", mGameboy.cartridge.header.maskRomVersionNum());
+    ImGui::LabelText("Header checksum", "0x%02x", mGameboy.cartridge.header.headerChecksum());
+    ImGui::LabelText("Global checksum", "0x%04x", mGameboy.cartridge.header.globalChecksum());
+
+
+    ImGui::End();
+}
+
+void App::UIDrawEmulationWindow()
+{
+
     GLuint displayTexture;
-    LoadTextureFromMatrix(p.display, &displayTexture, mDisplayBuffer);
+    LoadTextureFromMatrix(mGameboy.ppu.display, &displayTexture, mDisplayBuffer);
 
 
     ImGui::Begin("GB Display");
-    ImGui::Text("size: %ux%u", p.display.width(), p.display.height());
-    ImGui::Image((void*)(intptr_t)displayTexture, ImVec2(640, 576));
+    ImGui::Text("Status: %s", GameBoyClassic::statusToStr(mGameboy.status));
+    ImGui::Image((void*)(intptr_t)displayTexture, ImVec2(320, 288));
     ImGui::End();
-
 }
-

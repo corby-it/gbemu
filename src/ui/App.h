@@ -4,7 +4,8 @@
 
 
 #include "AppBase.h"
-#include "gb/Ppu.h"
+#include "AppConfig.h"
+#include "gb/GameBoyCore.h"
 
 
 class App : public AppBase {
@@ -18,8 +19,14 @@ public:
 
 private:
 
-    TestBus bus;
-    PPU p;
+    void UIDraw();
+    void UIDrawMenu();
+    void UIDrawControlWindow();
+    void UIDrawEmulationWindow();
+
+
+    AppConfig mConfig;
+    GameBoyClassic mGameboy;
 
     RgbBuffer mDisplayBuffer;
 

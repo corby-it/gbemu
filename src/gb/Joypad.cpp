@@ -6,15 +6,21 @@
 
 
 Joypad::Joypad(Bus& bus)
-    : mSelection(Selection::Disabled)
-    , mDpadByte(static_cast<uint8_t>(Selection::Dpad) << 4 | 0x0F)
-    , mBtnsByte(static_cast<uint8_t>(Selection::Buttons) << 4 | 0x0F)
-    , mCounterEnabled(false)
-    , mCyclesCounter(0)
-    , mBus(bus)
-{}
+    : mBus(bus)
+{
+    reset();
+}
 
-void Joypad::step(uint16_t mCycles)
+void Joypad::reset()
+{
+    mSelection = Selection::Disabled;
+    mDpadByte = static_cast<uint8_t>(Selection::Dpad) << 4 | 0x0F;
+    mBtnsByte = static_cast<uint8_t>(Selection::Buttons) << 4 | 0x0F;
+    mCounterEnabled = false;
+    mCyclesCounter = 0;
+}
+
+void Joypad::step(uint32_t mCycles)
 {
     // from the gameboy developer manual (page 25), the joypad interrupt is triggered
     // after 16 clock cycles (4 machine cycles) after a negative edge

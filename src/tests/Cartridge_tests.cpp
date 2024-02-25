@@ -253,13 +253,13 @@ TEST_CASE("Test Cartridge")
     SUBCASE("Tetris - bad file (too small)") {
         auto parsing = c.loadRomFile(testFilesRoot / "tetris-fake-rom-bad.gb");
 
-        REQUIRE_FALSE(parsing);
+        REQUIRE(parsing != CartridgeLoadingRes::Ok);
     }
 
     SUBCASE("Tetris - no MBC") {
         auto parsing = c.loadRomFile(testFilesRoot / "tetris-fake-rom-good.gb");
 
-        REQUIRE(parsing);
+        REQUIRE(parsing == CartridgeLoadingRes::Ok);
         
         CHECK(c.header.romSize() == 32 * 1024);
         CHECK(c.rom.size() == c.header.romSize());

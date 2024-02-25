@@ -9,10 +9,14 @@
 
 class Serial {
 public:
-    Serial()
-        : mData(0)
-        , mCtrl(0)
-    {}
+    Serial() {
+        reset();
+    }
+
+    void reset() {
+        mData = 0;
+        mCtrl = 0;
+    }
 
     uint8_t readData() const { return mData; }
     uint8_t readCtrl() const { return mCtrl; }

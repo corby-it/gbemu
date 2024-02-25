@@ -30,17 +30,17 @@ enum class CGBFlag {
     Unknown
 };
 
+const char* CGBFlagToStr(CGBFlag cgb);
+
+
 enum class SGBFlag {
     GB,
     SGB,
     Unknown
 };
 
-enum class DestCode {
-    Japan,
-    World,
-    Unknown
-};
+const char* SGBFlagToStr(SGBFlag sgb);
+
 
 enum class CartridgeType {
     NoMBC,
@@ -74,6 +74,17 @@ enum class CartridgeType {
     Unknown
 };
 
+const char* cartTypeToStr(CartridgeType ct);
+
+
+enum class DestCode {
+    Japan,
+    World,
+    Unknown
+};
+
+const char* destCodeToStr(DestCode dc);
+
 
 
 class CartridgeHeader {
@@ -87,15 +98,15 @@ public:
 
     EntryPointData entryPoint() const;
     LogoData logoData() const;
-    std::string_view title() const;
+    std::string title() const;
     CGBFlag cgbFlag() const;
-    std::string_view newLicenseeCode() const;
+    const char* newLicenseeCode() const;
     SGBFlag sgbFlag() const;
     CartridgeType cartType() const;
     uint32_t romSize() const;
     uint32_t ramSize() const;
     DestCode destCode() const;
-    std::string_view oldLicenseeCode() const;
+    const char* oldLicenseeCode() const;
     uint8_t maskRomVersionNum() const;
     uint8_t headerChecksum() const;
     uint16_t globalChecksum() const;
@@ -133,6 +144,8 @@ public:
     MbcInterface(MbcType type, const std::vector<uint8_t>& rom, std::vector<uint8_t>& ram);
     virtual ~MbcInterface() {}
 
+    void reset();
+
     virtual uint8_t read8(uint16_t addr) const = 0;
     virtual void write8(uint16_t addr, uint8_t val) = 0;
 
@@ -142,6 +155,9 @@ public:
     uint8_t getRamBankId() const { return mRamCurrBank; }
 
 protected:
+
+    virtual void onReset() {}
+
     const MbcType mType;
 
     const std::vector<uint8_t>& mRom;
@@ -169,11 +185,23 @@ public:
 // Cartridge
 // ------------------------------------------------------------------------------------------------
 
+enum class CartridgeLoadingRes {
+    Ok,
+    FileTooSmall,
+    HeaderRomSizeFileSizeMismatch,
+    HeaderVerificationFailed,
+    MbcNotSupported
+};
+
+const char* cartridgeLoadingResToStr(CartridgeLoadingRes lr);
+
 class Cartridge {
 public:
     Cartridge();
 
-    bool loadRomFile(const std::filesystem::path& romPath);
+    void reset();
+
+    CartridgeLoadingRes loadRomFile(const std::filesystem::path& romPath);
 
 
     uint8_t read8(uint16_t addr) const {

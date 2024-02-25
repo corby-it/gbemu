@@ -23,13 +23,13 @@ void Timer::reset()
     mClockSelect = ClockSelect::N1024;
 }
 
-void Timer::step(uint16_t mCycles)
+void Timer::step(uint32_t mCycles)
 {
     // the mCycles argument represents the number of machine cycles that 
     // have elapsed since the last step call
     // 1 machine cycle is equal to 4 clock cycles and DIV counts the number of clock cycles
     // so we have to increase it by 4
-    uint16_t cCycles = mCycles * 4;
+    uint16_t cCycles = (uint16_t)mCycles * 4;
     uint16_t subClock = clockDividers[mClockSelect];
     
     mDiv += cCycles;

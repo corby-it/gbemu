@@ -6,12 +6,18 @@
 
 DMA::DMA(Bus& bus)
     : mBus(bus)
-    , mReg(0x00)
-    , mStartAddr(0x0000)
-    , mEndAddr(0x0000)
-    , mCurrAddr(0x0000)
-    , mIsTransferring(false)
-{}
+{
+    reset();
+}
+
+void DMA::reset()
+{
+    mReg = 0x00;
+    mStartAddr = 0x0000;
+    mEndAddr = 0x0000;
+    mCurrAddr = 0x0000;
+    mIsTransferring = false;
+}
 
 void DMA::write(uint8_t val)
 {
@@ -46,7 +52,7 @@ void DMA::write(uint8_t val)
     mIsTransferring = true;
 }
 
-void DMA::step(uint8_t mCycles)
+void DMA::step(uint32_t mCycles)
 {
     if (!mIsTransferring)
         return;
@@ -66,3 +72,5 @@ void DMA::step(uint8_t mCycles)
         }
     }
 }
+
+

@@ -17,7 +17,76 @@ namespace fs = std::filesystem;
 // CartridgeHeader
 // ------------------------------------------------------------------------------------------------
 
-static const std::unordered_map<std::string_view, std::string_view> newLicenseeCodeMap = {
+const char* CGBFlagToStr(CGBFlag cgb)
+{
+    switch (cgb) {
+    case CGBFlag::CGBIncompatible: return "CGB incompatible";
+    case CGBFlag::CGBOnly: return "CGB only";
+    case CGBFlag::CGBCompatible: return "CGB compatible";
+    case CGBFlag::PGBMode: return "PGB mode";
+    default:
+    case CGBFlag::Unknown: return "Unknown";
+    }
+}
+
+const char* SGBFlagToStr(SGBFlag sgb)
+{
+    switch (sgb) {
+    case SGBFlag::GB: return "GB";
+    case SGBFlag::SGB: return "SGB";
+    default:
+    case SGBFlag::Unknown: return "Unknown";
+    }
+}
+
+const char* cartTypeToStr(CartridgeType ct)
+{
+    switch (ct)
+    {
+    case CartridgeType::NoMBC: return "No MBC";
+    case CartridgeType::MBC1: return "MBC1";
+    case CartridgeType::MBC1Ram: return "MBC1 + RAM";
+    case CartridgeType::MBC1RamBattery: return "MBC1 + Ram + Battery";
+    case CartridgeType::MBC2: return "MBC2";
+    case CartridgeType::MBC2Battery: return "MBC2 + Battery";
+    case CartridgeType::RomRam: return "Rom + Ram";
+    case CartridgeType::RomRamBattery: return "Rom + Ram + Battery";
+    case CartridgeType::MMM01: return "MMM01";
+    case CartridgeType::MMM01Ram: return "MMM01 + Ram";
+    case CartridgeType::MMM01RamBattery: return "MMM01 + Ram + Battery";
+    case CartridgeType::MBC3TimerBattery: return "MBC3 + Timer + Battery";
+    case CartridgeType::MBC3TimerRamBattery: return "MBC3 + Timer + Ram + Battery";
+    case CartridgeType::MBC3: return "MBC3";
+    case CartridgeType::MBC3Ram: return "MBC3 + Ram";
+    case CartridgeType::MBC3RamBattery: return "MBC3 + Ram + Battery";
+    case CartridgeType::MBC5: return "MBC5";
+    case CartridgeType::MBC5Ram: return "MBC5 + Ram";
+    case CartridgeType::MBC5RamBattery: return "MBC5 + Ram + Battery";
+    case CartridgeType::MBC5Rumble: return "MBC5 + Rumble";
+    case CartridgeType::MBC5RumbleRam: return "MBC5 + Rumble + Ram";
+    case CartridgeType::MBC5RumbleRamBattery:  return "MBC5 + Rumble + Ram + Battery";
+    case CartridgeType::MBC6: return "MBC6";
+    case CartridgeType::MBC7SensorRumbleRamBattery: return "MBC7 + Sensor + Rumble + Ram + Battery";
+    case CartridgeType::PocketCamera: return "Pocket Camera";
+    case CartridgeType::BandaiTama5: return "Bandai Tama 5";
+    case CartridgeType::HuC3: return "HuC3";
+    case CartridgeType::HuC1RamBattery: return "HuC1 + Ram + Battery";
+    default:
+    case CartridgeType::Unknown: return "Unknown";
+    }
+}
+
+const char* destCodeToStr(DestCode dc)
+{
+    switch (dc) {
+    case DestCode::Japan: return "Japan";
+    case DestCode::World: return "World";
+    default:
+    case DestCode::Unknown: return "Unknown";
+    }
+}
+
+static const std::unordered_map<std::string_view, const char*> newLicenseeCodeMap = {
     { "00", "None" },
     { "01", "Nintendo R&D1" },
     { "08", "Capcom" },
@@ -115,7 +184,7 @@ static const std::unordered_map<uint8_t, CartridgeType> cartTypeMap = {
 };
 
 
-static const std::unordered_map<uint8_t, std::string_view> oldLicenseeCodeMap = {
+static const std::unordered_map<uint8_t, const char*> oldLicenseeCodeMap = {
     { 0x00, "None" },
     { 0x01, "Nintendo" },
     { 0x08, "Capcom" },
@@ -291,7 +360,7 @@ LogoData CartridgeHeader::logoData() const
     return ret;
 }
 
-std::string_view CartridgeHeader::title() const
+std::string CartridgeHeader::title() const
 {
     if (!mRomBaseAddr) 
         return {};
@@ -303,11 +372,11 @@ std::string_view CartridgeHeader::title() const
     // remove unnecessary '\0' at the end
     auto firstNull = ret.find_first_of('\0');
     if (firstNull == std::string_view::npos)
-        return ret;
+        return std::string(ret);
 
     ret.remove_suffix(15 - firstNull);
 
-    return ret;
+    return std::string(ret);
 }
 
 CGBFlag CartridgeHeader::cgbFlag() const
@@ -328,10 +397,10 @@ CGBFlag CartridgeHeader::cgbFlag() const
         return CGBFlag::Unknown;
 }
 
-std::string_view CartridgeHeader::newLicenseeCode() const
+const char* CartridgeHeader::newLicenseeCode() const
 {
     if (!mRomBaseAddr)
-        return { "" };
+        return "";
 
     auto start = mRomBaseAddr + 0x144;
     std::string_view code((char*)start, 2);
@@ -341,7 +410,7 @@ std::string_view CartridgeHeader::newLicenseeCode() const
     if (it != newLicenseeCodeMap.end())
         return it->second;
     else
-        return { "" };
+        return "";
 }
 
 SGBFlag CartridgeHeader::sgbFlag() const
@@ -408,17 +477,17 @@ DestCode CartridgeHeader::destCode() const
     }
 }
 
-std::string_view CartridgeHeader::oldLicenseeCode() const
+const char* CartridgeHeader::oldLicenseeCode() const
 {
     if (!mRomBaseAddr)
-        return { "" };
+        return "";
 
     auto it = oldLicenseeCodeMap.find(mRomBaseAddr[0x14B]);
 
     if (it != oldLicenseeCodeMap.end())
         return it->second;
-    else 
-        return { "" };
+    else
+        return "";
 }
 
 uint8_t CartridgeHeader::maskRomVersionNum() const
@@ -525,6 +594,14 @@ MbcInterface::MbcInterface(MbcType type, const std::vector<uint8_t>& rom, std::v
     , mRamCurrBank(0)
 {}
 
+void MbcInterface::reset()
+{
+    mRomCurrBank = 0;
+    mRamCurrBank = 0;
+    
+    onReset();
+}
+
 
 
 MbcNone::MbcNone(const std::vector<uint8_t>& rom, std::vector<uint8_t>& ram)
@@ -551,20 +628,41 @@ void MbcNone::write8(uint16_t /*addr*/, uint8_t /*val*/)
 // Cartridge
 // ------------------------------------------------------------------------------------------------
 
+const char* cartridgeLoadingResToStr(CartridgeLoadingRes lr)
+{
+    switch (lr) {
+    default:
+    case CartridgeLoadingRes::Ok: return "Ok";
+    case CartridgeLoadingRes::FileTooSmall: return "Rom file is too small";
+    case CartridgeLoadingRes::HeaderRomSizeFileSizeMismatch: return "Header ROM size and file size don't match";
+    case CartridgeLoadingRes::HeaderVerificationFailed: return "Header verification failed";
+    case CartridgeLoadingRes::MbcNotSupported: return "MBC not supported";
+    }
+}
+
+
+
+
 Cartridge::Cartridge()
     : rom(32 * 1024, 0)
     , ram()
     , mbc(std::make_unique<MbcNone>(rom, ram))
 {}
 
-bool Cartridge::loadRomFile(const fs::path& romPath)
+void Cartridge::reset()
+{
+    mbc->reset();
+    std::fill(ram.begin(), ram.end(), 0);
+}
+
+CartridgeLoadingRes Cartridge::loadRomFile(const fs::path& romPath)
 {
     // read a rom file from disk and set it up into this cartridge instance 
     auto romFileSize = fs::file_size(romPath);
 
     // the smallest possible rom must be at least 32K
     if(romFileSize < 32 * 1024)
-        return false;
+        return CartridgeLoadingRes::FileTooSmall;
 
     // read the first 0x150 bytes to parse the cartridge header
     std::array<uint8_t, CartridgeHeader::headerSize> firstBytes;
@@ -577,8 +675,11 @@ bool Cartridge::loadRomFile(const fs::path& romPath)
     // the rom file size must be the same as the one we read
     // from the cartridge header, otherwise something is corrupted
     // we also have to check if the header doesn't contain garbage ram or rom sizes
-    if (tmpHeader.romSize() != romFileSize || !tmpHeader.canLoad())
-        return false;
+    if (tmpHeader.romSize() != romFileSize)
+        return CartridgeLoadingRes::HeaderRomSizeFileSizeMismatch;
+        
+    if (!tmpHeader.canLoad())
+        return CartridgeLoadingRes::HeaderVerificationFailed;
 
     // re-initialize rom, ram, mbc, etc.
     rom.resize(tmpHeader.romSize());
@@ -586,7 +687,6 @@ bool Cartridge::loadRomFile(const fs::path& romPath)
     ram.resize(tmpHeader.ramSize());
     std::fill(ram.begin(), ram.end(), 0);
     
-
     switch (tmpHeader.cartType()) {
     case CartridgeType::NoMBC:
         mbc = std::make_unique<MbcNone>(rom, ram);
@@ -594,8 +694,10 @@ bool Cartridge::loadRomFile(const fs::path& romPath)
     
     default:
         // MBC type not supported yet
-        return false;
+        return CartridgeLoadingRes::MbcNotSupported;
     }
+
+    mbc->reset();
 
     // read rom file content into mRom
     ifs.seekg(0);
@@ -605,12 +707,8 @@ bool Cartridge::loadRomFile(const fs::path& romPath)
     header = CartridgeHeader(rom.data());
 
     // ready to go
-    return true;
+    return CartridgeLoadingRes::Ok;
 }
-
-
-
-
 
 
 

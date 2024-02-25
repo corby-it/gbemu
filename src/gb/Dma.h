@@ -10,13 +10,13 @@ class DMA {
 public:
     DMA(Bus& bus);
 
-    bool isTransferring() const { return mIsTransferring; }
+    void reset();
+    void step(uint32_t mCycles);
 
     uint8_t read() const { return mReg; }
     void write(uint8_t val);
 
-
-    void step(uint8_t mCycles);
+    bool isTransferring() const { return mIsTransferring; }
 
 
 private:

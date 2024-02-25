@@ -42,7 +42,8 @@ workspace(project_name)
         src_base .. "/imgui/*.cpp",
         src_base .. "/imgui/*.h",
         src_base .. "/imgui/backends/imgui_impl_glfw.cpp",
-        src_base .. "/imgui/backends/imgui_impl_opengl3.cpp"
+        src_base .. "/imgui/backends/imgui_impl_opengl3.cpp",
+        src_base .. "/third-party/ImGuiFileDialog/ImGuiFileDialog.cpp"
     }
 
     includedirs {
@@ -52,6 +53,7 @@ workspace(project_name)
     externalincludedirs {
         src_base .. "/imgui",
         src_base .. "/imgui/backends",
+        src_base .. "/third-party"
     }
 
     defines {
