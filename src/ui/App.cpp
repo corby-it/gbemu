@@ -71,7 +71,7 @@ void App::UIDrawMenu()
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Tools")) {
-            if (ImGui::MenuItem("Todo...", false, false)) {} 
+            if (ImGui::MenuItem("Todo...")) {} 
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("About")) {
