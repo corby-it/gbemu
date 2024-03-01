@@ -202,7 +202,7 @@ void GBBus::write8(uint16_t addr, uint8_t val)
     if (mCpu && addr == mmap::regs::IF)
         mCpu->irqs.IF = val;
 
-    if (mHiRam && addr >= mmap::hiram::start && addr >= mmap::hiram::end)
+    if (mHiRam && addr >= mmap::hiram::start && addr <= mmap::hiram::end)
         mHiRam->write8(addr, val);
 
     if (mCpu && addr == mmap::IE)

@@ -23,12 +23,13 @@ private:
     void UIDrawMenu();
     void UIDrawControlWindow();
     void UIDrawEmulationWindow();
-
+    void UIDrawRegsTables();
 
     AppConfig mConfig;
     GameBoyClassic mGameboy;
 
     RgbBuffer mDisplayBuffer;
+    GLuint mGLDisplayTexture;
 
 };
 

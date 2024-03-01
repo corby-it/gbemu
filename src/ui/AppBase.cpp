@@ -67,7 +67,7 @@ AppBase::AppBase()
         std::exit(1);
 
     glfwMakeContextCurrent(mWindow);
-    glfwSwapInterval(1); // Enable vsync
+    glfwSwapInterval(0); // Enable vsync
 
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();

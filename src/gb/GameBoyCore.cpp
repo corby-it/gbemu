@@ -4,7 +4,8 @@
 #include "GbCommons.h"
 
 using hr_clock = std::chrono::high_resolution_clock;
-
+using namespace std::chrono;
+using namespace std::chrono_literals;
 
 const char* GameBoyClassic::statusToStr(Status st)
 {
@@ -13,6 +14,7 @@ const char* GameBoyClassic::statusToStr(Status st)
     case Status::Stopped: return "Stopped";
     case Status::Paused: return "Paused";
     case Status::Playing: return "Playing";
+    case Status::Stepping: return "Stepping";
     }
 }
 
@@ -31,7 +33,10 @@ GameBoyClassic::GameBoyClassic()
     , serial()
     , hiRam(mmap::hiram::start)
     , status(Status::Stopped)
+    , mStepInstruction(false)
     , mMustStepTime(hr_clock::now())
+    , mStepAvgTimeAccumulator(500us)
+    , mStepTimeCounter(1)
 {
     bus.connect(cpu);
     bus.connect(wram);
@@ -61,28 +66,41 @@ void GameBoyClassic::gbReset()
     hiRam.reset();
 }
 
+uint32_t GameBoyClassic::gbStep()
+{
+    auto res = cpu.step();
+
+    dma.step(res.cycles);
+    ppu.step(res.cycles);
+    timer.step(res.cycles);
+    joypad.step(res.cycles);
+
+    return res.cycles;
+}
+
+
 
 void GameBoyClassic::emulate()
 {
     // if the emulation is stopped or paused there is nothing to do
-    if (status == Status::Stopped || status == Status::Paused)
+    if (status == Status::Stopped || status == Status::Paused) {
         return;
+    }
+    else if (status == Status::Playing) {
+        // emulate the gameboy, full speed
+        auto tp = hr_clock::now();
+        gbStep();
+        auto elapsed = hr_clock::now() - tp;
 
-    // emulate the gameboy
-    auto now = hr_clock::now();
-
-    if (now >= mMustStepTime) {
-        // time to execute an instruction
-        auto res = cpu.step();
-        
-        dma.step(res.cycles);
-        ppu.step(res.cycles);
-        timer.step(res.cycles);
-        joypad.step(res.cycles);
-
-        // the last instruction took N machine cycles, assuming our pc is much faster than the 
-        // gameboy cpu we can compute a time in the future when we'll have to execute the next instruction
-        mMustStepTime = now + machinePeriod * res.cycles;
+        mStepTimeCounter++;
+        mStepAvgTimeAccumulator += duration_cast<microseconds>(elapsed);
+    }
+    else if (status == Status::Stepping) {
+        // execute 1 instruction only if the user wants to
+        if (mStepInstruction) {
+            gbStep();
+            mStepInstruction = false;
+        }
     }
 }
 
@@ -101,4 +119,10 @@ void GameBoyClassic::stop()
     // on stop we also reset the whole gameboy
     status = Status::Stopped;
     gbReset();
+}
+
+void GameBoyClassic::step()
+{
+    status = Status::Stepping;
+    mStepInstruction = true;
 }

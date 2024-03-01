@@ -23,7 +23,8 @@ public:
     enum class Status {
         Stopped,
         Paused,
-        Playing
+        Playing,
+        Stepping
     };
     static const char* statusToStr(Status st);
 
@@ -35,7 +36,9 @@ public:
     void play();
     void pause();
     void stop();
+    void step();
 
+    std::chrono::microseconds stepAvgTime() const { return mStepAvgTimeAccumulator / mStepTimeCounter; }
 
     GBBus bus;
     CPU cpu;
@@ -62,10 +65,16 @@ public:
     static constexpr std::chrono::nanoseconds machinePeriod = std::chrono::nanoseconds(954);
 
 private:
-    void gbReset();
 
+    void gbReset();
+    uint32_t gbStep();
+
+    bool mStepInstruction;
 
     std::chrono::time_point<std::chrono::high_resolution_clock> mMustStepTime;
+
+    std::chrono::microseconds mStepAvgTimeAccumulator;
+    uint64_t mStepTimeCounter;
 
 };
 
