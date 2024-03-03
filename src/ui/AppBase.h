@@ -18,6 +18,11 @@ public:
     virtual void startup() = 0;
     virtual void update() = 0;
 
+protected:
+
+    void closeWindow();
+
+
 private:
 
     GLFWwindow* mWindow;

@@ -14,8 +14,15 @@ Joypad::Joypad(Bus& bus)
 void Joypad::reset()
 {
     mSelection = Selection::Disabled;
+    
     mDpadByte = static_cast<uint8_t>(Selection::Dpad) << 4 | 0x0F;
     mBtnsByte = static_cast<uint8_t>(Selection::Buttons) << 4 | 0x0F;
+
+    // bits 6 and 7 (that are unused) always read as 1
+    // source: gekkio gameboy technical manual, page 44
+    mDpadByte |= 0xC0;
+    mBtnsByte |= 0xC0;
+
     mCounterEnabled = false;
     mCyclesCounter = 0;
 }
@@ -83,8 +90,8 @@ uint8_t Joypad::read() const
     case Joypad::Selection::Dpad: return mDpadByte;
     case Joypad::Selection::Buttons: return mBtnsByte;
     default:
-    case Joypad::Selection::Disabled:
-    case Joypad::Selection::Both: return 0x3F;
+    case Joypad::Selection::Disabled: return 0xCF;
+    case Joypad::Selection::Both: return 0xFF;
     }
 }
 

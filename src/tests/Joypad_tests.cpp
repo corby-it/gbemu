@@ -22,7 +22,7 @@ TEST_CASE("Joypad test writing disabled")
     jp.write(disableMask);
 
     auto val = jp.read();
-    CHECK(val == 0x3F);
+    CHECK(val == 0xCF);
 
     // press a few buttons
     jp.press(Joypad::Btn::A);
@@ -30,7 +30,7 @@ TEST_CASE("Joypad test writing disabled")
     jp.press(Joypad::Btn::Down);
 
     val = jp.read();
-    CHECK(val == 0x3F);
+    CHECK(val == 0xCF);
 }
 
 TEST_CASE("Joypad test writing enabled")
@@ -41,14 +41,14 @@ TEST_CASE("Joypad test writing enabled")
     jp.write(disableMask);
 
     auto val = jp.read();
-    CHECK(val == 0x3F);
+    CHECK(val == 0xCF);
 
-    // press A and Start, we must read 0b00010110 when we
+    // press A and Start, we must read 0b11010110 (0xD6) when we
     // read the status of the buttons
     jp.press(Joypad::Btn::A);
     jp.press(Joypad::Btn::Start);
 
-    // press Up and Left, we must read 0b00101001 when we
+    // press Up and Left, we must read 0b11101001 (0xE9) when we
     // read the status of the dpad
     jp.press(Joypad::Btn::Up);
     jp.press(Joypad::Btn::Left);
@@ -57,13 +57,13 @@ TEST_CASE("Joypad test writing enabled")
     jp.write(btnsMask);
 
     val = jp.read();
-    CHECK(val == 0x16);
+    CHECK(val == 0xD6);
 
     // enable dpad
     jp.write(dpadMask);
 
     val = jp.read();
-    CHECK(val == 0x29);
+    CHECK(val == 0xE9);
 }
 
 
@@ -78,13 +78,13 @@ TEST_CASE("Joypad test interrupt trigger")
     jp.write(dpadMask);
 
     auto val = jp.read();
-    CHECK(val == 0x2F);
+    CHECK(val == 0xEF);
 
     // press a few buttons
     jp.press(Joypad::Btn::Down);
 
     val = jp.read();
-    CHECK(val == 0x27);
+    CHECK(val == 0xE7);
 
     // step for 2 cycles, the interrupt must still be disabled
     jp.step(2);
@@ -108,13 +108,13 @@ TEST_CASE("Joypad test interrupt counter reset")
     jp.write(dpadMask);
 
     auto val = jp.read();
-    CHECK(val == 0x2F);
+    CHECK(val == 0xEF);
 
     // press a few buttons
     jp.press(Joypad::Btn::Down);
 
     val = jp.read();
-    CHECK(val == 0x27);
+    CHECK(val == 0xE7);
 
     // step for 2 cycles, the interrupt must still be disabled
     jp.step(2);

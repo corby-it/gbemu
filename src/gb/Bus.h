@@ -5,7 +5,6 @@
 
 #include "Ram.h"
 
-
 // the GB has a 16-bit address bus that connects the CPU to everything else.
 // Everything is memory mapped on the same bus
 
@@ -77,22 +76,59 @@ class GBBus : public Bus {
 public:
     GBBus();
 
-    uint8_t read8(uint16_t addr) const override;
-    void write8(uint16_t addr, uint8_t val) override;
+    uint8_t read8(uint16_t addr) const override { return (this->*mReadFnPtr)(addr); }
+    void write8(uint16_t addr, uint8_t val) override { (this->*mWriteFnPtr)(addr, val); }
     
-    void connect(CPU& cpu) { mCpu = &cpu; }
-    void connect(WorkRam& wram) { mWram = &wram; }
-    void connect(PPU& ppu) { mPpu = &ppu; }
-    void connect(DMA& dma) { mDma = &dma; }
-    void connect(Cartridge& cart) { mCartridge = &cart; }
-    void connect(Timer& t) { mTimer = &t; }
-    void connect(Joypad& jp) { mJoypad = &jp; }
-    void connect(Audio& au) { mAudio = &au; }
-    void connect(Serial& sr) { mSerial = &sr; }
-    void connect(HiRam& hiram) { mHiRam = &hiram; }
+    void connect(CPU& cpu) { 
+        mCpu = &cpu;
+        switchRWFunctions();
+    }
+    void connect(WorkRam& wram) { 
+        mWram = &wram;
+        switchRWFunctions();
+    }
+    void connect(PPU& ppu) { 
+        mPpu = &ppu;
+        switchRWFunctions();
+    }
+    void connect(DMA& dma) { 
+        mDma = &dma;
+        switchRWFunctions();
+    }
+    void connect(Cartridge& cart) { 
+        mCartridge = &cart;
+        switchRWFunctions();
+    }
+    void connect(Timer& t) { 
+        mTimer = &t;
+        switchRWFunctions();
+    }
+    void connect(Joypad& jp) { 
+        mJoypad = &jp;
+        switchRWFunctions();
+    }
+    void connect(Audio& au) {
+        mAudio = &au;
+        switchRWFunctions();
+    }
+    void connect(Serial& sr) {
+        mSerial = &sr; 
+        switchRWFunctions();
+    }
+    void connect(HiRam& hiram) { 
+        mHiRam = &hiram;
+        switchRWFunctions();
+    }
 
 
 private:
+    void switchRWFunctions();
+
+    uint8_t realRead(uint16_t addr) const;
+    void realWrite(uint16_t addr, uint8_t val);
+
+    uint8_t dummyRead(uint16_t /*addr*/) const { return 0; }
+    void dummyWrite(uint16_t /*addr*/, uint8_t /*val*/) { }
 
 
     CPU* mCpu;
@@ -106,6 +142,12 @@ private:
     Serial* mSerial;
     HiRam* mHiRam;
 
+
+    using ReadFnType = uint8_t(GBBus::*)(uint16_t) const;
+    using WriteFnType = void(GBBus::*)(uint16_t, uint8_t);
+
+    ReadFnType mReadFnPtr;
+    WriteFnType mWriteFnPtr;
 };
 
 

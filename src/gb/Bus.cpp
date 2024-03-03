@@ -53,44 +53,58 @@ GBBus::GBBus()
     , mTimer(nullptr)
     , mJoypad(nullptr)
     , mAudio(nullptr)
+    , mSerial(nullptr)
     , mHiRam(nullptr)
+    , mReadFnPtr(&GBBus::dummyRead)
+    , mWriteFnPtr(&GBBus::dummyWrite)
 {}
 
+void GBBus::switchRWFunctions()
+{
+    if (mCpu && mWram && mPpu && mDma && mCartridge && mTimer
+        && mJoypad && mAudio && mSerial && mHiRam) {
 
-uint8_t GBBus::read8(uint16_t addr) const
+        mReadFnPtr = &GBBus::realRead;
+        mWriteFnPtr = &GBBus::realWrite;
+    }
+    else {
+        mReadFnPtr = &GBBus::dummyRead;
+        mWriteFnPtr = &GBBus::dummyWrite;
+    }
+}
+
+
+uint8_t GBBus::realRead(uint16_t addr) const
 {
     if (addr >= mmap::rom::start && addr <= mmap::rom::end)
-        return mCartridge ? mCartridge->read8(addr) : 0;
+        return mCartridge->read8(addr);
 
     if (addr >= mmap::vram::start && addr <= mmap::vram::end)
-        return mPpu ? mPpu->vram.read8(addr) : 0;
+        return mPpu->vram.read8(addr);
 
     if (addr >= mmap::external_ram::start && addr <= mmap::external_ram::end)
-        return mCartridge ? mCartridge->read8(addr) : 0;
+        return mCartridge->read8(addr);
 
     if (addr >= mmap::wram::start && addr <= mmap::wram::end)
-        return mWram ? mWram->read8(addr) : 0;
+        return mWram->read8(addr);
 
     if (addr >= mmap::echoram::start && addr <= mmap::echoram::end)
-        return mWram ? mWram->read8(addr - (mmap::echoram::start - mmap::wram::start)) : 0;
+        return mWram->read8(addr - (mmap::echoram::start - mmap::wram::start));
 
     if (addr >= mmap::oam::start && addr <= mmap::oam::end)
-        return mPpu ? mPpu->oamRam.read8(addr) : 0;
+        return mPpu->oamRam.read8(addr);
 
     // Control registers --------------------------------------------------------------------------
 
     if (addr == mmap::regs::joypad)
-        return mJoypad ? mJoypad->read() : 0;
+        return mJoypad->read();
 
     if (addr == mmap::regs::serial_data)
-        return mSerial ? mSerial->readData() : 0;
+        return mSerial->readData();
     if (addr == mmap::regs::serial_ctrl)
-        return mSerial ? mSerial->readCtrl() : 0;
+        return mSerial->readCtrl();
 
     if (addr >= mmap::regs::timer::start && addr <= mmap::regs::timer::end) {
-        if (!mTimer)
-            return 0;
-
         if (addr == mmap::regs::timer::DIV) return mTimer->readDIV();
         if (addr == mmap::regs::timer::TIMA) return mTimer->readTIMA();
         if (addr == mmap::regs::timer::TMA) return mTimer->readTMA();
@@ -98,16 +112,10 @@ uint8_t GBBus::read8(uint16_t addr) const
     }
 
     if (addr >= mmap::regs::audio::start && addr <= mmap::regs::audio::end) {
-        if (!mAudio)
-            return 0;
-
         return mAudio->read(addr);
     }
 
     if (addr >= mmap::regs::lcd::start && addr <= mmap::regs::lcd::end) {
-        if (!mPpu || !mDma)
-            return 0;
-
         if (addr == mmap::regs::lcd::lcdc) return mPpu->readLCDC();
         if (addr == mmap::regs::lcd::stat) return mPpu->readSTAT();
         if (addr == mmap::regs::lcd::scy) return mPpu->readSCY();
@@ -123,51 +131,50 @@ uint8_t GBBus::read8(uint16_t addr) const
     }
 
     if (addr == mmap::regs::IF)
-        return mCpu ? mCpu->irqs.IF : 0;
+        return mCpu->irqs.IF;
 
     if (addr >= mmap::hiram::start && addr <= mmap::hiram::end)
-        return mHiRam ? mHiRam->read8(addr) : 0;
+        return mHiRam->read8(addr);
 
     if (addr == mmap::IE)
-        return mCpu ? mCpu->irqs.IE : 0;
-
+        return mCpu->irqs.IE;
+    
+    // should never be here
+    assert(false);
     return 0;
 }
 
-void GBBus::write8(uint16_t addr, uint8_t val)
+void GBBus::realWrite(uint16_t addr, uint8_t val)
 {
-    if (mCartridge && addr >= mmap::rom::start && addr <= mmap::rom::end)
+    if (addr >= mmap::rom::start && addr <= mmap::rom::end)
         mCartridge->write8(addr, val);
 
-    if (mPpu && addr >= mmap::vram::start && addr <= mmap::vram::end)
+    if (addr >= mmap::vram::start && addr <= mmap::vram::end)
         mPpu->vram.write8(addr, val);
 
-    if (mCartridge && addr >= mmap::external_ram::start && addr <= mmap::external_ram::end)
+    if (addr >= mmap::external_ram::start && addr <= mmap::external_ram::end)
         mCartridge->write8(addr, val);
 
-    if (mWram && addr >= mmap::wram::start && addr <= mmap::wram::end)
+    if (addr >= mmap::wram::start && addr <= mmap::wram::end)
         mWram->write8(addr, val);
 
-    if (mWram && addr >= mmap::echoram::start && addr <= mmap::echoram::end)
+    if (addr >= mmap::echoram::start && addr <= mmap::echoram::end)
         mWram->write8(addr - (mmap::echoram::start - mmap::wram::start), val);
     
-    if (mPpu && addr >= mmap::oam::start && addr <= mmap::oam::end)
+    if (addr >= mmap::oam::start && addr <= mmap::oam::end)
         mPpu->oamRam.write8(addr, val);
 
     // Control registers --------------------------------------------------------------------------
     
-    if (mJoypad && addr == mmap::regs::joypad)
+    if (addr == mmap::regs::joypad)
         mJoypad->write(val);
 
-    if (mSerial && addr == mmap::regs::serial_data)
+    if (addr == mmap::regs::serial_data)
         mSerial->writeData(val);
-    if (mSerial && addr == mmap::regs::serial_ctrl)
+    if (addr == mmap::regs::serial_ctrl)
         mSerial->writeCtrl(val);
 
     if (addr >= mmap::regs::timer::start && addr <= mmap::regs::timer::end) {
-        if (!mTimer)
-            return;
-
         if (addr == mmap::regs::timer::DIV) mTimer->writeDIV(val);
         if (addr == mmap::regs::timer::TIMA) mTimer->writeTIMA(val);
         if (addr == mmap::regs::timer::TMA) mTimer->writeTMA(val);
@@ -175,16 +182,10 @@ void GBBus::write8(uint16_t addr, uint8_t val)
     }
 
     if (addr >= mmap::regs::audio::start && addr <= mmap::regs::audio::end) {
-        if (!mAudio)
-            return;
-
         return mAudio->write(addr, val);
     }
 
     if (addr >= mmap::regs::lcd::start && addr <= mmap::regs::lcd::end) {
-        if (!mPpu || !mDma)
-            return;
-
         if (addr == mmap::regs::lcd::lcdc) mPpu->writeLCDC(val);
         if (addr == mmap::regs::lcd::stat) mPpu->writeSTAT(val);
         if (addr == mmap::regs::lcd::scy) mPpu->writeSCY(val);
@@ -199,12 +200,12 @@ void GBBus::write8(uint16_t addr, uint8_t val)
         if (addr == mmap::regs::lcd::wx) mPpu->writeWX(val);
     }
 
-    if (mCpu && addr == mmap::regs::IF)
+    if (addr == mmap::regs::IF)
         mCpu->irqs.IF = val;
 
-    if (mHiRam && addr >= mmap::hiram::start && addr <= mmap::hiram::end)
+    if (addr >= mmap::hiram::start && addr <= mmap::hiram::end)
         mHiRam->write8(addr, val);
 
-    if (mCpu && addr == mmap::IE)
+    if (addr == mmap::IE)
         mCpu->irqs.IE = val;
 }

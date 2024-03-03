@@ -66,7 +66,7 @@ void App::UIDrawMenu()
                 ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose Rom File", ".gb", config);
             }
             ImGui::Separator();
-            if (ImGui::MenuItem("Quit", "Alt+F4")) {}
+            if (ImGui::MenuItem("Quit", "Alt+F4")) { closeWindow(); }
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Tools")) {
@@ -144,7 +144,7 @@ void App::UIDrawControlWindow()
     ImGui::PopStyleColor(3);
 
 
-    ImGui::Text("Average step time: %u us", mGameboy.stepAvgTime().count());
+    ImGui::Text("Average step time: %u ns", mGameboy.stepAvgTime().count());
 
 
     // --------------------------------------------------------------------------------------------

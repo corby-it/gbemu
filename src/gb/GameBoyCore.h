@@ -38,7 +38,7 @@ public:
     void stop();
     void step();
 
-    std::chrono::microseconds stepAvgTime() const { return mStepAvgTimeAccumulator / mStepTimeCounter; }
+    std::chrono::nanoseconds stepAvgTime() const { return mStepAvgTimeAccumulator / mStepTimeCounter; }
 
     GBBus bus;
     CPU cpu;
@@ -73,7 +73,7 @@ private:
 
     std::chrono::time_point<std::chrono::high_resolution_clock> mMustStepTime;
 
-    std::chrono::microseconds mStepAvgTimeAccumulator;
+    std::chrono::nanoseconds mStepAvgTimeAccumulator;
     uint64_t mStepTimeCounter;
 
 };

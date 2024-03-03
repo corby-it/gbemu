@@ -88,12 +88,12 @@ void GameBoyClassic::emulate()
     }
     else if (status == Status::Playing) {
         // emulate the gameboy, full speed
-        auto tp = hr_clock::now();
+        auto before = hr_clock::now();
         gbStep();
-        auto elapsed = hr_clock::now() - tp;
+        auto after = hr_clock::now();
 
         mStepTimeCounter++;
-        mStepAvgTimeAccumulator += duration_cast<microseconds>(elapsed);
+        mStepAvgTimeAccumulator += duration_cast<nanoseconds>(after - before);
     }
     else if (status == Status::Stepping) {
         // execute 1 instruction only if the user wants to

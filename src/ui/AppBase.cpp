@@ -176,3 +176,8 @@ void AppBase::run()
         glfwSwapBuffers(mWindow);
     }
 }
+
+void AppBase::closeWindow()
+{
+    glfwSetWindowShouldClose(mWindow, GLFW_TRUE);
+}
