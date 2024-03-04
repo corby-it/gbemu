@@ -84,6 +84,7 @@ workspace(project_name)
             "-pedantic",
             "-Wno-psabi",
             "-Wno-unknown-pragmas", -- required to compile ImGuiFileDialog
+            "-Wno-format-security",
             "-fmessage-length=0",
             "-fsigned-char",
             "-ffunction-sections",

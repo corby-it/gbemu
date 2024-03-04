@@ -144,7 +144,7 @@ void App::UIDrawControlWindow()
     ImGui::PopStyleColor(3);
 
 
-    ImGui::Text("Average step time: %u ns", mGameboy.stepAvgTime().count());
+    ImGui::Text("Average step time: %lu ns", mGameboy.stepAvgTime().count());
 
 
     // --------------------------------------------------------------------------------------------
