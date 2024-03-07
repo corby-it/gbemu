@@ -39,6 +39,8 @@ workspace(project_name)
         src_base .. "/gb/**.h",
         src_base .. "/ui/**.cpp",
         src_base .. "/ui/**.h",
+        src_base .. "/gbdebug/**.h",
+        src_base .. "/gbdebug/**.cpp",
         src_base .. "/imgui/*.cpp",
         src_base .. "/imgui/*.h",
         src_base .. "/imgui/backends/imgui_impl_glfw.cpp",

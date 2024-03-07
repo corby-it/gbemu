@@ -14,6 +14,7 @@
 #include "Serial.h"
 #include "Cartridge.h"
 #include <chrono>
+#include <filesystem>
 
 
 
@@ -38,6 +39,8 @@ public:
     void stop();
     void step();
 
+    CartridgeLoadingRes loadCartridge(const std::filesystem::path& path);
+
     std::chrono::nanoseconds stepAvgTime() const { return mStepAvgTimeAccumulator / mStepTimeCounter; }
 
     GBBus bus;
@@ -53,7 +56,9 @@ public:
     HiRam hiRam;
 
     Status status;
+    bool breakOnLdbb;
 
+    std::string currInstruction;
 
     // the gb cpu actually runs at 4.194304 MHz but, since we are not counting actual clock
     // cycles but machine cycles (clock cycles / 4) we have to use the clock frequency

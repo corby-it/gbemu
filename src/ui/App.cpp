@@ -85,7 +85,7 @@ void App::UIDrawMenu()
         if (ImGuiFileDialog::Instance()->IsOk()) { // action if OK
             
             mConfig.currentRomPath = ImGuiFileDialog::Instance()->GetFilePathName();
-            mConfig.loadingRes = mGameboy.cartridge.loadRomFile(mConfig.currentRomPath);
+            mConfig.loadingRes = mGameboy.loadCartridge(mConfig.currentRomPath);
 
             if (mConfig.loadingRes != CartridgeLoadingRes::Ok) {
                 ImGui::OpenPopup("Loading failed");
@@ -143,8 +143,8 @@ void App::UIDrawControlWindow()
     if (ImGui::Button("Step")) { mGameboy.step(); }
     ImGui::PopStyleColor(3);
 
-
-    ImGui::Text("Average step time: %lu ns", mGameboy.stepAvgTime().count());
+    ImGui::Checkbox("Break on LD B,B", &mGameboy.breakOnLdbb);
+    ImGui::Text("Average step time: %u ns", mGameboy.stepAvgTime().count());
 
 
     // --------------------------------------------------------------------------------------------
@@ -272,6 +272,9 @@ void App::UIDrawRegsTables()
     };
 
     UIDrawSingleRegTable("ppuRegsTable", "PPU", "0x%02x", ppuEntries, IM_ARRAYSIZE(ppuEntries));
+
+    ImGui::SeparatorText("Current instruction");
+    ImGui::Text("%s", mGameboy.currInstruction.c_str());
 
 
     ImGui::End();
