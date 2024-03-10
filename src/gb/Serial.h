@@ -14,8 +14,8 @@ public:
     }
 
     void reset() {
-        mData = 0;
-        mCtrl = 0;
+        mData = 0x00;
+        mCtrl = 0x7E;
     }
 
     uint8_t readData() const { return mData; }

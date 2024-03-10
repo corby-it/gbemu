@@ -2,6 +2,7 @@
 
 #include "Debug.h"
 #include "gb/Opcodes.h"
+#include <string>
 
 
 static constexpr char hexDict[] = {
@@ -10,7 +11,7 @@ static constexpr char hexDict[] = {
 };
 
 
-std::string uintToHex(uint8_t val)
+static std::string uintToHex(uint8_t val)
 {
     std::string ret = "$00";
 
@@ -20,7 +21,7 @@ std::string uintToHex(uint8_t val)
     return ret;
 }
 
-std::string uintToHex(uint16_t val)
+static std::string uintToHex(uint16_t val)
 {
     std::string ret = "$0000";
 
@@ -33,13 +34,23 @@ std::string uintToHex(uint16_t val)
 }
 
 
-
-static std::string opJpImmToStr(const Bus& bus, uint16_t pc)
+static std::string immValU8(const Bus& bus, uint16_t pc)
 {
-    uint16_t addr = bus.read16(pc);
-
-    return std::string("jp ") + uintToHex(addr);
+    return uintToHex(bus.read8(pc));
 }
+
+static std::string immValS8(const Bus& bus, uint16_t pc)
+{
+    return std::to_string((uint8_t)bus.read8(pc));
+}
+
+static std::string immValU16(const Bus& bus, uint16_t pc)
+{
+    return uintToHex(bus.read16(pc));
+}
+
+
+std::string instructionCBToStr(const Bus& /*bus*/, uint16_t /*pc*/);
 
 
 std::string instructionToStr(const Bus& bus, uint16_t pc)
@@ -50,297 +61,605 @@ std::string instructionToStr(const Bus& bus, uint16_t pc)
 
     uint8_t opcode = bus.read8(pc++);
 
+    std::string ret("(");
+    ret += uintToHex(opcode) + ")     ";
+
     switch (opcode) {
     // 0x0*
-    case op::NOP: return "nop";
-    //case op::LD_BC_n16: return opLdReg16Imm(regs.B, regs.C);
-    //case op::LD_inBC_A: return opLdIndReg(regs.BC(), regs.A);
-    //case op::INC_BC: return opIncReg16(regs.B, regs.C);
-    //case op::INC_B: return opIncReg(regs.B);
-    //case op::DEC_B: return opDecReg(regs.B);
-    //case op::LD_B_n8: return opLdRegImm(regs.B); // LD B,n8
-    //case op::RLCA: return opRlca();
-    //case op::LD_ina16_SP: return opLdIndImm16Sp();
-    //case op::ADD_HL_BC: return opAddReg16(regs.BC());
-    //case op::LD_A_inBC: return opLdRegInd(regs.A, regs.BC());
-    //case op::DEC_BC: return opDecReg16(regs.B, regs.C);
-    //case op::INC_C: return opIncReg(regs.C);
-    //case op::DEC_C: return opDecReg(regs.C);
-    //case op::LD_C_n8: return opLdRegImm(regs.C); // LD C,n8
-    //case op::RRCA: return opRrca();
+    case op::NOP: return ret + "nop";
+    case op::LD_BC_n16: return ret + "ld bc, " + immValU16(bus, pc);
+    case op::LD_inBC_A: return ret + "ld (bc), a";
+    case op::INC_BC: return ret + "inc bc";
+    case op::INC_B: return ret + "inc b";
+    case op::DEC_B: return ret + "dec b";
+    case op::LD_B_n8: return ret + "ld b, " + immValU8(bus, pc);
+    case op::RLCA: return ret + "rlca";
+    case op::LD_ina16_SP: return ret + "ld (" + immValU16(bus, pc) + "), sp";
+    case op::ADD_HL_BC: return ret + "add hl, bc";
+    case op::LD_A_inBC: return ret + "ld a, (bc)";
+    case op::DEC_BC: return ret + "dec bc";
+    case op::INC_C: return ret + "inc c";
+    case op::DEC_C: return ret + "dec c";
+    case op::LD_C_n8: return ret + "ld c, " + immValU8(bus, pc);
+    case op::RRCA: return ret + "rrca";
 
-    //    // 0x1*
-    //case op::STOP: return opStop();
-    //case op::LD_DE_n16: return opLdReg16Imm(regs.D, regs.E);
-    //case op::LD_inDE_A: return opLdIndReg(regs.DE(), regs.A);
-    //case op::INC_DE: return opIncReg16(regs.D, regs.E);
-    //case op::INC_D: return opIncReg(regs.D);
-    //case op::DEC_D: return opDecReg(regs.D);
-    //case op::LD_D_n8: return opLdRegImm(regs.D); // LD D,n8
-    //case op::RLA: return opRla();
-    //case op::JR_e8: return opJrImm();
-    //case op::ADD_HL_DE: return opAddReg16(regs.DE());
-    //case op::LD_A_inDE: return opLdRegInd(regs.A, regs.DE());
-    //case op::DEC_DE: return opDecReg16(regs.D, regs.E);
-    //case op::INC_E: return opIncReg(regs.E);
-    //case op::DEC_E: return opDecReg(regs.E);
-    //case op::LD_E_n8: return opLdRegImm(regs.E); // LD E,n8
-    //case op::RRA: return opRra();
+    // 0x1*
+    case op::STOP: return ret + "stop";
+    case op::LD_DE_n16: return ret + "ld de, " + immValU16(bus, pc);
+    case op::LD_inDE_A: return ret + "ld (de), a";
+    case op::INC_DE: return ret + "inc de";
+    case op::INC_D: return ret + "inc d";
+    case op::DEC_D: return ret + "dec d";
+    case op::LD_D_n8: return ret + "ld d, " + immValU8(bus, pc);
+    case op::RLA: return ret + "rla";
+    case op::JR_e8: return ret + "jr " + immValS8(bus, pc);
+    case op::ADD_HL_DE: return ret + "add hl, de";
+    case op::LD_A_inDE: return ret + "ld a, (de)";
+    case op::DEC_DE: return ret + "dec de";
+    case op::INC_E: return ret + "inc e";
+    case op::DEC_E: return ret + "dec e";
+    case op::LD_E_n8: return ret + "ld e, " + immValU8(bus, pc);
+    case op::RRA: return ret + "rra";
 
-    //    // 0x2*
-    //case op::JR_NZ_e8: return opJrCond(!regs.flags.Z);
-    //case op::LD_HL_n16: return opLdReg16Imm(regs.H, regs.L);
-    //case op::LD_inHLp_A: return opLdIndIncA();
-    //case op::INC_HL: return opIncReg16(regs.H, regs.L);
-    //case op::INC_H: return opIncReg(regs.H);
-    //case op::DEC_H: return opDecReg(regs.H);
-    //case op::LD_H_n8: return opLdRegImm(regs.H); // LD H,n8
-    //case op::DAA: return opDaa();
-    //case op::JR_Z_e8: return opJrCond(regs.flags.Z);
-    //case op::ADD_HL_HL: return opAddReg16(regs.HL());
-    //case op::LD_A_inHLp: return opLdAIndInc();
-    //case op::DEC_HL: return opDecReg16(regs.H, regs.L);
-    //case op::INC_L: return opIncReg(regs.L);
-    //case op::DEC_L: return opDecReg(regs.L);
-    //case op::LD_L_n8: return opLdRegImm(regs.L); // LD L,n8
-    //case op::CPL: return opCpl();
+    // 0x2*
+    case op::JR_NZ_e8: return ret + "jr nz " + immValS8(bus, pc);
+    case op::LD_HL_n16: return ret + "ld hl, " + immValU16(bus, pc);
+    case op::LD_inHLp_A: return ret + "ld (hl+), a";
+    case op::INC_HL: return ret + "inc hl";
+    case op::INC_H: return ret + "inc h";
+    case op::DEC_H: return ret + "dec h";
+    case op::LD_H_n8: return ret + "ld h, " + immValU8(bus, pc);
+    case op::DAA: return ret + "daa";
+    case op::JR_Z_e8: return ret + "jr z " + immValS8(bus, pc);
+    case op::ADD_HL_HL: return ret + "add hl, hl";
+    case op::LD_A_inHLp: return ret + "ld a, (hl+)";
+    case op::DEC_HL: return ret + "dec hl";
+    case op::INC_L: return ret + "inc l";
+    case op::DEC_L: return ret + "dec l";
+    case op::LD_L_n8: return ret + "ld l, " + immValU8(bus, pc);
+    case op::CPL: return ret + "cpl";
 
-    //    // 0x3*
-    //case op::JR_NC_e8: return opJrCond(!regs.flags.C);
-    //case op::LD_SP_n16: return opLdReg16Imm(regs.SP);
-    //case op::LD_inHLm_A: return opLdIndDecA();
-    //case op::INC_SP: return opIncSp();
-    //case op::INC_inHL: return opIncInd();
-    //case op::DEC_inHL: return opDecInd();
-    //case op::LD_inHL_n8: return opLdIndImm();
-    //case op::SCF: return opScf();
-    //case op::JR_C_e8: return opJrCond(regs.flags.C);
-    //case op::ADD_HL_SP: return opAddReg16(regs.SP);
-    //case op::LD_A_inHLm: return opLdAIndDec();
-    //case op::DEC_SP: return opDecSp();
-    //case op::INC_A: return opIncReg(regs.A);
-    //case op::DEC_A: return opDecReg(regs.A);
-    //case op::LD_A_n8: return opLdRegImm(regs.A); // LD A,n8
-    //case op::CCF: return opCcf();
+    // 0x3*
+    case op::JR_NC_e8: return ret + "jr nc " + immValS8(bus, pc);
+    case op::LD_SP_n16: return ret + "ld sp, " + immValU16(bus, pc);
+    case op::LD_inHLm_A: return ret + "ld (hl-), a";
+    case op::INC_SP: return ret + "inc sp";
+    case op::INC_inHL: return ret + "inc (hl)";
+    case op::DEC_inHL: return ret + "dec (hl)";
+    case op::LD_inHL_n8: return ret + "ld (hl), " + immValU8(bus, pc);
+    case op::SCF: return ret + "scf";
+    case op::JR_C_e8: return ret + "jr c " + immValS8(bus, pc);
+    case op::ADD_HL_SP: return ret + "add hl, sp";
+    case op::LD_A_inHLm: return ret + "ld a, (hl-)";
+    case op::DEC_SP: return ret + "dec sp";
+    case op::INC_A: return ret + "inc a";
+    case op::DEC_A: return ret + "dec a";
+    case op::LD_A_n8: return ret + "ld a, " + immValU8(bus, pc);
+    case op::CCF: return ret + "ccf";
 
-    //    // 0x4*
-    //case op::LD_B_B: return opLdRegReg(regs.B, regs.B); // LD B,B
-    //case op::LD_B_C: return opLdRegReg(regs.B, regs.C); // LD B,C
-    //case op::LD_B_D: return opLdRegReg(regs.B, regs.D); // LD B,D
-    //case op::LD_B_E: return opLdRegReg(regs.B, regs.E); // LD B,E
-    //case op::LD_B_H: return opLdRegReg(regs.B, regs.H); // LD B,H
-    //case op::LD_B_L: return opLdRegReg(regs.B, regs.L); // LD B,L
-    //case op::LD_B_inHL: return opLdRegInd(regs.B, regs.HL()); // LD B,[HL]
-    //case op::LD_B_A: return opLdRegReg(regs.B, regs.A); // LD B,A
-    //case op::LD_C_B: return opLdRegReg(regs.C, regs.B); // LD C,B
-    //case op::LD_C_C: return opLdRegReg(regs.C, regs.C); // LD C,C
-    //case op::LD_C_D: return opLdRegReg(regs.C, regs.D); // LD C,D
-    //case op::LD_C_E: return opLdRegReg(regs.C, regs.E); // LD C,E
-    //case op::LD_C_H: return opLdRegReg(regs.C, regs.H); // LD C,H
-    //case op::LD_C_L: return opLdRegReg(regs.C, regs.L); // LD C,L
-    //case op::LD_C_inHL: return opLdRegInd(regs.C, regs.HL()); // LD C,[HL]
-    //case op::LD_C_A: return opLdRegReg(regs.C, regs.A); // LD C,A
+    // 0x4*
+    case op::LD_B_B: return ret + "ld b, b";
+    case op::LD_B_C: return ret + "ld b, c";
+    case op::LD_B_D: return ret + "ld b, d";
+    case op::LD_B_E: return ret + "ld b, e";
+    case op::LD_B_H: return ret + "ld b, h";
+    case op::LD_B_L: return ret + "ld b, l";
+    case op::LD_B_inHL: return ret + "ld b, (hl)";
+    case op::LD_B_A: return ret + "ld b, a";
+    case op::LD_C_B: return ret + "ld c, b";
+    case op::LD_C_C: return ret + "ld c, c";
+    case op::LD_C_D: return ret + "ld c, d";
+    case op::LD_C_E: return ret + "ld c, e";
+    case op::LD_C_H: return ret + "ld c, h";
+    case op::LD_C_L: return ret + "ld c, l";
+    case op::LD_C_inHL: return ret + "ld c, (hl)";
+    case op::LD_C_A: return ret + "ld c, a";
 
-    //    // 0x5*
-    //case op::LD_D_B: return opLdRegReg(regs.D, regs.B); // LD D,B
-    //case op::LD_D_C: return opLdRegReg(regs.D, regs.C); // LD D,C
-    //case op::LD_D_D: return opLdRegReg(regs.D, regs.D); // LD D,D
-    //case op::LD_D_E: return opLdRegReg(regs.D, regs.E); // LD D,E
-    //case op::LD_D_H: return opLdRegReg(regs.D, regs.H); // LD D,H
-    //case op::LD_D_L: return opLdRegReg(regs.D, regs.L); // LD D,L
-    //case op::LD_D_inHL: return opLdRegInd(regs.D, regs.HL()); // LD A,[HL]
-    //case op::LD_D_A: return opLdRegReg(regs.D, regs.A); // LD D,A
-    //case op::LD_E_B: return opLdRegReg(regs.E, regs.B); // LD E,B
-    //case op::LD_E_C: return opLdRegReg(regs.E, regs.C); // LD E,C
-    //case op::LD_E_D: return opLdRegReg(regs.E, regs.D); // LD E,D
-    //case op::LD_E_E: return opLdRegReg(regs.E, regs.E); // LD E,E
-    //case op::LD_E_H: return opLdRegReg(regs.E, regs.H); // LD E,H
-    //case op::LD_E_L: return opLdRegReg(regs.E, regs.L); // LD E,L
-    //case op::LD_E_inHL: return opLdRegInd(regs.E, regs.HL()); // LD E,[HL]
-    //case op::LD_E_A: return opLdRegReg(regs.E, regs.A); // LD E,A
+    // 0x5*
+    case op::LD_D_B: return ret + "ld d, b";
+    case op::LD_D_C: return ret + "ld d, c";
+    case op::LD_D_D: return ret + "ld d, d";
+    case op::LD_D_E: return ret + "ld d, e";
+    case op::LD_D_H: return ret + "ld d, h";
+    case op::LD_D_L: return ret + "ld d, l";
+    case op::LD_D_inHL: return ret + "ld d, (hl)";
+    case op::LD_D_A: return ret + "ld d, a";
+    case op::LD_E_B: return ret + "ld e, b";
+    case op::LD_E_C: return ret + "ld e, b";
+    case op::LD_E_D: return ret + "ld e, b";
+    case op::LD_E_E: return ret + "ld e, b";
+    case op::LD_E_H: return ret + "ld e, b";
+    case op::LD_E_L: return ret + "ld e, b";
+    case op::LD_E_inHL: return ret + "ld e, (hl)";
+    case op::LD_E_A: return ret + "ld e, a";
 
-    //    // 0x6*
-    //case op::LD_H_B: return opLdRegReg(regs.H, regs.B); // LD H,B
-    //case op::LD_H_C: return opLdRegReg(regs.H, regs.C); // LD H,C
-    //case op::LD_H_D: return opLdRegReg(regs.H, regs.D); // LD H,D
-    //case op::LD_H_E: return opLdRegReg(regs.H, regs.E); // LD H,E
-    //case op::LD_H_H: return opLdRegReg(regs.H, regs.H); // LD H,H
-    //case op::LD_H_L: return opLdRegReg(regs.H, regs.L); // LD H,L
-    //case op::LD_H_inHL: return opLdRegInd(regs.H, regs.HL()); // LD H,[HL]
-    //case op::LD_H_A: return opLdRegReg(regs.H, regs.A); // LD H,A
-    //case op::LD_L_B: return opLdRegReg(regs.L, regs.B); // LD L,B
-    //case op::LD_L_C: return opLdRegReg(regs.L, regs.C); // LD L,C
-    //case op::LD_L_D: return opLdRegReg(regs.L, regs.D); // LD L,D
-    //case op::LD_L_E: return opLdRegReg(regs.L, regs.E); // LD L,E
-    //case op::LD_L_H: return opLdRegReg(regs.L, regs.H); // LD L,H
-    //case op::LD_L_L: return opLdRegReg(regs.L, regs.L); // LD L,L
-    //case op::LD_L_inHL: return opLdRegInd(regs.L, regs.HL()); // LD L,[HL]
-    //case op::LD_L_A: return opLdRegReg(regs.L, regs.A); // LD L,A
+    // 0x6*
+    case op::LD_H_B: return ret + "ld h, b";
+    case op::LD_H_C: return ret + "ld h, c";
+    case op::LD_H_D: return ret + "ld h, d";
+    case op::LD_H_E: return ret + "ld h, e";
+    case op::LD_H_H: return ret + "ld h, h";
+    case op::LD_H_L: return ret + "ld h, l";
+    case op::LD_H_inHL: return ret + "ld h, (hl)";
+    case op::LD_H_A: return ret + "ld h, a";
+    case op::LD_L_B: return ret + "ld l, b";
+    case op::LD_L_C: return ret + "ld l, c";
+    case op::LD_L_D: return ret + "ld l, d";
+    case op::LD_L_E: return ret + "ld l, e";
+    case op::LD_L_H: return ret + "ld l, h";
+    case op::LD_L_L: return ret + "ld l, l";
+    case op::LD_L_inHL: return ret + "ld l, (hl)";
+    case op::LD_L_A: return ret + "ld l, a";
 
-    //    // 0x7*
-    //case op::LD_inHl_B: return opLdIndReg(regs.HL(), regs.B); // LD [HL],B
-    //case op::LD_inHl_C: return opLdIndReg(regs.HL(), regs.C); // LD [HL],C
-    //case op::LD_inHl_D: return opLdIndReg(regs.HL(), regs.D); // LD [HL],D
-    //case op::LD_inHl_E: return opLdIndReg(regs.HL(), regs.E); // LD [HL],E
-    //case op::LD_inHl_H: return opLdIndReg(regs.HL(), regs.H); // LD [HL],H
-    //case op::LD_inHl_L: return opLdIndReg(regs.HL(), regs.L); // LD [HL],L
-    //case op::HALT: return opHalt();
-    //case op::LD_inHl_A: return opLdIndReg(regs.HL(), regs.A); // LD [HL],A
-    //case op::LD_A_B: return opLdRegReg(regs.A, regs.B); // LD A,B
-    //case op::LD_A_C: return opLdRegReg(regs.A, regs.C); // LD A,B
-    //case op::LD_A_D: return opLdRegReg(regs.A, regs.D); // LD A,B
-    //case op::LD_A_E: return opLdRegReg(regs.A, regs.E); // LD A,B
-    //case op::LD_A_H: return opLdRegReg(regs.A, regs.H); // LD A,B
-    //case op::LD_A_L: return opLdRegReg(regs.A, regs.L); // LD A,B
-    //case op::LD_A_inHL: return opLdRegInd(regs.A, regs.HL()); // LD A,[HL]
-    //case op::LD_A_A: return opLdRegReg(regs.A, regs.A); // LD A,A
+    // 0x7*
+    case op::LD_inHl_B: return ret + "ld (hl), b";
+    case op::LD_inHl_C: return ret + "ld (hl), c";
+    case op::LD_inHl_D: return ret + "ld (hl), d";
+    case op::LD_inHl_E: return ret + "ld (hl), e";
+    case op::LD_inHl_H: return ret + "ld (hl), h";
+    case op::LD_inHl_L: return ret + "ld (hl), l";
+    case op::HALT: return ret + "halt";
+    case op::LD_inHl_A: return ret + "ld (hl), a";
+    case op::LD_A_B: return ret + "ld a, b";
+    case op::LD_A_C: return ret + "ld a, c";
+    case op::LD_A_D: return ret + "ld a, d";
+    case op::LD_A_E: return ret + "ld a, e";
+    case op::LD_A_H: return ret + "ld a, h";
+    case op::LD_A_L: return ret + "ld a, l";
+    case op::LD_A_inHL: return ret + "ld a, (hl)";
+    case op::LD_A_A: return ret + "ld a, a";
 
-    //    // 0x8*
-    //case op::ADD_A_B: return opAddReg(regs.B); // ADD A,B
-    //case op::ADD_A_C: return opAddReg(regs.C); // ADD A,C
-    //case op::ADD_A_D: return opAddReg(regs.D); // ADD A,D
-    //case op::ADD_A_E: return opAddReg(regs.E); // ADD A,E
-    //case op::ADD_A_H: return opAddReg(regs.H); // ADD A,H
-    //case op::ADD_A_L: return opAddReg(regs.L); // ADD A,L
-    //case op::ADD_A_inHL: return opAddInd(); // ADD A,[HL]
-    //case op::ADD_A_A: return opAddReg(regs.A); // ADD A,A
-    //case op::ADC_A_B: return opAdcReg(regs.B);
-    //case op::ADC_A_C: return opAdcReg(regs.C);
-    //case op::ADC_A_D: return opAdcReg(regs.D);
-    //case op::ADC_A_E: return opAdcReg(regs.E);
-    //case op::ADC_A_H: return opAdcReg(regs.H);
-    //case op::ADC_A_L: return opAdcReg(regs.L);
-    //case op::ADC_A_inHL: return opAdcInd();
-    //case op::ADC_A_A: return opAdcReg(regs.A);
+    // 0x8*
+    case op::ADD_A_B: return ret + "add a, b";
+    case op::ADD_A_C: return ret + "add a, c";
+    case op::ADD_A_D: return ret + "add a, d";
+    case op::ADD_A_E: return ret + "add a, e";
+    case op::ADD_A_H: return ret + "add a, h";
+    case op::ADD_A_L: return ret + "add a, l";
+    case op::ADD_A_inHL: return ret + "add a, (hl)";
+    case op::ADD_A_A: return ret + "add a, a";
+    case op::ADC_A_B: return ret + "adc a, b";
+    case op::ADC_A_C: return ret + "adc a, c";
+    case op::ADC_A_D: return ret + "adc a, d";
+    case op::ADC_A_E: return ret + "adc a, e";
+    case op::ADC_A_H: return ret + "adc a, h";
+    case op::ADC_A_L: return ret + "adc a, l";
+    case op::ADC_A_inHL: return ret + "adc a, (hl)";
+    case op::ADC_A_A: return ret + "adc a, a";
 
-    //    // 0x9*
-    //case op::SUB_A_B: return opSubReg(regs.B);
-    //case op::SUB_A_C: return opSubReg(regs.C);
-    //case op::SUB_A_D: return opSubReg(regs.D);
-    //case op::SUB_A_E: return opSubReg(regs.E);
-    //case op::SUB_A_H: return opSubReg(regs.H);
-    //case op::SUB_A_L: return opSubReg(regs.L);
-    //case op::SUB_A_inHL: return opSubInd();
-    //case op::SUB_A_A: return opSubReg(regs.A);
-    //case op::SBC_A_B: return opSbcReg(regs.B);
-    //case op::SBC_A_C: return opSbcReg(regs.C);
-    //case op::SBC_A_D: return opSbcReg(regs.D);
-    //case op::SBC_A_E: return opSbcReg(regs.E);
-    //case op::SBC_A_H: return opSbcReg(regs.H);
-    //case op::SBC_A_L: return opSbcReg(regs.L);
-    //case op::SBC_A_inHL: return opSbcInd();
-    //case op::SBC_A_A: return opSbcReg(regs.A);
+    // 0x9*
+    case op::SUB_A_B: return ret + "sub a, b";
+    case op::SUB_A_C: return ret + "sub a, c";
+    case op::SUB_A_D: return ret + "sub a, d";
+    case op::SUB_A_E: return ret + "sub a, e";
+    case op::SUB_A_H: return ret + "sub a, h";
+    case op::SUB_A_L: return ret + "sub a, l";
+    case op::SUB_A_inHL: return ret + "sub a, (hl)";
+    case op::SUB_A_A: return ret + "sub a, a";
+    case op::SBC_A_B: return ret + "sbc a, b";
+    case op::SBC_A_C: return ret + "sbc a, c";
+    case op::SBC_A_D: return ret + "sbc a, d";
+    case op::SBC_A_E: return ret + "sbc a, e";
+    case op::SBC_A_H: return ret + "sbc a, h";
+    case op::SBC_A_L: return ret + "sbc a, l";
+    case op::SBC_A_inHL: return ret + "sbc a, (hl)";
+    case op::SBC_A_A: return ret + "sbc a, a";
 
-    //    // 0xA*
-    //case op::AND_A_B: return opAndReg(regs.B);
-    //case op::AND_A_C: return opAndReg(regs.C);
-    //case op::AND_A_D: return opAndReg(regs.D);
-    //case op::AND_A_E: return opAndReg(regs.E);
-    //case op::AND_A_H: return opAndReg(regs.H);
-    //case op::AND_A_L: return opAndReg(regs.L);
-    //case op::AND_A_inHL: return opAndInd();
-    //case op::AND_A_A: return opAndReg(regs.A);
-    //case op::XOR_A_B: return opXorReg(regs.B);
-    //case op::XOR_A_C: return opXorReg(regs.C);
-    //case op::XOR_A_D: return opXorReg(regs.D);
-    //case op::XOR_A_E: return opXorReg(regs.E);
-    //case op::XOR_A_H: return opXorReg(regs.H);
-    //case op::XOR_A_L: return opXorReg(regs.L);
-    //case op::XOR_A_inHL: return opXorInd();
-    //case op::XOR_A_A: return opXorReg(regs.A);
+    // 0xA*
+    case op::AND_A_B: return ret + "and a, b";
+    case op::AND_A_C: return ret + "and a, c";
+    case op::AND_A_D: return ret + "and a, d";
+    case op::AND_A_E: return ret + "and a, e";
+    case op::AND_A_H: return ret + "and a, h";
+    case op::AND_A_L: return ret + "and a, l";
+    case op::AND_A_inHL: return ret + "and a, (hl)";
+    case op::AND_A_A: return ret + "and a, a";
+    case op::XOR_A_B: return ret + "xor a, b";
+    case op::XOR_A_C: return ret + "xor a, c";
+    case op::XOR_A_D: return ret + "xor a, d";
+    case op::XOR_A_E: return ret + "xor a, e";
+    case op::XOR_A_H: return ret + "xor a, h";
+    case op::XOR_A_L: return ret + "xor a, l";
+    case op::XOR_A_inHL: return ret + "xor a, (hl)";
+    case op::XOR_A_A: return ret + "xor a, a";
 
-    //    // 0xB*
-    //case op::OR_A_B: return opOrReg(regs.B);
-    //case op::OR_A_C: return opOrReg(regs.C);
-    //case op::OR_A_D: return opOrReg(regs.D);
-    //case op::OR_A_E: return opOrReg(regs.E);
-    //case op::OR_A_H: return opOrReg(regs.H);
-    //case op::OR_A_L: return opOrReg(regs.L);
-    //case op::OR_A_inHL: return opOrInd();
-    //case op::OR_A_A: return opOrReg(regs.A);
-    //case op::CP_A_B: return opCpReg(regs.B);
-    //case op::CP_A_C: return opCpReg(regs.C);
-    //case op::CP_A_D: return opCpReg(regs.D);
-    //case op::CP_A_E: return opCpReg(regs.E);
-    //case op::CP_A_H: return opCpReg(regs.H);
-    //case op::CP_A_L: return opCpReg(regs.L);
-    //case op::CP_A_inHL: return opCpInd(); // CP A,[HL]
-    //case op::CP_A_A: return opCpReg(regs.A);
+    // 0xB*
+    case op::OR_A_B: return ret + "or a, b";
+    case op::OR_A_C: return ret + "or a, c";
+    case op::OR_A_D: return ret + "or a, d";
+    case op::OR_A_E: return ret + "or a, e";
+    case op::OR_A_H: return ret + "or a, h";
+    case op::OR_A_L: return ret + "or a, l";
+    case op::OR_A_inHL: return ret + "or a, (hl)";
+    case op::OR_A_A: return ret + "or a, a";
+    case op::CP_A_B: return ret + "cp a, b";
+    case op::CP_A_C: return ret + "cp a, c";
+    case op::CP_A_D: return ret + "cp a, d";
+    case op::CP_A_E: return ret + "cp a, e";
+    case op::CP_A_H: return ret + "cp a, h";
+    case op::CP_A_L: return ret + "cp a, l";
+    case op::CP_A_inHL: return ret + "cp a, (hl)";
+    case op::CP_A_A: return ret + "cp a, a";
 
-    //    // 0xC*
-    //case op::RET_NZ: return opRetCond(!regs.flags.Z);
-    //case op::POP_BC: return opPopReg16(regs.B, regs.C);
-    //case op::JP_NZ_a16: return opJpCond(!regs.flags.Z); // JP NZ,a16
-    case op::JP_a16: return opJpImmToStr(bus, pc); // JP a16
-    //case op::CALL_NZ_a16: return opCallCond(!regs.flags.Z);
-    //case op::PUSH_BC: return opPushReg16(regs.BC());
-    //case op::ADD_A_n8: return opAddImm();
-    //case op::RST_00: return opRst(0x00);
-    //case op::RET_Z: return opRetCond(regs.flags.Z);
-    //case op::RET: return opRet();
-    //case op::JP_Z_a16: return opJpCond(regs.flags.Z); // JP Z,a16
-    //case op::CB_PREFIX: return executeCb(ok);
-    //case op::CALL_Z_a16: return opCallCond(regs.flags.Z);
-    //case op::CALL_a16: return opCallImm();
-    //case op::ADC_A_n8: return opAdcImm();
-    //case op::RST_08: return opRst(0x08);
+    // 0xC*
+    case op::RET_NZ: return ret + "ret nz";
+    case op::POP_BC: return ret + "pop bc";
+    case op::JP_NZ_a16: return ret + "jp nz " + immValU16(bus, pc);
+    case op::JP_a16: return ret + "jp " + immValU16(bus, pc);
+    case op::CALL_NZ_a16: return ret + "call nz " + immValU16(bus, pc);
+    case op::PUSH_BC: return ret + "push bc";
+    case op::ADD_A_n8: return ret + "add a, " + immValU8(bus, pc);
+    case op::RST_00: return ret + "rst $00";
+    case op::RET_Z: return ret + "ret z";
+    case op::RET: return ret + "ret";
+    case op::JP_Z_a16: return ret + "jp z " + immValU16(bus, pc);
+    case op::CB_PREFIX: return instructionCBToStr(bus, pc);
+    case op::CALL_Z_a16: return ret + "call z " + immValU16(bus, pc);
+    case op::CALL_a16: return ret + "call " + immValU16(bus, pc);
+    case op::ADC_A_n8: return ret + "adc a, " + immValU8(bus, pc);
+    case op::RST_08: return ret + "rst $08";
 
-    //    // 0xD*
-    //case op::RET_NC: return opRetCond(!regs.flags.C);
-    //case op::POP_DE: return opPopReg16(regs.D, regs.E);
-    //case op::JP_NC_a16: return opJpCond(!regs.flags.C); // JP NC,a16
-    //    // case op:: 0xD3 not implemented
-    //case op::CALL_NC_a16: return opCallCond(!regs.flags.C);
-    //case op::PUSH_DE: return opPushReg16(regs.DE());
-    //case op::SUB_A_n8: return opSubImm();
-    //case op::RST_10: return opRst(0x10);
-    //case op::RET_C: return opRetCond(regs.flags.C);
-    //case op::RETI: return opReti();
-    //case op::JP_C_a16: return opJpCond(regs.flags.C); // JP C,a16
-    //    // case op:: 0xDB not implemented
-    //case op::CALL_C_a16: return opCallCond(regs.flags.C);
-    //    // case op:: 0xDD not implemented
-    //case op::SBC_A_n8: return opSbcImm();
-    //case op::RST_18: return opRst(0x18);
+    // 0xD*
+    case op::RET_NC: return ret + "ret nc";
+    case op::POP_DE: return ret + "pop de";
+    case op::JP_NC_a16: return ret + "jp nc " + immValU16(bus, pc);
+    // case op:: 0xD3 not implemented
+    case op::CALL_NC_a16: return ret + "call nc " + immValU16(bus, pc);
+    case op::PUSH_DE: return ret + "push de";
+    case op::SUB_A_n8: return ret + "sub a, " + immValU8(bus, pc);
+    case op::RST_10: return ret + "rst $10";
+    case op::RET_C: return ret + "ret c";
+    case op::RETI: return ret + "reti";
+    case op::JP_C_a16: return ret + "jp c " + immValU16(bus, pc);
+    // case op:: 0xDB not implemented
+    case op::CALL_C_a16: return ret + "call c " + immValU16(bus, pc);
+    // case op:: 0xDD not implemented
+    case op::SBC_A_n8: return ret + "sbc a, " + immValU8(bus, pc);
+    case op::RST_18: return ret + "rst $18";
 
-    //    // 0xE*
-    //case op::LDH_ina8_A: return opLdIndImm8Reg();
-    //case op::POP_HL: return opPopReg16(regs.H, regs.L);
-    //case op::LDH_inC_A: return opLdIndReg(0xFF00 + regs.C, regs.A); // LD [C],A  (address is 0xff00 + C)
-    //    // case op:: 0xE3 not implemented
-    //    // case op:: 0xE4 not implemented
-    //case op::PUSH_HL: return opPushReg16(regs.HL());
-    //case op::AND_A_n8: return opAndImm();
-    //case op::RST_20: return opRst(0x20);
-    //case op::ADD_SP_e8: return opAddSpImm();
-    //case op::JP_HL: return opJpHL(); // JP HL
-    //case op::LD_ina16_A: return opLdIndImm16Reg();
-    //    // case op:: 0xEB not implemented
-    //    // case op:: 0xEC not implemented
-    //    // case op:: 0xED not implemented
-    //case op::XOR_A_n8: return opXorImm();
-    //case op::RST_28: return opRst(0x28);
+    // 0xE*
+    case op::LDH_ina8_A: return ret + "ldh ($FF00 + " + immValU8(bus, pc) + "), a";
+    case op::POP_HL: return ret + "pop hl";
+    case op::LDH_inC_A: return ret + "ld ($FF00 + c), a";
+    // case op:: 0xE3 not implemented
+    // case op:: 0xE4 not implemented
+    case op::PUSH_HL: return ret + "push hl";
+    case op::AND_A_n8: return ret + "and a, " + immValU8(bus, pc);
+    case op::RST_20: return ret + "rst $20";
+    case op::ADD_SP_e8: return ret + "add sp, " + immValS8(bus, pc);
+    case op::JP_HL: return ret + "jp hl";
+    case op::LD_ina16_A: return ret + "ld (" + immValU16(bus, pc) + "), a";
+    // case op:: 0xEB not implemented
+    // case op:: 0xEC not implemented
+    // case op:: 0xED not implemented
+    case op::XOR_A_n8: return ret + "xor a, " + immValU8(bus, pc);
+    case op::RST_28: return ret + "rst $28";
 
-    //    // 0xF*
-    //case op::LDH_A_ina8: return opLdRegIndImm8();
-    //case op::POP_AF: return opPopReg16(regs.A, regs.flags);
-    //case op::LDH_A_inC: return opLdRegInd(regs.A, 0xFF00 + regs.C);  // LD A,[C]  (actual address is 0xff00 + C)
-    //case op::DI: return opDi();
-    //    // case op:: 0xF4 not implemented
-    //case op::PUSH_AF: return opPushReg16(regs.AF());
-    //case op::OR_A_n8: return opOrImm();
-    //case op::RST_30: return opRst(0x30);
-    //case op::LD_HL_SPpe8: return opLdHlSpOffset();
-    //case op::LD_SP_HL: return opLdSpHl();
-    //case op::LD_A_ina16: return opLdRegIndImm16();
-    //case op::EI: return opEi();
-    //    // case op:: 0xFB not implemented
-    //    // case op:: 0xFC not implemented
-    //case op::CP_A_n8: return opCpImm();
-    //case op::RST_38: return opRst(0x38);
+    // 0xF*
+    case op::LDH_A_ina8: return ret + "ldh a, ($FF00 + " + immValU8(bus, pc) + ')';
+    case op::POP_AF: return ret + "pop af";
+    case op::LDH_A_inC: return ret + "ld a, ($FF00 + c)";
+    case op::DI: return ret + "di";
+    // case op:: 0xF4 not implemented
+    case op::PUSH_AF: return ret + "push af";
+    case op::OR_A_n8: return ret + "or a, " + immValU8(bus, pc);
+    case op::RST_30: return ret + "rst $30";
+    case op::LD_HL_SPpe8: return ret + "ld hl, sp+(" + immValS8(bus, pc) + ')';
+    case op::LD_SP_HL: "ld sp, hl";
+    case op::LD_A_ina16: return ret + "ld a, (" + immValU16(bus, pc) + ')';
+    case op::EI: return ret + "ei";
+    // case op:: 0xFC not implemented
+    // case op:: 0xFD not implemented
+    case op::CP_A_n8: return ret + "cp a, " + immValU8(bus, pc);
+    case op::RST_38: "rst $38";
 
     default:
         // unrecognized opcode
-        return "unrecognized";
+        return ret + "???";
+    }
+}
+
+
+std::string instructionCBToStr(const Bus& bus, uint16_t pc)
+{
+    // to correctly execute one of the instructions prefixed with CB we 
+    // have to read another byte from PC to get the actual opcode
+    uint8_t cbOpcode = bus.read8(pc++);
+
+    std::string ret("(");
+    ret += uintToHex((uint16_t)(0xCB << 8 | cbOpcode)) + ")   ";
+
+    switch (cbOpcode) {
+    // 0x0*
+    case op_cb::RLC_B: return ret + "rlc b";
+    case op_cb::RLC_C: return ret + "rlc c";
+    case op_cb::RLC_D: return ret + "rlc d";
+    case op_cb::RLC_E: return ret + "rlc e";
+    case op_cb::RLC_H: return ret + "rlc h";
+    case op_cb::RLC_L: return ret + "rlc l";
+    case op_cb::RLC_inHL: return ret + "rlc (hl)";
+    case op_cb::RLC_A: return ret + "rlc a";
+    case op_cb::RRC_B: return ret + "rrc b";
+    case op_cb::RRC_C: return ret + "rrc c";
+    case op_cb::RRC_D: return ret + "rrc d";
+    case op_cb::RRC_E: return ret + "rrc e";
+    case op_cb::RRC_H: return ret + "rrc h";
+    case op_cb::RRC_L: return ret + "rrc l";
+    case op_cb::RRC_inHL: return ret + "rrc (hl)";
+    case op_cb::RRC_A: return ret + "rrc a";
+
+    // 0x1*
+    case op_cb::RL_B: return ret + "rl b";
+    case op_cb::RL_C: return ret + "rl c";
+    case op_cb::RL_D: return ret + "rl d";
+    case op_cb::RL_E: return ret + "rl e";
+    case op_cb::RL_H: return ret + "rl h";
+    case op_cb::RL_L: return ret + "rl l";
+    case op_cb::RL_inHL: return ret + "rl (hl)";
+    case op_cb::RL_A: return ret + "rl a";
+    case op_cb::RR_B: return ret + "rr b";
+    case op_cb::RR_C: return ret + "rr c";
+    case op_cb::RR_D: return ret + "rr d";
+    case op_cb::RR_E: return ret + "rr e";
+    case op_cb::RR_H: return ret + "rr h";
+    case op_cb::RR_L: return ret + "rr l";
+    case op_cb::RR_inHL: return ret + "rr (hl)";
+    case op_cb::RR_A: return ret + "rr a";
+
+    // 0x2*
+    case op_cb::SLA_B: return ret + "sla b";
+    case op_cb::SLA_C: return ret + "sla c";
+    case op_cb::SLA_D: return ret + "sla d";
+    case op_cb::SLA_E: return ret + "sla e";
+    case op_cb::SLA_H: return ret + "sla h";
+    case op_cb::SLA_L: return ret + "sla l";
+    case op_cb::SLA_inHL: return ret + "sla (hl)";
+    case op_cb::SLA_A: return ret + "sla a";
+    case op_cb::SRA_B: return ret + "sra b";
+    case op_cb::SRA_C: return ret + "sra c";
+    case op_cb::SRA_D: return ret + "sra d";
+    case op_cb::SRA_E: return ret + "sra e";
+    case op_cb::SRA_H: return ret + "sra h";
+    case op_cb::SRA_L: return ret + "sra l";
+    case op_cb::SRA_inHL: return ret + "sra (hl)";
+    case op_cb::SRA_A: return ret + "sra a";
+
+    // 0x3*
+    case op_cb::SWAP_B: return ret + "swap b";
+    case op_cb::SWAP_C: return ret + "swap c";
+    case op_cb::SWAP_D: return ret + "swap d";
+    case op_cb::SWAP_E: return ret + "swap e";
+    case op_cb::SWAP_H: return ret + "swap h";
+    case op_cb::SWAP_L: return ret + "swap l";
+    case op_cb::SWAP_inHL: return ret + "swap (hl)";
+    case op_cb::SWAP_A: return ret + "swap a";
+    case op_cb::SRL_B: return ret + "srl b";
+    case op_cb::SRL_C: return ret + "srl c";
+    case op_cb::SRL_D: return ret + "srl d";
+    case op_cb::SRL_E: return ret + "srl e";
+    case op_cb::SRL_H: return ret + "srl h";
+    case op_cb::SRL_L: return ret + "srl l";
+    case op_cb::SRL_inHL: return ret + "srl (hl)";
+    case op_cb::SRL_A: return ret + "srl a";
+
+    // 0x4*
+    case op_cb::BIT_0_B: return ret + "bit 0, b";
+    case op_cb::BIT_0_C: return ret + "bit 0, c";
+    case op_cb::BIT_0_D: return ret + "bit 0, d";
+    case op_cb::BIT_0_E: return ret + "bit 0, e";
+    case op_cb::BIT_0_H: return ret + "bit 0, h";
+    case op_cb::BIT_0_L: return ret + "bit 0, l";
+    case op_cb::BIT_0_inHL: return ret + "bit 0, (hl)";
+    case op_cb::BIT_0_A: return ret + "bit 0, a";
+    case op_cb::BIT_1_B: return ret + "bit 1, b";
+    case op_cb::BIT_1_C: return ret + "bit 1, c";
+    case op_cb::BIT_1_D: return ret + "bit 1, d";
+    case op_cb::BIT_1_E: return ret + "bit 1, e";
+    case op_cb::BIT_1_H: return ret + "bit 1, h";
+    case op_cb::BIT_1_L: return ret + "bit 1, l";
+    case op_cb::BIT_1_inHL: return ret + "bit 1, (hl)";
+    case op_cb::BIT_1_A: return ret + "bit 1, a";
+
+    // 0x5*
+    case op_cb::BIT_2_B: return ret + "bit 2, b";
+    case op_cb::BIT_2_C: return ret + "bit 2, c";
+    case op_cb::BIT_2_D: return ret + "bit 2, d";
+    case op_cb::BIT_2_E: return ret + "bit 2, e";
+    case op_cb::BIT_2_H: return ret + "bit 2, h";
+    case op_cb::BIT_2_L: return ret + "bit 2, l";
+    case op_cb::BIT_2_inHL: return ret + "bit 2, (hl)";
+    case op_cb::BIT_2_A: return ret + "bit 2, l";
+    case op_cb::BIT_3_B: return ret + "bit 3, b";
+    case op_cb::BIT_3_C: return ret + "bit 3, c";
+    case op_cb::BIT_3_D: return ret + "bit 3, d";
+    case op_cb::BIT_3_E: return ret + "bit 3, e";
+    case op_cb::BIT_3_H: return ret + "bit 3, h";
+    case op_cb::BIT_3_L: return ret + "bit 3, l";
+    case op_cb::BIT_3_inHL: return ret + "bit 3, (hl)";
+    case op_cb::BIT_3_A: return ret + "bit 3, a";
+
+    // 0x6*
+    case op_cb::BIT_4_B: return ret + "bit 4, b";
+    case op_cb::BIT_4_C: return ret + "bit 4, c";
+    case op_cb::BIT_4_D: return ret + "bit 4, d";
+    case op_cb::BIT_4_E: return ret + "bit 4, e";
+    case op_cb::BIT_4_H: return ret + "bit 4, h";
+    case op_cb::BIT_4_L: return ret + "bit 4, l";
+    case op_cb::BIT_4_inHL: return ret + "bit 4, (hl)";
+    case op_cb::BIT_4_A: return ret + "bit 4, a";
+    case op_cb::BIT_5_B: return ret + "bit 5, b";
+    case op_cb::BIT_5_C: return ret + "bit 5, c";
+    case op_cb::BIT_5_D: return ret + "bit 5, d";
+    case op_cb::BIT_5_E: return ret + "bit 5, e";
+    case op_cb::BIT_5_H: return ret + "bit 5, h";
+    case op_cb::BIT_5_L: return ret + "bit 5, l";
+    case op_cb::BIT_5_inHL: return ret + "bit 5, (hl)";
+    case op_cb::BIT_5_A: return ret + "bit 5, a";
+
+    // 0x7*
+    case op_cb::BIT_6_B: return ret + "bit 6, b";
+    case op_cb::BIT_6_C: return ret + "bit 6, c";
+    case op_cb::BIT_6_D: return ret + "bit 6, d";
+    case op_cb::BIT_6_E: return ret + "bit 6, e";
+    case op_cb::BIT_6_H: return ret + "bit 6, h";
+    case op_cb::BIT_6_L: return ret + "bit 6, l";
+    case op_cb::BIT_6_inHL: return ret + "bit 6, (hl)";
+    case op_cb::BIT_6_A: return ret + "bit 6, a";
+    case op_cb::BIT_7_B: return ret + "bit 7, b";
+    case op_cb::BIT_7_C: return ret + "bit 7, c";
+    case op_cb::BIT_7_D: return ret + "bit 7, d";
+    case op_cb::BIT_7_E: return ret + "bit 7, e";
+    case op_cb::BIT_7_H: return ret + "bit 7, h";
+    case op_cb::BIT_7_L: return ret + "bit 7, l";
+    case op_cb::BIT_7_inHL: return ret + "bit 7, (hl)";
+    case op_cb::BIT_7_A: return ret + "bit 7, a";
+
+    // 0x8*
+    case op_cb::RES_0_B: return ret + "res 0, b";
+    case op_cb::RES_0_C: return ret + "res 0, c";
+    case op_cb::RES_0_D: return ret + "res 0, d";
+    case op_cb::RES_0_E: return ret + "res 0, e";
+    case op_cb::RES_0_H: return ret + "res 0, h";
+    case op_cb::RES_0_L: return ret + "res 0, l";
+    case op_cb::RES_0_inHL: return ret + "res 0, (hl)";
+    case op_cb::RES_0_A: return ret + "res 0, a";
+    case op_cb::RES_1_B: return ret + "res 1, b";
+    case op_cb::RES_1_C: return ret + "res 1, c";
+    case op_cb::RES_1_D: return ret + "res 1, d";
+    case op_cb::RES_1_E: return ret + "res 1, e";
+    case op_cb::RES_1_H: return ret + "res 1, h";
+    case op_cb::RES_1_L: return ret + "res 1, l";
+    case op_cb::RES_1_inHL: return ret + "res 1, (hl)";
+    case op_cb::RES_1_A: return ret + "res 1, a";
+
+    // 0x9*
+    case op_cb::RES_2_B: return ret + "res 2, b";
+    case op_cb::RES_2_C: return ret + "res 2, c";
+    case op_cb::RES_2_D: return ret + "res 2, d";
+    case op_cb::RES_2_E: return ret + "res 2, e";
+    case op_cb::RES_2_H: return ret + "res 2, h";
+    case op_cb::RES_2_L: return ret + "res 2, l";
+    case op_cb::RES_2_inHL: return ret + "res 2, (hl)";
+    case op_cb::RES_2_A: return ret + "res 2, a";
+    case op_cb::RES_3_B: return ret + "res 3, b";
+    case op_cb::RES_3_C: return ret + "res 3, c";
+    case op_cb::RES_3_D: return ret + "res 3, d";
+    case op_cb::RES_3_E: return ret + "res 3, e";
+    case op_cb::RES_3_H: return ret + "res 3, h";
+    case op_cb::RES_3_L: return ret + "res 3, l";
+    case op_cb::RES_3_inHL: return ret + "res 3, (hl)";
+    case op_cb::RES_3_A: return ret + "res 3, a";
+
+    // 0xA*
+    case op_cb::RES_4_B: return ret + "res 4, b";
+    case op_cb::RES_4_C: return ret + "res 4, c";
+    case op_cb::RES_4_D: return ret + "res 4, d";
+    case op_cb::RES_4_E: return ret + "res 4, e";
+    case op_cb::RES_4_H: return ret + "res 4, h";
+    case op_cb::RES_4_L: return ret + "res 4, l";
+    case op_cb::RES_4_inHL: return ret + "res 4, (hl)";
+    case op_cb::RES_4_A: return ret + "res 4, a";
+    case op_cb::RES_5_B: return ret + "res 5, b";
+    case op_cb::RES_5_C: return ret + "res 5, c";
+    case op_cb::RES_5_D: return ret + "res 5, d";
+    case op_cb::RES_5_E: return ret + "res 5, e";
+    case op_cb::RES_5_H: return ret + "res 5, h";
+    case op_cb::RES_5_L: return ret + "res 5, l";
+    case op_cb::RES_5_inHL: return ret + "res 5, (hl)";
+    case op_cb::RES_5_A: return ret + "res 5, a";
+
+    // 0xB*
+    case op_cb::RES_6_B: return ret + "res 6, b";
+    case op_cb::RES_6_C: return ret + "res 6, c";
+    case op_cb::RES_6_D: return ret + "res 6, d";
+    case op_cb::RES_6_E: return ret + "res 6, e";
+    case op_cb::RES_6_H: return ret + "res 6, h";
+    case op_cb::RES_6_L: return ret + "res 6, l";
+    case op_cb::RES_6_inHL: return ret + "res 6, (hl)";
+    case op_cb::RES_6_A: return ret + "res 6, a";
+    case op_cb::RES_7_B: return ret + "res 7, b";
+    case op_cb::RES_7_C: return ret + "res 7, c";
+    case op_cb::RES_7_D: return ret + "res 7, d";
+    case op_cb::RES_7_E: return ret + "res 7, e";
+    case op_cb::RES_7_H: return ret + "res 7, h";
+    case op_cb::RES_7_L: return ret + "res 7, l";
+    case op_cb::RES_7_inHL: return ret + "res 7, (hl)";
+    case op_cb::RES_7_A: return ret + "res 7, a";
+
+        // 0xC*
+    case op_cb::SET_0_B: return ret + "set 0, b";
+    case op_cb::SET_0_C: return ret + "set 0, c";
+    case op_cb::SET_0_D: return ret + "set 0, d";
+    case op_cb::SET_0_E: return ret + "set 0, e";
+    case op_cb::SET_0_H: return ret + "set 0, h";
+    case op_cb::SET_0_L: return ret + "set 0, l";
+    case op_cb::SET_0_inHL: return ret + "set 0, (hl)";
+    case op_cb::SET_0_A: return ret + "set 0, a";
+    case op_cb::SET_1_B: return ret + "set 1, b";
+    case op_cb::SET_1_C: return ret + "set 1, c";
+    case op_cb::SET_1_D: return ret + "set 1, d";
+    case op_cb::SET_1_E: return ret + "set 1, e";
+    case op_cb::SET_1_H: return ret + "set 1, h";
+    case op_cb::SET_1_L: return ret + "set 1, l";
+    case op_cb::SET_1_inHL: return ret + "set 1, (hl)";
+    case op_cb::SET_1_A: return ret + "set 1, a";
+
+        // 0xD*
+    case op_cb::SET_2_B: return ret + "set 2, b";
+    case op_cb::SET_2_C: return ret + "set 2, c";
+    case op_cb::SET_2_D: return ret + "set 2, d";
+    case op_cb::SET_2_E: return ret + "set 2, e";
+    case op_cb::SET_2_H: return ret + "set 2, h";
+    case op_cb::SET_2_L: return ret + "set 2, l";
+    case op_cb::SET_2_inHL: return ret + "set 2, (hl)";
+    case op_cb::SET_2_A: return ret + "set 2, a";
+    case op_cb::SET_3_B: return ret + "set 3, b";
+    case op_cb::SET_3_C: return ret + "set 3, c";
+    case op_cb::SET_3_D: return ret + "set 3, d";
+    case op_cb::SET_3_E: return ret + "set 3, e";
+    case op_cb::SET_3_H: return ret + "set 3, h";
+    case op_cb::SET_3_L: return ret + "set 3, l";
+    case op_cb::SET_3_inHL: return ret + "set 3, (hl)";
+    case op_cb::SET_3_A: return ret + "set 3, a";
+
+        // 0xE*
+    case op_cb::SET_4_B: return ret + "set 4, b";
+    case op_cb::SET_4_C: return ret + "set 4, c";
+    case op_cb::SET_4_D: return ret + "set 4, d";
+    case op_cb::SET_4_E: return ret + "set 4, e";
+    case op_cb::SET_4_H: return ret + "set 4, h";
+    case op_cb::SET_4_L: return ret + "set 4, l";
+    case op_cb::SET_4_inHL: return ret + "set 4, (hl)";
+    case op_cb::SET_4_A: return ret + "set 4, a";
+    case op_cb::SET_5_B: return ret + "set 5, b";
+    case op_cb::SET_5_C: return ret + "set 5, c";
+    case op_cb::SET_5_D: return ret + "set 5, d";
+    case op_cb::SET_5_E: return ret + "set 5, e";
+    case op_cb::SET_5_H: return ret + "set 5, h";
+    case op_cb::SET_5_L: return ret + "set 5, l";
+    case op_cb::SET_5_inHL: return ret + "set 5, (hl)";
+    case op_cb::SET_5_A: return ret + "set 5, a";
+
+        // 0xF*
+    case op_cb::SET_6_B: return ret + "set 6, b";
+    case op_cb::SET_6_C: return ret + "set 6, c";
+    case op_cb::SET_6_D: return ret + "set 6, d";
+    case op_cb::SET_6_E: return ret + "set 6, e";
+    case op_cb::SET_6_H: return ret + "set 6, h";
+    case op_cb::SET_6_L: return ret + "set 6, l";
+    case op_cb::SET_6_inHL: return ret + "set 6, (hl)";
+    case op_cb::SET_6_A: return ret + "set 6, a";
+    case op_cb::SET_7_B: return ret + "set 7, b";
+    case op_cb::SET_7_C: return ret + "set 7, c";
+    case op_cb::SET_7_D: return ret + "set 7, d";
+    case op_cb::SET_7_E: return ret + "set 7, e";
+    case op_cb::SET_7_H: return ret + "set 7, h";
+    case op_cb::SET_7_L: return ret + "set 7, l";
+    case op_cb::SET_7_inHL: return ret + "set 7, (hl)";
+    case op_cb::SET_7_A: return ret + "set 7, a";
+    default:
+        // unrecognized opcode
+        // shouldn't happen with CB prefixed instructions
+        return ret + "???";
     }
 }
