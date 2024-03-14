@@ -2,6 +2,7 @@
 
 #include "App.h"
 #include "ImGuiFileDialog/ImGuiFileDialog.h"
+#include <cassert>
 
 
 App::App()
@@ -207,61 +208,178 @@ void App::UIDrawEmulationWindow()
 
 
 struct RegTableEntry {
+    const char* fmt;
     const char* name;
-    uint16_t val;
+    uint32_t val;
 };
 
-static void UIDrawSingleRegTable(const char* id, const char* fmt, const RegTableEntry* entries, size_t count)
+static const ImGuiTableFlags tableFlags = ImGuiTableFlags_Resizable | ImGuiTableFlags_Reorderable
+    | ImGuiTableFlags_Hideable | ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersV;
+
+static const char* fmtHex4 = "0x%04x";
+static const char* fmtHex2 = "0x%02x";
+
+
+void App::UIDrawCpuRegTable()
 {
-    static const ImGuiTableFlags tableFlags = ImGuiTableFlags_Resizable | ImGuiTableFlags_Reorderable 
-        | ImGuiTableFlags_Hideable | ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersV;
+    RegTableEntry cpuEntries[] = {
+        { fmtHex4, "AF", mGameboy.cpu.regs.AF() },
+        { fmtHex4, "SP", mGameboy.cpu.regs.SP },
+        { fmtHex4, "BC", mGameboy.cpu.regs.BC() },
+        { fmtHex4, "PC", mGameboy.cpu.regs.PC },
+        { fmtHex4, "DE", mGameboy.cpu.regs.DE() },
+        { fmtHex2, "IE", mGameboy.cpu.irqs.IE },
+        { fmtHex4, "HL", mGameboy.cpu.regs.HL() },
+        { fmtHex2, "IF", mGameboy.cpu.irqs.IF },
+    };
 
-    if (!id || !fmt || !entries)
-        return;
-
-    if (ImGui::BeginTable(id, 2, tableFlags))
+    if (ImGui::BeginTable("cpuRegsTable", 4, tableFlags))
     {
-        ImGui::TableSetupColumn("Register");
-        ImGui::TableSetupColumn("Value");
+        ImGui::TableSetupColumn("Reg");
+        ImGui::TableSetupColumn("Val");
+        ImGui::TableSetupColumn("Reg");
+        ImGui::TableSetupColumn("Val");
         ImGui::TableHeadersRow();
 
-        auto drawTableLine = [fmt](const char* name, uint16_t val) {
+        auto drawTableLine = [](const RegTableEntry& entry1, const RegTableEntry& entry2) {
             ImGui::TableNextRow();
+            
             ImGui::TableSetColumnIndex(0);
-            ImGui::Text(name);
+            ImGui::Text(entry1.name);
             ImGui::TableSetColumnIndex(1);
-            ImGui::Text(fmt, val);
+            ImGui::Text(entry1.fmt, entry1.val);
+            ImGui::TableSetColumnIndex(2);
+            ImGui::Text(entry2.name);
+            ImGui::TableSetColumnIndex(3);
+            ImGui::Text(entry2.fmt, entry2.val);
         };
 
-        for(uint32_t i =0;i<count;++i) 
-            drawTableLine(entries[i].name, entries[i].val);
+        assert(IM_ARRAYSIZE(cpuEntries) % 2 == 0);
+
+        for (uint32_t i = 0; i < IM_ARRAYSIZE(cpuEntries); i += 2)
+            drawTableLine(cpuEntries[i], cpuEntries[i + 1]);
 
         ImGui::EndTable();
     }
 }
 
-static void UIDrawFlagsTable(const char* id, const RegTableEntry* entries, size_t count)
+
+void App::UIDrawCpuFlagsTable()
 {
-    static const ImGuiTableFlags tableFlags = ImGuiTableFlags_Resizable | ImGuiTableFlags_Reorderable
-        | ImGuiTableFlags_Hideable | ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersV;
+    RegTableEntry cpuFlagsEntries[] = {
+        { "", "Z", mGameboy.cpu.regs.flags.Z },
+        { "", "N", mGameboy.cpu.regs.flags.N },
+        { "", "H", mGameboy.cpu.regs.flags.H },
+        { "", "C", mGameboy.cpu.regs.flags.C },
+    };
 
-    if (ImGui::BeginTable(id, 2, tableFlags))
+    if (ImGui::BeginTable("cpuFlagsTable", 4, tableFlags))
     {
-        ImGui::TableSetupColumn("Flag");
-        ImGui::TableSetupColumn("Value");
-        ImGui::TableHeadersRow();
-
-        auto drawTableLine = [](const char* name, uint16_t val) {
+        auto drawTableLine = [](const RegTableEntry& entry1, const RegTableEntry& entry2) {
             ImGui::TableNextRow();
+
             ImGui::TableSetColumnIndex(0);
-            ImGui::Text(name);
+            ImGui::Text(entry1.name);
             ImGui::TableSetColumnIndex(1);
-            bool bval = (bool)val;
-            ImGui::Checkbox("", &bval);
+            bool bval1 = (bool)entry1.val;
+            ImGui::Checkbox("", &bval1);
+            ImGui::TableSetColumnIndex(2);
+            ImGui::Text(entry2.name);
+            ImGui::TableSetColumnIndex(3);
+            bool bval2 = (bool)entry2.val;
+            ImGui::Checkbox("", &bval2);
         };
 
-        for (uint32_t i = 0; i < count; ++i)
-            drawTableLine(entries[i].name, entries[i].val);
+        assert(IM_ARRAYSIZE(cpuFlagsEntries) % 2 == 0);
+
+        for (uint32_t i = 0; i < IM_ARRAYSIZE(cpuFlagsEntries); i += 2)
+            drawTableLine(cpuFlagsEntries[i], cpuFlagsEntries[i + 1]);
+
+        ImGui::EndTable();
+    }
+}
+
+void App::UIDrawTimerRegTable()
+{
+    RegTableEntry timerEntries[] = {
+         { fmtHex2, "DIV", mGameboy.timer.readDIV() },
+         { fmtHex2, "TIMA", mGameboy.timer.readTIMA() },
+         { fmtHex2, "TMA", mGameboy.timer.readTMA() },
+         { fmtHex2, "TAC", mGameboy.timer.readTAC() }
+    };
+
+    if (ImGui::BeginTable("timerRegsTable", 4, tableFlags))
+    {
+        ImGui::TableSetupColumn("Reg");
+        ImGui::TableSetupColumn("Val");
+        ImGui::TableSetupColumn("Reg");
+        ImGui::TableSetupColumn("Val");
+        ImGui::TableHeadersRow();
+
+        auto drawTableLine = [](const RegTableEntry& entry1, const RegTableEntry& entry2) {
+            ImGui::TableNextRow();
+
+            ImGui::TableSetColumnIndex(0);
+            ImGui::Text(entry1.name);
+            ImGui::TableSetColumnIndex(1);
+            ImGui::Text(entry1.fmt, entry1.val);
+            ImGui::TableSetColumnIndex(2);
+            ImGui::Text(entry2.name);
+            ImGui::TableSetColumnIndex(3);
+            ImGui::Text(entry2.fmt, entry2.val);
+        };
+
+        assert(IM_ARRAYSIZE(timerEntries) % 2 == 0);
+
+        for (uint32_t i = 0; i < IM_ARRAYSIZE(timerEntries); i += 2)
+            drawTableLine(timerEntries[i], timerEntries[i + 1]);
+
+        ImGui::EndTable();
+    }
+}
+
+void App::UIDrawPpuRegTable()
+{
+    RegTableEntry ppuEntries[] = {
+        { fmtHex2, "LCDC", mGameboy.ppu.readLCDC() },
+        { fmtHex2, "BGP", mGameboy.ppu.readBGP() },
+        { fmtHex2, "STAT", mGameboy.ppu.readSTAT() },
+        { fmtHex2, "OBP0", mGameboy.ppu.readOBP0() },
+        { fmtHex2, "LY", mGameboy.ppu.readLY() },
+        { fmtHex2, "OBP1", mGameboy.ppu.readOBP1() },
+        { fmtHex2, "LYC", mGameboy.ppu.readLYC() },
+        { fmtHex2, "WX", mGameboy.ppu.readWX() },
+        { fmtHex2, "SCX", mGameboy.ppu.readSCX() },
+        { fmtHex2, "WY", mGameboy.ppu.readWY() },
+        { fmtHex2, "SCY", mGameboy.ppu.readSCY() },
+        { "%u", "currDot", mGameboy.ppu.getDotCounter() },
+    };
+
+    if (ImGui::BeginTable("ppuRegsTable", 4, tableFlags))
+    {
+        ImGui::TableSetupColumn("Reg");
+        ImGui::TableSetupColumn("Val");
+        ImGui::TableSetupColumn("Reg");
+        ImGui::TableSetupColumn("Val");
+        ImGui::TableHeadersRow();
+
+        auto drawTableLine = [](const RegTableEntry& entry1, const RegTableEntry& entry2) {
+            ImGui::TableNextRow();
+
+            ImGui::TableSetColumnIndex(0);
+            ImGui::Text(entry1.name);
+            ImGui::TableSetColumnIndex(1);
+            ImGui::Text(entry1.fmt, entry1.val);
+            ImGui::TableSetColumnIndex(2);
+            ImGui::Text(entry2.name);
+            ImGui::TableSetColumnIndex(3);
+            ImGui::Text(entry2.fmt, entry2.val);
+        };
+
+        assert(IM_ARRAYSIZE(ppuEntries) % 2 == 0);
+
+        for (uint32_t i = 0; i < IM_ARRAYSIZE(ppuEntries); i += 2)
+            drawTableLine(ppuEntries[i], ppuEntries[i + 1]);
 
         ImGui::EndTable();
     }
@@ -271,49 +389,18 @@ void App::UIDrawRegsTables()
 {
     ImGui::Begin("Registers");
 
-    RegTableEntry cpuEntries[] = {
-        { "AF", mGameboy.cpu.regs.AF() },
-        { "BC", mGameboy.cpu.regs.BC() },
-        { "DE", mGameboy.cpu.regs.DE() },
-        { "HL", mGameboy.cpu.regs.HL() },
-        { "SP", mGameboy.cpu.regs.SP },
-        { "PC", mGameboy.cpu.regs.PC },
-        { "IE", mGameboy.cpu.irqs.IE },
-        { "IF", mGameboy.cpu.irqs.IF },
-    };
-
     ImGui::SeparatorText("CPU");
-    UIDrawSingleRegTable("cpuRegsTable", "0x%04x", cpuEntries, IM_ARRAYSIZE(cpuEntries));
+    UIDrawCpuRegTable();
+    UIDrawCpuFlagsTable();
 
-    RegTableEntry cpuFlagsEntries[] = {
-        { "Z", mGameboy.cpu.regs.flags.Z },
-        { "N", mGameboy.cpu.regs.flags.N },
-        { "H", mGameboy.cpu.regs.flags.H },
-        { "C", mGameboy.cpu.regs.flags.C },
-    };
-
-    UIDrawFlagsTable("cpuFlagsTable", cpuFlagsEntries, IM_ARRAYSIZE(cpuFlagsEntries));
-
-    RegTableEntry ppuEntries[] = {
-        { "LCDC", mGameboy.ppu.readLCDC() },
-        { "STAT", mGameboy.ppu.readSTAT() },
-        { "SCY", mGameboy.ppu.readSCY() },
-        { "SCX", mGameboy.ppu.readSCX() },
-        { "LY", mGameboy.ppu.readLY() },
-        { "LYC", mGameboy.ppu.readLYC() },
-        { "BGP", mGameboy.ppu.readBGP() },
-        { "OBP0", mGameboy.ppu.readOBP0() },
-        { "OBP1", mGameboy.ppu.readOBP1() },
-        { "WY", mGameboy.ppu.readWY() },
-        { "WX", mGameboy.ppu.readWX() }
-    };
+    ImGui::SeparatorText("Timer");
+    UIDrawTimerRegTable();
 
     ImGui::SeparatorText("PPU");
-    UIDrawSingleRegTable("ppuRegsTable", "0x%02x", ppuEntries, IM_ARRAYSIZE(ppuEntries));
+    UIDrawPpuRegTable();
 
     ImGui::SeparatorText("Current instruction");
     ImGui::Text("%s", mGameboy.currInstruction.c_str());
-
 
     ImGui::End();
 }

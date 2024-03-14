@@ -1,53 +1,14 @@
 
 #include "gb/Cartridge.h"
 #include "gb/GbCommons.h"
-#include <filesystem>
-#include <vector>
-#include <fstream>
-#include <vector>
+#include "TestUtils.h"
 #include "doctest/doctest.h"
 
 
 namespace fs = std::filesystem;
 
-static fs::path getTestRoot()
-{
-    auto curr = fs::current_path();
-    fs::path ret;
-
-    for (const auto& sub : curr) {
-        ret /= sub;
-
-        if (sub == "gbemu")
-            break;
-    }
-
-    ret /= "test-files";
-
-    return ret;
-}
-
 static const fs::path testFilesRoot = getTestRoot();
 
-
-
-static std::vector<uint8_t> readFile(const fs::path& path)
-{
-    if (fs::exists(path) && fs::is_regular_file(path)) {
-        auto size = fs::file_size(path);
-
-        std::vector<uint8_t> data;
-        data.resize(size);
-
-        std::ifstream ifs(path, std::ios::in | std::ios::binary);
-        ifs.read((char*)data.data(), size);
-
-        return data;
-    }
-    else {
-        return {};
-    }
-}
 
 static constexpr EntryPointData expectedEntryPoint = { 0x00, 0xC3, 0x50, 0x01 };
 

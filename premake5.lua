@@ -33,7 +33,7 @@ workspace(project_name)
 
     targetdir(build_base .. "/bin/%{cfg.buildcfg}")
 
-    -- don't include the main file here, every prject will add its own
+    -- don't include main.cpp here, every prject will add its own
     files {
         src_base .. "/gb/**.cpp",
         src_base .. "/gb/**.h",
@@ -140,5 +140,9 @@ workspace(project_name)
         -- tests, along with their main, are all located under src/tests
         files {
             src_base .. "/tests/**.cpp"
+        }
+
+        includedirs {
+            src_base .. "/tests"
         }
     

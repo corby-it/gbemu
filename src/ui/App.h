@@ -23,7 +23,12 @@ private:
     void UIDrawMenu();
     void UIDrawControlWindow();
     void UIDrawEmulationWindow();
+    
     void UIDrawRegsTables();
+    void UIDrawCpuRegTable();
+    void UIDrawCpuFlagsTable();
+    void UIDrawTimerRegTable();
+    void UIDrawPpuRegTable();
 
     AppConfig mConfig;
     GameBoyClassic mGameboy;

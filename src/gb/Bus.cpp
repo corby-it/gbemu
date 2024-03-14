@@ -139,9 +139,7 @@ uint8_t GBBus::realRead(uint16_t addr) const
     if (addr == mmap::IE)
         return mCpu->irqs.IE;
     
-    // should never be here
-    assert(false);
-    return 0;
+    return 0xFF;
 }
 
 void GBBus::realWrite(uint16_t addr, uint8_t val)
