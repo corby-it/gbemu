@@ -79,7 +79,9 @@ workspace(project_name)
         flags {
             "LinkTimeOptimization"
         }
-        defines { "DOCTEST_CONFIG_DISABLE" }
+        defines { 
+            "DOCTEST_CONFIG_DISABLE" 
+        }
 
     filter { "system:linux", "action:gmake" }
         buildoptions { 
@@ -115,6 +117,9 @@ workspace(project_name)
         }
         systemversion "latest"
         staticruntime "On"
+        defines { 
+            "_CRT_SECURE_NO_WARNINGS" 
+        }
     
     filter { "system:windows", "action:vs*", "configurations:debug" }
         ignoredefaultlibraries {

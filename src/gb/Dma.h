@@ -17,6 +17,7 @@ public:
     void write(uint8_t val);
 
     bool isTransferring() const { return mIsTransferring; }
+    bool isScheduled() const { return mIsScheduled; }
 
 
 private:
@@ -24,10 +25,12 @@ private:
 
     uint8_t mReg;
 
-    uint16_t mStartAddr;
-    uint16_t mEndAddr;
+    uint16_t mWrittenAddr;
     uint16_t mCurrAddr;
+    uint16_t mCounter;
 
+    bool mIsScheduled;
+    bool mStartTransfer;
     bool mIsTransferring;
 
 };

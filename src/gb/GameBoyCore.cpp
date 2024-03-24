@@ -91,35 +91,53 @@ uint32_t GameBoyClassic::gbStep()
 
 
 
-void GameBoyClassic::emulate()
+bool GameBoyClassic::emulate()
 {
-    // if the emulation is stopped or paused there is nothing to do
-    if (status == Status::Stopped || status == Status::Paused) {
-        return;
+    // return true if there is more emulation work to be done (that is, if
+    // the emulation is not stopped or paused)
+
+    bool ret = false;
+
+    switch (status) {
+    default:
+    case GameBoyClassic::Status::Stopped:
+    case GameBoyClassic::Status::Paused: {
+        // if the emulation is stopped or paused there is nothing to do
+        break;
     }
-    else if (status == Status::Playing) {
-        if (breakOnLdbb) {
-            if (bus.read8(cpu.regs.PC) == op::LD_B_B) {
-                status = Status::Paused;
-                return;
-            }
+
+    case GameBoyClassic::Status::Playing:
+    {
+        if (breakOnLdbb && bus.read8(cpu.regs.PC) == op::LD_B_B) {
+            status = Status::Paused;
+            ret = false;
+
         }
+        else {
+            // emulate the gameboy, full speed
+            auto before = hr_clock::now();
+            gbStep();
+            auto after = hr_clock::now();
 
-        // emulate the gameboy, full speed
-        auto before = hr_clock::now();
-        gbStep();
-        auto after = hr_clock::now();
-
-        mStepTimeCounter++;
-        mStepAvgTimeAccumulator += duration_cast<nanoseconds>(after - before);
+            mStepTimeCounter++;
+            mStepAvgTimeAccumulator += duration_cast<nanoseconds>(after - before);
+            ret = true;
+        }
+        break;
     }
-    else if (status == Status::Stepping) {
+
+    case GameBoyClassic::Status::Stepping: {
         // execute 1 instruction only if the user wants to
         if (mStepInstruction) {
             gbStep();
             mStepInstruction = false;
         }
+        ret = false;
+        break;
     }
+    }
+
+    return ret;
 }
 
 void GameBoyClassic::play()

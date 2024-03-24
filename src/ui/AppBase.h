@@ -16,7 +16,8 @@ public:
     void run();
 
     virtual void startup() = 0;
-    virtual void update() = 0;
+    virtual bool emulate() = 0;
+    virtual void updateUI() = 0;
 
 protected:
 
@@ -24,6 +25,8 @@ protected:
 
 
 private:
+    static constexpr double fpsLimit = 1.0 / 65.0;
+    double mLastFrameTime;
 
     GLFWwindow* mWindow;
     ImVec4 mClearColor;

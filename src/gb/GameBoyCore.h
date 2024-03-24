@@ -32,7 +32,7 @@ public:
 
     GameBoyClassic();
 
-    void emulate();
+    bool emulate();
 
     void play();
     void pause();

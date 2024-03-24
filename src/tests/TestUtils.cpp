@@ -40,3 +40,4 @@ std::vector<uint8_t> readFile(const fs::path& path)
         return {};
     }
 }
+

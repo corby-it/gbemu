@@ -33,6 +33,7 @@ static void glfw_error_callback(int error, const char* description)
 
 
 AppBase::AppBase()
+    : mLastFrameTime(0)
 {
     glfwSetErrorCallback(glfw_error_callback);
     if (!glfwInit())
@@ -67,7 +68,7 @@ AppBase::AppBase()
         std::exit(1);
 
     glfwMakeContextCurrent(mWindow);
-    glfwSwapInterval(0); // Enable vsync
+    glfwSwapInterval(1); // Enable vsync
 
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
@@ -143,13 +144,21 @@ void AppBase::run()
         // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
         glfwPollEvents();
 
+        while (true) {
+            if (glfwGetTime() - mLastFrameTime > fpsLimit)
+                break;
+
+            if (!emulate())
+                break;
+        }
+
         // Start the Dear ImGui frame
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
         // user code
-        update();
+        updateUI();
 
         // Rendering
         ImGui::Render();
@@ -174,6 +183,7 @@ void AppBase::run()
         }
 
         glfwSwapBuffers(mWindow);
+        mLastFrameTime = glfwGetTime();
     }
 }
 

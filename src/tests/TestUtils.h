@@ -3,6 +3,7 @@
 #ifndef GBEMU_SRC_TESTS_TESTUTILS_H_
 #define GBEMU_SRC_TESTS_TESTUTILS_H_
 
+#include "gb/Ppu.h"
 #include <vector>
 #include <filesystem>
 

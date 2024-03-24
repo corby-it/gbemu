@@ -587,21 +587,34 @@ TEST_CASE("DMA transfer")
     TestBus bus;
     DMA dma(bus);
 
-    SUBCASE("Check read-write") {
+    SUBCASE("Check read/write and scheduled/transferring flags") {
         CHECK_FALSE(dma.isTransferring());
         
         dma.write(0x80);
 
         CHECK(dma.read() == 0x80);
+        // the transfer does not begin immediately
+        CHECK_FALSE(dma.isTransferring());
+        CHECK(dma.isScheduled());
+
+        // there must be a 1 m-cycle delay before the transfer begins
+        dma.step(1);
+        CHECK_FALSE(dma.isTransferring());
+        CHECK_FALSE(dma.isScheduled());
+
+        // now the tranfer must be started
+        dma.step(1);
         CHECK(dma.isTransferring());
+        CHECK_FALSE(dma.isScheduled());
+
     }
 
     SUBCASE("Check data transfer") {
         uint16_t startAddr = 0xC000;
 
-        // fill the area with the value of i, write one additional value 
+        // fill the read area with the value of i, write one additional value 
         // (the 161th value) to check that it has not been copied
-        for (uint16_t i = 0; i <= 160; ++i)
+        for (uint16_t i = 0; i < 161; ++i)
             bus.write8(startAddr + i, (uint8_t)i);
 
         // also write another known value one byte after the end of the oam area
@@ -612,33 +625,102 @@ TEST_CASE("DMA transfer")
         dma.write(0xC0);
 
         CHECK(dma.read() == 0xC0);
-        CHECK(dma.isTransferring());
+        CHECK_FALSE(dma.isTransferring());
+        CHECK(dma.isScheduled());
 
         // step through the transfer process
         dma.step(80);
 
         CHECK(dma.read() == 0xC0);
         CHECK(dma.isTransferring());
+        CHECK_FALSE(dma.isScheduled());
 
-        dma.step(81);
+        dma.step(82);
 
         CHECK(dma.read() == 0xC0);
         CHECK_FALSE(dma.isTransferring());
 
         // verify if the data has been copied correctly
-        auto checkMem = [&]() {
-            for (uint16_t i = 0; i < 160; ++i) {
-                if (bus.read8(mmap::oam::start + i) != i)
-                    return false;
+        for (uint16_t i = 0; i < 160; ++i) {
+            if (bus.read8(mmap::oam::start + i) != i) {
+                INFO("mem[mmap::oam::start + i] is different from i", i);
+                CHECK(false);
             }
+        }
 
-            if (bus.read8(mmap::oam::start + 160) != 0xFE)
-                return false;
+        CHECK_MESSAGE(bus.read8(mmap::oam::start + 160) == 0xFE, "mem[mmap::oam::start + 160] is different from 0xFE");
+    }
 
-            return true;
-        };
+    SUBCASE("Check transfer restart") {
+        uint16_t startAddr1 = 0xC000;
+        uint16_t startAddr2 = 0xD000;
 
-        CHECK(checkMem());
+        // fill the 1st read area with the value of i, write one additional value 
+        // (the 161th value) to check that it has not been copied
+        for (uint16_t i = 0; i < 161; ++i)
+            bus.write8(startAddr1 + i, (uint8_t)i);
+
+        // fill the 2nd read area with the value of i+10, write one additional value 
+        // (the 161th value) to check that it has not been copied
+        for (uint16_t i = 0; i < 161; ++i)
+            bus.write8(startAddr2 + i, (uint8_t)(i + 10));
+
+        // also write another known value one byte after the end of the oam area
+        // to be able to check for off-by-one errors
+        bus.write8(mmap::oam::end + 1, 0xFE);
+
+        // start the transfer
+        dma.write(0xC0);
+
+        CHECK(dma.read() == 0xC0);
+        CHECK_FALSE(dma.isTransferring());
+        CHECK(dma.isScheduled());
+
+        // step through the transfer process
+        dma.step(80);
+
+        CHECK(dma.read() == 0xC0);
+        CHECK(dma.isTransferring());
+        CHECK_FALSE(dma.isScheduled());
+
+        // check if the first 79 bytes have been transferred correctly
+        for (uint16_t i = 0; i < 79; ++i) {
+            if (bus.read8(mmap::oam::start + i) != i) {
+                INFO("mem[mmap::oam::start + i] is different from i", i);
+                CHECK(false);
+            }
+        }
+
+        // start a new transfer
+        dma.write(0xD0);
+
+        CHECK(dma.read() == 0xD0);
+        CHECK(dma.isTransferring());
+        CHECK(dma.isScheduled());
+
+        dma.step(1);
+
+        // after 1 m-cycle the new transfer hasn't started yet but another byte 
+        // from the old transfer must have been transferred
+        CHECK_MESSAGE(bus.read8(mmap::oam::start + 79) == 79, "mem[mmap::oam::start + 79] is different from 79");
+        CHECK(dma.isTransferring());
+        CHECK_FALSE(dma.isScheduled());
+
+        // step through the end of the transfer
+        dma.step(160);
+
+        CHECK(dma.read() == 0xD0);
+        CHECK_FALSE(dma.isTransferring());
+
+        // verify if the data has been copied correctly
+        for (uint16_t i = 0; i < 160; ++i) {
+            if (bus.read8(mmap::oam::start + i) != i + 10) {
+                INFO("mem[mmap::oam::start + i] is different from i + 10", i);
+                CHECK(false);
+            }
+        }
+
+        CHECK_MESSAGE(bus.read8(mmap::oam::start + 160) == 0xFE, "mem[mmap::oam::start + 160] is different from 0xFE");
     }
 
 }

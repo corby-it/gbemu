@@ -36,23 +36,21 @@ static bool LoadTextureFromMatrix(const Matrix& mat, GLuint& outTexture, RgbBuff
     return true;
 }
 
-void App::update()
+
+bool App::emulate()
 {
     mGameboy.emulate();
-
-    UIDraw();
+    return true;
 }
 
-
-
-
-void App::UIDraw()
+void App::updateUI()
 {
     UIDrawMenu();
     UIDrawControlWindow();
     UIDrawEmulationWindow();
     UIDrawRegsTables();
 }
+
 
 
 void App::UIDrawMenu()

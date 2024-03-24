@@ -22,3 +22,6 @@ Release
 *.log
 windows/*.bmp
 *.ini
+
+# ignore mts result images
+test-files/mts-results/**/*.png

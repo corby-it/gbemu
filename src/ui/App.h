@@ -14,12 +14,12 @@ public:
     virtual ~App() {}
 
     void startup() override {}
-    void update() override;
+    bool emulate() override;
+    void updateUI() override;
 
 
 private:
 
-    void UIDraw();
     void UIDrawMenu();
     void UIDrawControlWindow();
     void UIDrawEmulationWindow();
