@@ -1,13 +1,43 @@
 
 
-#ifndef GBEMU_SRC_DEBUG_DEBUG_H_
-#define GBEMU_SRC_DEBUG_DEBUG_H_
+#ifndef GBEMU_SRC_GBDEBUG_DEBUG_H_
+#define GBEMU_SRC_GBDEBUG_DEBUG_H_
 
-#include "gb/Bus.h"
+#include "SymFile.h"
 #include <string>
 
-std::string instructionToStr(const Bus& bus, uint16_t pc);
+
+class GameBoyClassic;
+
+
+class GBDebug {
+public:
+    GBDebug();
+
+    bool enabled;
+
+    bool breakOnLdbb;
+    bool breakOnRet;
+
+    size_t targetCallNesting;
+
+    SymTable symTable;
+
+    const std::string& currInstructionStr() const { return mCurrInstruction; }
+
+    std::string updateInstructionToStr(const GameBoyClassic& gb);
+
+private:
+    std::string instructionToStr(const GameBoyClassic& gb);
+    std::string instructionCBToStr(const GameBoyClassic& gb);
+
+    std::string symbolOrU16(const GameBoyClassic& gb, uint16_t pc);
+    std::string symbolOrS8(const GameBoyClassic& gb, uint16_t pc);
+
+    std::string mCurrInstruction;
+};
 
 
 
-#endif // GBEMU_SRC_DEBUG_DEBUG_H_
+
+#endif // GBEMU_SRC_GBDEBUG_DEBUG_H_

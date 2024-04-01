@@ -129,6 +129,7 @@ public:
     Irqs irqs;
 
     size_t irqNesting() const { return mIrqNesting.size(); }
+    size_t callNesting() const { return mCallNesting.size(); }
 
 
 private:
@@ -355,6 +356,9 @@ private:
     // stack, when we call a RET or RETI we check if the PC we are restoring is on the top of the stack
     // if so, we know that one irq routing is done. The size of the stack is the nesting depth
     std::stack<uint16_t> mIrqNesting;
+
+    // same as irq nesting but keeps track of calls
+    std::stack<uint16_t> mCallNesting;
 
 };
 

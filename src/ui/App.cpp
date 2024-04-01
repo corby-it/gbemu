@@ -134,16 +134,29 @@ void App::UIDrawControlWindow()
     if (ImGui::Button("Pause")) { mGameboy.pause(); }
     ImGui::PopStyleColor(3);
 
-    ImGui::SameLine();
+    // next line
 
     ImGui::PushStyleColor(ImGuiCol_Button, (ImVec4)ImColor::HSV(0.60f, 0.71f, 0.6f));
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, (ImVec4)ImColor::HSV(0.60f, 0.71f, 0.7f));
     ImGui::PushStyleColor(ImGuiCol_ButtonActive, (ImVec4)ImColor::HSV(0.60f, 0.81f, 0.8f));
-    if (ImGui::Button("Step")) { mGameboy.step(); }
+    if (ImGui::Button("Step in")) { mGameboy.step(); }
     ImGui::PopStyleColor(3);
 
-    ImGui::Checkbox("Break on LD B,B", &mGameboy.breakOnLdbb);
-    ImGui::Text("Average step time: %u ns", mGameboy.stepAvgTime().count());
+    ImGui::SameLine();
+
+    if (mGameboy.cpu.callNesting() == 0)
+        ImGui::BeginDisabled();
+
+    ImGui::PushStyleColor(ImGuiCol_Button, (ImVec4)ImColor::HSV(0.60f, 0.71f, 0.6f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, (ImVec4)ImColor::HSV(0.60f, 0.71f, 0.7f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, (ImVec4)ImColor::HSV(0.60f, 0.81f, 0.8f));
+    if (ImGui::Button("Step out")) { mGameboy.stepReturn(); }
+    ImGui::PopStyleColor(3);
+
+    if (mGameboy.cpu.callNesting() == 0)
+        ImGui::EndDisabled();
+
+    ImGui::Text("Average step time: %u ns", (uint32_t)mGameboy.avgCycleTime().count());
 
 
     // --------------------------------------------------------------------------------------------
@@ -398,7 +411,7 @@ void App::UIDrawRegsTables()
     UIDrawPpuRegTable();
 
     ImGui::SeparatorText("Current instruction");
-    ImGui::Text("%s", mGameboy.currInstruction.c_str());
+    ImGui::Text("%s", mGameboy.dbg.currInstructionStr().c_str());
 
     ImGui::End();
 }

@@ -11,13 +11,20 @@ using hr_clock = std::chrono::high_resolution_clock;
 using namespace std::chrono;
 using namespace std::chrono_literals;
 
+
+
+
+
+
+
+
 const char* GameBoyClassic::statusToStr(Status st)
 {
     switch (st) {
     default:
     case Status::Stopped: return "Stopped";
     case Status::Paused: return "Paused";
-    case Status::Playing: return "Playing";
+    case Status::Running: return "Running";
     case Status::Stepping: return "Stepping";
     }
 }
@@ -38,10 +45,6 @@ GameBoyClassic::GameBoyClassic()
     , hiRam(mmap::hiram::start)
     , status(Status::Stopped)
     , mStepInstruction(false)
-    , breakOnLdbb(false)
-    , mMustStepTime(hr_clock::now())
-    , mStepAvgTimeAccumulator(500us)
-    , mStepTimeCounter(1)
 {
     bus.connect(cpu);
     bus.connect(wram);
@@ -55,8 +58,6 @@ GameBoyClassic::GameBoyClassic()
     bus.connect(hiRam);
 
     gbReset();
-
-    currInstruction = instructionToStr(bus, cpu.regs.PC);
 }
 
 void GameBoyClassic::gbReset()
@@ -72,7 +73,10 @@ void GameBoyClassic::gbReset()
     serial.reset();
     hiRam.reset();
 
-    currInstruction = instructionToStr(bus, cpu.regs.PC);
+    dbg.updateInstructionToStr(*this);
+
+    mCycleTimeCount = 1;
+    mCycleTimeAvg = 0ns;
 }
 
 uint32_t GameBoyClassic::gbStep()
@@ -84,7 +88,8 @@ uint32_t GameBoyClassic::gbStep()
     timer.step(cycles);
     joypad.step(cycles);
 
-    currInstruction = instructionToStr(bus, cpu.regs.PC);
+    if(status != Status::Running)
+        dbg.updateInstructionToStr(*this);
 
     return cycles;
 }
@@ -106,23 +111,20 @@ bool GameBoyClassic::emulate()
         break;
     }
 
-    case GameBoyClassic::Status::Playing:
+    case GameBoyClassic::Status::Running:
     {
-        if (breakOnLdbb && bus.read8(cpu.regs.PC) == op::LD_B_B) {
-            status = Status::Paused;
-            ret = false;
+        // emulate the gameboy, full speed
+        auto before = hr_clock::now();
+        gbStep();
+        auto after = hr_clock::now();
 
-        }
-        else {
-            // emulate the gameboy, full speed
-            auto before = hr_clock::now();
-            gbStep();
-            auto after = hr_clock::now();
+        auto elapsed = after - before;
 
-            mStepTimeCounter++;
-            mStepAvgTimeAccumulator += duration_cast<nanoseconds>(after - before);
-            ret = true;
-        }
+        mCycleTimeAvg = ((mCycleTimeCount - 1) * mCycleTimeAvg + elapsed) / mCycleTimeCount;
+
+        ++mCycleTimeCount;
+
+        ret = true;
         break;
     }
 
@@ -137,12 +139,26 @@ bool GameBoyClassic::emulate()
     }
     }
 
+
+    // debug stuff
+    if (status == Status::Running && dbg.enabled) {
+        if (dbg.breakOnLdbb && bus.read8(cpu.regs.PC) == op::LD_B_B) {
+            status = Status::Paused;
+            ret = false;
+        }
+        else if (dbg.breakOnRet && cpu.callNesting() == dbg.targetCallNesting) {
+            dbg.breakOnRet = false;
+            status = Status::Paused;
+            ret = false;
+        }
+    }
+
     return ret;
 }
 
 void GameBoyClassic::play()
 {
-    status = Status::Playing;
+    status = Status::Running;
 }
 
 void GameBoyClassic::pause()
@@ -163,12 +179,27 @@ void GameBoyClassic::step()
     mStepInstruction = true;
 }
 
+void GameBoyClassic::stepReturn()
+{
+    // we can't step to a return instruction if the cpu
+    // is not inside a function call
+    if (cpu.callNesting() == 0)
+        return;
+
+    dbg.targetCallNesting = cpu.callNesting() - 1;
+    dbg.breakOnRet = true;
+    status = Status::Running;
+}
+
 CartridgeLoadingRes GameBoyClassic::loadCartridge(const std::filesystem::path& path)
 {
     auto res = cartridge.loadRomFile(path);
 
     if (res == CartridgeLoadingRes::Ok)
         gbReset();
+
+    // also try to load debug symbols (if any)
+    dbg.symTable.parseSymbolFile(path);
 
     return res;
 }

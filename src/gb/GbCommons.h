@@ -19,6 +19,16 @@
 namespace mmap {
     namespace rom {
         MMAP_T start = 0x0000;
+
+        namespace bank0 {
+            MMAP_T start = 0x0000;
+            MMAP_T end = 0x3FFF;
+        }
+        namespace bankN {
+            MMAP_T start = 0x4000;
+            MMAP_T end = 0x7FFF;
+        }
+
         MMAP_T end = 0x7FFF;
     }
     namespace vram {
@@ -62,6 +72,8 @@ namespace mmap {
             MMAP_T end = 0xFF07;
         }
 
+        MMAP_T IF = 0xFF0F;
+
         namespace audio {
             MMAP_T start = 0xFF10;
             MMAP_T end = 0xFF3F;
@@ -83,8 +95,6 @@ namespace mmap {
             MMAP_T wx = 0xFF4B;
             MMAP_T end = 0xFF4B;
         }
-
-        MMAP_T IF = 0xFF0F;
 
         MMAP_T end = 0xFF7F;
     }

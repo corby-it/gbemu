@@ -2,7 +2,21 @@
 
 #include "Debug.h"
 #include "gb/Opcodes.h"
+#include "gb/GameBoyCore.h"
 #include <string>
+
+
+
+GBDebug::GBDebug()
+    : enabled(true)
+    , breakOnLdbb(false)
+    , breakOnRet(false)
+    , targetCallNesting(0)
+{}
+
+
+
+
 
 
 static constexpr char hexDict[] = {
@@ -41,24 +55,50 @@ static std::string immValU8(const Bus& bus, uint16_t pc)
 
 static std::string immValS8(const Bus& bus, uint16_t pc)
 {
-    return std::to_string((uint8_t)bus.read8(pc));
+    return std::to_string((int8_t)bus.read8(pc));
 }
 
-static std::string immValU16(const Bus& bus, uint16_t pc)
+
+
+std::string GBDebug::symbolOrU16(const GameBoyClassic& gb, uint16_t pc)
 {
-    return uintToHex(bus.read16(pc));
+    uint16_t addr = gb.bus.read16(pc);
+
+    auto sym = symTable.getSymbol(gb.cartridge.mbc->getRomBankId(), gb.cartridge.mbc->getRamBankId(), addr);
+
+    return sym ? *sym : uintToHex(addr);
+}
+
+std::string GBDebug::symbolOrS8(const GameBoyClassic& gb, uint16_t pc)
+{
+    int8_t offset = (int8_t)gb.bus.read8(pc++);
+    uint16_t addr = pc + offset;
+
+    auto sym = symTable.getSymbol(gb.cartridge.mbc->getRomBankId(), gb.cartridge.mbc->getRamBankId(), addr);
+
+    return sym ? *sym : std::to_string(offset);
 }
 
 
-std::string instructionCBToStr(const Bus& /*bus*/, uint16_t /*pc*/);
 
 
-std::string instructionToStr(const Bus& bus, uint16_t pc)
+std::string GBDebug::updateInstructionToStr(const GameBoyClassic& gb)
+{
+    mCurrInstruction = instructionToStr(gb);
+    return mCurrInstruction;
+}
+
+
+
+std::string GBDebug::instructionToStr(const GameBoyClassic& gb)
 {
     // opcode reference: 
     // - https://gbdev.io/gb-opcodes/optables/
     // - https://gekkio.fi/files/gb-docs/gbctr.pdf
 
+    uint16_t pc = gb.cpu.regs.PC;
+    const auto& bus = gb.bus;
+    
     uint8_t opcode = bus.read8(pc++);
 
     std::string ret("(");
@@ -67,14 +107,14 @@ std::string instructionToStr(const Bus& bus, uint16_t pc)
     switch (opcode) {
     // 0x0*
     case op::NOP: return ret + "nop";
-    case op::LD_BC_n16: return ret + "ld bc, " + immValU16(bus, pc);
+    case op::LD_BC_n16: return ret + "ld bc, " + symbolOrU16(gb, pc);
     case op::LD_inBC_A: return ret + "ld (bc), a";
     case op::INC_BC: return ret + "inc bc";
     case op::INC_B: return ret + "inc b";
     case op::DEC_B: return ret + "dec b";
     case op::LD_B_n8: return ret + "ld b, " + immValU8(bus, pc);
     case op::RLCA: return ret + "rlca";
-    case op::LD_ina16_SP: return ret + "ld (" + immValU16(bus, pc) + "), sp";
+    case op::LD_ina16_SP: return ret + "ld (" + symbolOrU16(gb, pc) + "), sp";
     case op::ADD_HL_BC: return ret + "add hl, bc";
     case op::LD_A_inBC: return ret + "ld a, (bc)";
     case op::DEC_BC: return ret + "dec bc";
@@ -85,14 +125,14 @@ std::string instructionToStr(const Bus& bus, uint16_t pc)
 
     // 0x1*
     case op::STOP: return ret + "stop";
-    case op::LD_DE_n16: return ret + "ld de, " + immValU16(bus, pc);
+    case op::LD_DE_n16: return ret + "ld de, " + symbolOrU16(gb, pc);
     case op::LD_inDE_A: return ret + "ld (de), a";
     case op::INC_DE: return ret + "inc de";
     case op::INC_D: return ret + "inc d";
     case op::DEC_D: return ret + "dec d";
     case op::LD_D_n8: return ret + "ld d, " + immValU8(bus, pc);
     case op::RLA: return ret + "rla";
-    case op::JR_e8: return ret + "jr " + immValS8(bus, pc);
+    case op::JR_e8: return ret + "jr " + symbolOrS8(gb, pc);
     case op::ADD_HL_DE: return ret + "add hl, de";
     case op::LD_A_inDE: return ret + "ld a, (de)";
     case op::DEC_DE: return ret + "dec de";
@@ -102,15 +142,15 @@ std::string instructionToStr(const Bus& bus, uint16_t pc)
     case op::RRA: return ret + "rra";
 
     // 0x2*
-    case op::JR_NZ_e8: return ret + "jr nz " + immValS8(bus, pc);
-    case op::LD_HL_n16: return ret + "ld hl, " + immValU16(bus, pc);
+    case op::JR_NZ_e8: return ret + "jr nz " + symbolOrS8(gb, pc);
+    case op::LD_HL_n16: return ret + "ld hl, " + symbolOrU16(gb, pc);
     case op::LD_inHLp_A: return ret + "ld (hl+), a";
     case op::INC_HL: return ret + "inc hl";
     case op::INC_H: return ret + "inc h";
     case op::DEC_H: return ret + "dec h";
     case op::LD_H_n8: return ret + "ld h, " + immValU8(bus, pc);
     case op::DAA: return ret + "daa";
-    case op::JR_Z_e8: return ret + "jr z " + immValS8(bus, pc);
+    case op::JR_Z_e8: return ret + "jr z " + symbolOrS8(gb, pc);
     case op::ADD_HL_HL: return ret + "add hl, hl";
     case op::LD_A_inHLp: return ret + "ld a, (hl+)";
     case op::DEC_HL: return ret + "dec hl";
@@ -120,15 +160,15 @@ std::string instructionToStr(const Bus& bus, uint16_t pc)
     case op::CPL: return ret + "cpl";
 
     // 0x3*
-    case op::JR_NC_e8: return ret + "jr nc " + immValS8(bus, pc);
-    case op::LD_SP_n16: return ret + "ld sp, " + immValU16(bus, pc);
+    case op::JR_NC_e8: return ret + "jr nc " + symbolOrS8(gb, pc);
+    case op::LD_SP_n16: return ret + "ld sp, " + symbolOrU16(gb, pc);
     case op::LD_inHLm_A: return ret + "ld (hl-), a";
     case op::INC_SP: return ret + "inc sp";
     case op::INC_inHL: return ret + "inc (hl)";
     case op::DEC_inHL: return ret + "dec (hl)";
     case op::LD_inHL_n8: return ret + "ld (hl), " + immValU8(bus, pc);
     case op::SCF: return ret + "scf";
-    case op::JR_C_e8: return ret + "jr c " + immValS8(bus, pc);
+    case op::JR_C_e8: return ret + "jr c " + symbolOrS8(gb, pc);
     case op::ADD_HL_SP: return ret + "add hl, sp";
     case op::LD_A_inHLm: return ret + "ld a, (hl-)";
     case op::DEC_SP: return ret + "dec sp";
@@ -284,35 +324,35 @@ std::string instructionToStr(const Bus& bus, uint16_t pc)
     // 0xC*
     case op::RET_NZ: return ret + "ret nz";
     case op::POP_BC: return ret + "pop bc";
-    case op::JP_NZ_a16: return ret + "jp nz " + immValU16(bus, pc);
-    case op::JP_a16: return ret + "jp " + immValU16(bus, pc);
-    case op::CALL_NZ_a16: return ret + "call nz " + immValU16(bus, pc);
+    case op::JP_NZ_a16: return ret + "jp nz " + symbolOrU16(gb, pc);
+    case op::JP_a16: return ret + "jp " + symbolOrU16(gb, pc);
+    case op::CALL_NZ_a16: return ret + "call nz " + symbolOrU16(gb, pc);
     case op::PUSH_BC: return ret + "push bc";
     case op::ADD_A_n8: return ret + "add a, " + immValU8(bus, pc);
     case op::RST_00: return ret + "rst $00";
     case op::RET_Z: return ret + "ret z";
     case op::RET: return ret + "ret";
-    case op::JP_Z_a16: return ret + "jp z " + immValU16(bus, pc);
-    case op::CB_PREFIX: return instructionCBToStr(bus, pc);
-    case op::CALL_Z_a16: return ret + "call z " + immValU16(bus, pc);
-    case op::CALL_a16: return ret + "call " + immValU16(bus, pc);
+    case op::JP_Z_a16: return ret + "jp z " + symbolOrU16(gb, pc);
+    case op::CB_PREFIX: return instructionCBToStr(gb);
+    case op::CALL_Z_a16: return ret + "call z " + symbolOrU16(gb, pc);
+    case op::CALL_a16: return ret + "call " + symbolOrU16(gb, pc);
     case op::ADC_A_n8: return ret + "adc a, " + immValU8(bus, pc);
     case op::RST_08: return ret + "rst $08";
 
     // 0xD*
     case op::RET_NC: return ret + "ret nc";
     case op::POP_DE: return ret + "pop de";
-    case op::JP_NC_a16: return ret + "jp nc " + immValU16(bus, pc);
+    case op::JP_NC_a16: return ret + "jp nc " + symbolOrU16(gb, pc);
     // case op:: 0xD3 not implemented
-    case op::CALL_NC_a16: return ret + "call nc " + immValU16(bus, pc);
+    case op::CALL_NC_a16: return ret + "call nc " + symbolOrU16(gb, pc);
     case op::PUSH_DE: return ret + "push de";
     case op::SUB_A_n8: return ret + "sub a, " + immValU8(bus, pc);
     case op::RST_10: return ret + "rst $10";
     case op::RET_C: return ret + "ret c";
     case op::RETI: return ret + "reti";
-    case op::JP_C_a16: return ret + "jp c " + immValU16(bus, pc);
+    case op::JP_C_a16: return ret + "jp c " + symbolOrU16(gb, pc);
     // case op:: 0xDB not implemented
-    case op::CALL_C_a16: return ret + "call c " + immValU16(bus, pc);
+    case op::CALL_C_a16: return ret + "call c " + symbolOrU16(gb, pc);
     // case op:: 0xDD not implemented
     case op::SBC_A_n8: return ret + "sbc a, " + immValU8(bus, pc);
     case op::RST_18: return ret + "rst $18";
@@ -328,7 +368,7 @@ std::string instructionToStr(const Bus& bus, uint16_t pc)
     case op::RST_20: return ret + "rst $20";
     case op::ADD_SP_e8: return ret + "add sp, " + immValS8(bus, pc);
     case op::JP_HL: return ret + "jp hl";
-    case op::LD_ina16_A: return ret + "ld (" + immValU16(bus, pc) + "), a";
+    case op::LD_ina16_A: return ret + "ld (" + symbolOrU16(gb, pc) + "), a";
     // case op:: 0xEB not implemented
     // case op:: 0xEC not implemented
     // case op:: 0xED not implemented
@@ -346,7 +386,7 @@ std::string instructionToStr(const Bus& bus, uint16_t pc)
     case op::RST_30: return ret + "rst $30";
     case op::LD_HL_SPpe8: return ret + "ld hl, sp+(" + immValS8(bus, pc) + ')';
     case op::LD_SP_HL: "ld sp, hl";
-    case op::LD_A_ina16: return ret + "ld a, (" + immValU16(bus, pc) + ')';
+    case op::LD_A_ina16: return ret + "ld a, (" + symbolOrU16(gb, pc) + ')';
     case op::EI: return ret + "ei";
     // case op:: 0xFC not implemented
     // case op:: 0xFD not implemented
@@ -360,10 +400,13 @@ std::string instructionToStr(const Bus& bus, uint16_t pc)
 }
 
 
-std::string instructionCBToStr(const Bus& bus, uint16_t pc)
+std::string GBDebug::instructionCBToStr(const GameBoyClassic& gb)
 {
     // to correctly execute one of the instructions prefixed with CB we 
     // have to read another byte from PC to get the actual opcode
+    uint16_t pc = gb.cpu.regs.PC + 1;
+    const auto& bus = gb.bus;
+
     uint8_t cbOpcode = bus.read8(pc++);
 
     std::string ret("(");
@@ -663,3 +706,5 @@ std::string instructionCBToStr(const Bus& bus, uint16_t pc)
         return ret + "???";
     }
 }
+
+

@@ -622,6 +622,12 @@ void MbcNone::write8(uint16_t /*addr*/, uint8_t /*val*/)
     // so writes have no effect
 }
 
+void MbcNone::onReset()
+{
+    // when there is no MBC the current rom bank is always 1
+    mRomCurrBank = 1;
+}
+
 
 
 // ------------------------------------------------------------------------------------------------

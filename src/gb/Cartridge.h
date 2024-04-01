@@ -175,6 +175,10 @@ public:
     uint8_t read8(uint16_t addr) const override;
     void write8(uint16_t addr, uint8_t val) override;
 
+private:
+
+    void onReset() override;
+
 };
 
 

@@ -13,8 +13,10 @@
 #include "Audio.h"
 #include "Serial.h"
 #include "Cartridge.h"
+#include "gbdebug/Debug.h"
 #include <chrono>
 #include <filesystem>
+
 
 
 
@@ -24,7 +26,7 @@ public:
     enum class Status {
         Stopped,
         Paused,
-        Playing,
+        Running,
         Stepping
     };
     static const char* statusToStr(Status st);
@@ -38,10 +40,11 @@ public:
     void pause();
     void stop();
     void step();
+    void stepReturn();
 
     CartridgeLoadingRes loadCartridge(const std::filesystem::path& path);
 
-    std::chrono::nanoseconds stepAvgTime() const { return mStepAvgTimeAccumulator / mStepTimeCounter; }
+    std::chrono::nanoseconds avgCycleTime() const { return mCycleTimeAvg; }
 
     GBBus bus;
     CPU cpu;
@@ -56,9 +59,8 @@ public:
     HiRam hiRam;
 
     Status status;
-    bool breakOnLdbb;
 
-    std::string currInstruction;
+    GBDebug dbg;
 
     // the gb cpu actually runs at 4.194304 MHz but, since we are not counting actual clock
     // cycles but machine cycles (clock cycles / 4) we have to use the clock frequency
@@ -76,10 +78,8 @@ private:
 
     bool mStepInstruction;
 
-    std::chrono::time_point<std::chrono::high_resolution_clock> mMustStepTime;
-
-    std::chrono::nanoseconds mStepAvgTimeAccumulator;
-    uint64_t mStepTimeCounter;
+    uint64_t mCycleTimeCount;
+    std::chrono::nanoseconds mCycleTimeAvg;
 
 };
 

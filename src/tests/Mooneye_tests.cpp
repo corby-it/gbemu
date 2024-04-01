@@ -79,7 +79,7 @@ TEST_CASE("Mooneye tests - " cartPath){  \
     GameBoyClassic gb;\
     REQUIRE(gb.loadCartridge(romPath) == CartridgeLoadingRes::Ok);\
 \
-    gb.breakOnLdbb = true;\
+    gb.dbg.breakOnLdbb = true;\
     gb.play();\
 \
     uint32_t steps = 0;\

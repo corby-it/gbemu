@@ -2122,6 +2122,9 @@ uint8_t CPU::opCallImm()
     regs.SP -= 2;
     mBus.write16(regs.SP, regs.PC);
 
+    // also push the old PC to the nesting stack
+    mCallNesting.push(regs.PC);
+
     // update the current PC
     regs.PC = newPC;
 
@@ -2182,6 +2185,10 @@ uint8_t CPU::opRet()
     // stack we know that we have completed the current interrupt routine
     if (!mIrqNesting.empty() && mIrqNesting.top() == newPC)
         mIrqNesting.pop();
+
+    // check the same things also for the call nesting stack
+    if (!mCallNesting.empty() && mCallNesting.top() == newPC)
+        mCallNesting.pop();
 
     return 4;
 }
