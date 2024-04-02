@@ -84,7 +84,7 @@ TEST_CASE("Mooneye tests - " cartPath){  \
 \
     uint32_t steps = 0;\
     auto startTp = hr_clock::now();\
-    for (steps = 0; steps < stepLimit && gb.status == GameBoyClassic::Status::Playing; ++steps) {\
+    for (steps = 0; steps < stepLimit && gb.status == GameBoyClassic::Status::Running; ++steps) {\
         gb.emulate();\
     }\
     auto elapsed = duration_cast<microseconds>(hr_clock::now() - startTp).count();\

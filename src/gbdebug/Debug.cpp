@@ -385,13 +385,13 @@ std::string GBDebug::instructionToStr(const GameBoyClassic& gb)
     case op::OR_A_n8: return ret + "or a, " + immValU8(bus, pc);
     case op::RST_30: return ret + "rst $30";
     case op::LD_HL_SPpe8: return ret + "ld hl, sp+(" + immValS8(bus, pc) + ')';
-    case op::LD_SP_HL: "ld sp, hl";
+    case op::LD_SP_HL: return "ld sp, hl";
     case op::LD_A_ina16: return ret + "ld a, (" + symbolOrU16(gb, pc) + ')';
     case op::EI: return ret + "ei";
     // case op:: 0xFC not implemented
     // case op:: 0xFD not implemented
     case op::CP_A_n8: return ret + "cp a, " + immValU8(bus, pc);
-    case op::RST_38: "rst $38";
+    case op::RST_38: return "rst $38";
 
     default:
         // unrecognized opcode
