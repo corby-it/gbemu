@@ -29,7 +29,7 @@ enum class MooneyeRes : int32_t {
     Unrecognized = -1
 };
 
-static MooneyeRes checkMooneyeResult(const GameBoyClassic& gb)
+MooneyeRes checkMooneyeResult(const GameBoyClassic& gb)
 {
     // before executing the LD B,B instruction, all mooneye tests write 
     // specific values in the registers to report the test result
@@ -48,7 +48,7 @@ static MooneyeRes checkMooneyeResult(const GameBoyClassic& gb)
         return MooneyeRes::Unrecognized;
 }
 
-static void saveDisplayToFile(const GameBoyClassic& gb, fs::path romRelPath)
+void saveDisplayToFile(const GameBoyClassic& gb, fs::path romRelPath)
 {
     auto pngPath = (mooneyeResFilesRoot / romRelPath).replace_extension("png");
     

@@ -39,9 +39,31 @@ static bool LoadTextureFromMatrix(const Matrix& mat, GLuint& outTexture, RgbBuff
 
 bool App::emulate()
 {
+    mGameboy.joypad.action(getPressedButtons());
+
     mGameboy.emulate();
     return true;
 }
+
+
+std::set<Joypad::Btn> App::getPressedButtons() const
+{
+    std::set<Joypad::Btn> btns;
+
+    if (ImGui::IsKeyDown(ImGuiKey_W)) btns.insert(Joypad::Btn::Up);
+    if (ImGui::IsKeyDown(ImGuiKey_A)) btns.insert(Joypad::Btn::Left);
+    if (ImGui::IsKeyDown(ImGuiKey_S)) btns.insert(Joypad::Btn::Down);
+    if (ImGui::IsKeyDown(ImGuiKey_D)) btns.insert(Joypad::Btn::Right);
+
+    if (ImGui::IsKeyDown(ImGuiKey_N)) btns.insert(Joypad::Btn::A);
+    if (ImGui::IsKeyDown(ImGuiKey_M)) btns.insert(Joypad::Btn::B);
+    if (ImGui::IsKeyDown(ImGuiKey_Enter)) btns.insert(Joypad::Btn::Start);
+    if (ImGui::IsKeyDown(ImGuiKey_0)) btns.insert(Joypad::Btn::Select);
+
+    return btns;
+}
+
+
 
 void App::updateUI()
 {
@@ -50,8 +72,6 @@ void App::updateUI()
     UIDrawEmulationWindow();
     UIDrawRegsTables();
 }
-
-
 
 void App::UIDrawMenu()
 {

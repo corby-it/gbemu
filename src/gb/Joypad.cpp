@@ -150,6 +150,16 @@ void Joypad::release(Btn bt)
     }
 }
 
+void Joypad::action(const std::set<Btn>& pressedBtns)
+{
+    for(auto btn : allBtns) {
+        if (pressedBtns.find(btn) != std::end(pressedBtns))
+            press(btn);
+        else
+            release(btn);
+    }
+}
+
 bool Joypad::inCurrentSelection(Joypad::Btn btn) const
 {
     if ((btn == Btn::Up || btn == Btn::Down || btn == Btn::Left || btn == Btn::Right) && mSelection == Selection::Dpad)

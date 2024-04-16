@@ -3,7 +3,7 @@
 #define GBEMU_SRC_GB_JOYPAD_H_
 
 #include "Bus.h"
-
+#include <set>
 
 // reference for how the joypad works in the gameboy: https://gbdev.io/pandocs/Joypad_Input.html
 
@@ -14,6 +14,12 @@ public:
         Start, Select, B, A,
         Down, Up, Left, Right
     };
+
+    static constexpr Btn allBtns[] = {
+        Btn::Start, Btn::Select, Btn::B, Btn::A,
+        Btn::Down, Btn::Up, Btn::Left, Btn::Right
+    };
+
 
     Joypad(Bus& bus);
 
@@ -27,6 +33,8 @@ public:
     // UI side
     void press(Btn bt);
     void release(Btn bt);
+
+    void action(const std::set<Btn>& pressedBtns);
 
 private:
     enum class Selection : uint8_t {

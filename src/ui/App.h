@@ -30,6 +30,8 @@ private:
     void UIDrawTimerRegTable();
     void UIDrawPpuRegTable();
 
+    std::set<Joypad::Btn> getPressedButtons() const;
+
     AppConfig mConfig;
     GameBoyClassic mGameboy;
 
