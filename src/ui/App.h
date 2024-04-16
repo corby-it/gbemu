@@ -38,6 +38,8 @@ private:
     RgbBuffer mDisplayBuffer;
     GLuint mGLDisplayTexture;
 
+    int mEmulationSpeedComboIdx;
+
 };
 
 

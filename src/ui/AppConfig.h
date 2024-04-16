@@ -8,12 +8,24 @@
 #include <filesystem>
 
 
+enum class EmulationSpeed {
+    Quarter = 0,
+    Half,
+    Full,
+    Unbound
+};
+
+const char* emulationSpeedToStr(EmulationSpeed es);
+
+
 class AppConfig {
 public:
     AppConfig();
 
     std::filesystem::path currentRomPath;
     CartridgeLoadingRes loadingRes;
+
+    EmulationSpeed emulationSpeed;
 
 };
 

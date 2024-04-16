@@ -7,6 +7,7 @@
 
 App::App()
     : mDisplayBuffer(Display::w, Display::h)
+    , mEmulationSpeedComboIdx(static_cast<int>(EmulationSpeed::Full))
 {
     // create an OpenGL texture identifier for the display image
     glGenTextures(1, &mGLDisplayTexture);
@@ -178,6 +179,32 @@ void App::UIDrawControlWindow()
 
     ImGui::Text("Average step time: %u ns", (uint32_t)mGameboy.avgCycleTime().count());
 
+    
+    static const ImGuiComboFlags comboFlags = ImGuiComboFlags_None;
+    static const char* speedItems[] = {
+        emulationSpeedToStr(EmulationSpeed::Quarter),
+        emulationSpeedToStr(EmulationSpeed::Half),
+        emulationSpeedToStr(EmulationSpeed::Full),
+        emulationSpeedToStr(EmulationSpeed::Unbound)
+    };
+    auto preview = speedItems[mEmulationSpeedComboIdx];
+
+    if (ImGui::BeginCombo("Emulation speed", preview, comboFlags)) {
+
+        for (int n = 0; n < IM_ARRAYSIZE(speedItems); n++)
+        {
+            const bool isSelected = (mEmulationSpeedComboIdx == n);
+            if (ImGui::Selectable(speedItems[n], isSelected)) {
+                mEmulationSpeedComboIdx = n;
+                mConfig.emulationSpeed = static_cast<EmulationSpeed>(n);
+            }
+
+            // Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
+            if (isSelected)
+                ImGui::SetItemDefaultFocus();
+        }
+        ImGui::EndCombo();
+    }
 
     // --------------------------------------------------------------------------------------------
     ImGui::SeparatorText("Cartridge info");
