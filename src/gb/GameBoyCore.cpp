@@ -96,12 +96,14 @@ uint32_t GameBoyClassic::gbStep()
 
 
 
-bool GameBoyClassic::emulate()
+EmulateRes GameBoyClassic::emulate()
 {
     // return true if there is more emulation work to be done (that is, if
     // the emulation is not stopped or paused)
 
-    bool ret = false;
+    EmulateRes res;
+    res.stillGoing = false;
+    res.elapsedMCycles = 0;
 
     switch (status) {
     default:
@@ -115,7 +117,7 @@ bool GameBoyClassic::emulate()
     {
         // emulate the gameboy, full speed
         auto before = hr_clock::now();
-        gbStep();
+        res.elapsedMCycles = gbStep();
         auto after = hr_clock::now();
 
         auto elapsed = after - before;
@@ -124,17 +126,17 @@ bool GameBoyClassic::emulate()
 
         ++mCycleTimeCount;
 
-        ret = true;
+        res.stillGoing = true;
         break;
     }
 
     case GameBoyClassic::Status::Stepping: {
         // execute 1 instruction only if the user wants to
         if (mStepInstruction) {
-            gbStep();
+            res.elapsedMCycles = gbStep();
             mStepInstruction = false;
         }
-        ret = false;
+        res.stillGoing = false;
         break;
     }
     }
@@ -144,16 +146,16 @@ bool GameBoyClassic::emulate()
     if (status == Status::Running && dbg.enabled) {
         if (dbg.breakOnLdbb && bus.read8(cpu.regs.PC) == op::LD_B_B) {
             status = Status::Paused;
-            ret = false;
+            res.stillGoing = false;
         }
         else if (dbg.breakOnRet && cpu.callNesting() == dbg.targetCallNesting) {
             dbg.breakOnRet = false;
             status = Status::Paused;
-            ret = false;
+            res.stillGoing = false;
         }
     }
 
-    return ret;
+    return res;
 }
 
 void GameBoyClassic::play()

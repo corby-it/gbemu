@@ -18,7 +18,10 @@
 #include <filesystem>
 
 
-
+struct EmulateRes {
+    bool stillGoing;
+    uint32_t elapsedMCycles;
+};
 
 
 class GameBoyClassic {
@@ -34,7 +37,7 @@ public:
 
     GameBoyClassic();
 
-    bool emulate();
+    EmulateRes emulate();
 
     void play();
     void pause();

@@ -144,13 +144,8 @@ void AppBase::run()
         // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
         glfwPollEvents();
 
-        while (true) {
-            if (glfwGetTime() - mLastFrameTime > fpsLimit)
-                break;
-
-            if (!emulate())
-                break;
-        }
+        // do some emulation work
+        emulate();
 
         // Start the Dear ImGui frame
         ImGui_ImplOpenGL3_NewFrame();

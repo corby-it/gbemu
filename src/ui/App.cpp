@@ -4,6 +4,11 @@
 #include "ImGuiFileDialog/ImGuiFileDialog.h"
 #include <cassert>
 
+using namespace std::chrono;
+using namespace std::chrono_literals;
+
+using hr_clock = std::chrono::high_resolution_clock;
+
 
 App::App()
     : mDisplayBuffer(Display::w, Display::h)
@@ -37,12 +42,57 @@ static bool LoadTextureFromMatrix(const Matrix& mat, GLuint& outTexture, RgbBuff
     return true;
 }
 
+std::optional<nanoseconds> App::emulateFor() const
+{
+    // when emulating at 100% speed we have to emulate at 60 gameboy frames per second,
+    // the app is limited to 60fps so we have to emulate for 1 frame
+
+    // 1 frame at 60 fps takes 16.66666667ms so we have to emulate until the total amount of
+    // m-cycles executed amounts to that number
+
+    // an empty optional means 'unbound'
+
+    switch (mConfig.emulationSpeed) {
+    case EmulationSpeed::Quarter: return 4166667ns;
+    case EmulationSpeed::Half: return 8333333ns;
+    case EmulationSpeed::Full: return 16666667ns;
+    default:
+    case EmulationSpeed::Unbound: return {};
+    }
+}
+
 
 bool App::emulate()
 {
+    // check which buttons are pressed once here (input state won't be 
+    // updated until the next call to the app loop)
     mGameboy.joypad.action(getPressedButtons());
 
-    mGameboy.emulate();
+    // emulate for a while
+    if (auto targetGbTime = emulateFor(); targetGbTime) {
+        // emulate until a target amount of time has passed for the emulated gameboy
+        nanoseconds elapsedGbTime = 0ns;
+
+        while (elapsedGbTime < targetGbTime) {
+            auto[stillGoing, cycles] = mGameboy.emulate();
+
+            if (!stillGoing)
+                break;
+
+            elapsedGbTime += GameBoyClassic::machinePeriod * cycles;
+        }
+    }
+    else {
+        // unbound emulation speed, emulate as much as possible for 1/60 seconds
+        // since we run the app at 60fps
+        // actually run for 16ms, leave some time for drawing the ui and other stuff
+        auto start = hr_clock::now();
+
+        while (hr_clock::now() - start < 16ms) {
+            mGameboy.emulate();
+        }
+    }
+
     return true;
 }
 

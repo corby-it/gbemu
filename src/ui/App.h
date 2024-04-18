@@ -6,6 +6,8 @@
 #include "AppBase.h"
 #include "AppConfig.h"
 #include "gb/GameBoyCore.h"
+#include <optional>
+#include <chrono>
 
 
 class App : public AppBase {
@@ -19,6 +21,8 @@ public:
 
 
 private:
+
+    std::optional<std::chrono::nanoseconds> emulateFor() const;
 
     void UIDrawMenu();
     void UIDrawControlWindow();
