@@ -305,7 +305,7 @@ void App::UIDrawControlWindow()
 
 void App::UIDrawEmulationWindow()
 {
-    LoadTextureFromMatrix(mGameboy.ppu.display, mGLDisplayTexture, mDisplayBuffer);
+    LoadTextureFromMatrix(mGameboy.ppu.display.getFrontBuf(), mGLDisplayTexture, mDisplayBuffer);
 
     ImGui::Begin("GB Display");
     ImGui::Text("Status: %s", GameBoyClassic::statusToStr(mGameboy.status));

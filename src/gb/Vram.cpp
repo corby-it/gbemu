@@ -185,34 +185,46 @@ OAMData OAMRam::getOAMData(uint8_t id) const
 // Display
 // ------------------------------------------------------------------------------------------------
 
-Display::Display()
+DisplayBuf::DisplayBuf(uint32_t w, uint32_t h)
     : Matrix(w, h)
     , mData(std::make_unique<uint8_t[]>(w* h))
 {}
 
 
-uint8_t Display::getImpl(uint32_t x, uint32_t y) const
+uint8_t DisplayBuf::getImpl(uint32_t x, uint32_t y) const
 {
-    assert(x < w);
-    assert(y < h);
-    return mData[y * w + x];
+    assert(x < mWidth);
+    assert(y < mHeight);
+    return mData[y * mWidth + x];
 }
 
-void Display::setImpl(uint32_t x, uint32_t y, uint8_t val)
+void DisplayBuf::setImpl(uint32_t x, uint32_t y, uint8_t val)
 {
-    assert(x < w);
-    assert(y < h);
+    assert(x < mWidth);
+    assert(y < mHeight);
     
     if (val > 3)
         val = 3;
 
-    mData[y * w + x] = val;
+    mData[y * mWidth + x] = val;
 }
+
+void DisplayBuf::clear()
+{
+    // to clear the display we fill the memory with zeros (white)
+    std::fill(mData.get(), mData.get() + (mWidth * mHeight), 0);
+}
+
+
+
+Display::Display()
+    : mIsFrontA(true)
+    , mBufA(w, h)
+    , mBufB(w, h)
+{}
 
 void Display::clear()
 {
-    // to clear the display we fill the memory with zeros (white)
-    std::fill(mData.get(), mData.get() + (w * h), 0);
+    mBufA.clear();
+    mBufB.clear();
 }
-
-

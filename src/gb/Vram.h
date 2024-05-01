@@ -243,14 +243,11 @@ private:
 // Display
 // ------------------------------------------------------------------------------------------------
 
-class Display : public Matrix {
+class DisplayBuf : public Matrix {
 public:
-    Display();
+    DisplayBuf(uint32_t w, uint32_t h);
 
     void clear();
-
-    static constexpr uint8_t w = 160;
-    static constexpr uint8_t h = 144;
 
 private:
     uint8_t getImpl(uint32_t x, uint32_t y) const override;
@@ -263,5 +260,35 @@ private:
 
 
 
+class Display {
+public:
+    // use double buffering for drawing to the display
+
+    Display();
+
+    void clear();
+
+    static constexpr uint8_t w = 160;
+    static constexpr uint8_t h = 144;
+
+    DisplayBuf& getFrontBuf() { return mIsFrontA ? mBufA : mBufB; }
+    DisplayBuf& getBackBuf() { return mIsFrontA ? mBufB : mBufA; }
+
+    DisplayBuf& getA() { return mBufA; }
+    DisplayBuf& getB() { return mBufB; }
+
+    void swap() { mIsFrontA = !mIsFrontA; }
+
+private:
+
+    bool mIsFrontA;
+    DisplayBuf mBufA;
+    DisplayBuf mBufB;
+
+};
+
+
+
 
 #endif // GBEMU_SRC_GB_VRAM_H_
+

@@ -222,6 +222,9 @@ void PPU::step(uint32_t mCycles)
                         newIrqMask |= Irqs::mask(Irqs::Type::Lcd);
 
                     mBus.write8(mmap::regs::IF, newIrqMask | currIF);
+
+                    // when we enter the v-blank mode we also have to swap the display buffers
+                    display.swap();
                 }
 
                 // check if we have to trigger the LY==LYC irq
@@ -397,13 +400,15 @@ void PPU::renderPixel(uint32_t dispX)
 
     bgColorVal = regs.BGP.id2val(bgColorId);
 
+    // get the back buffer for the display
+    auto& dispBuf = display.getBackBuf();
+    
     // get objects info for this pixel
-
     auto objsPixInfo = renderPixelGetObjsValues(dispX);
 
     if (objsPixInfo.empty()) {
         // no objects for this pixel, draw the background color
-        display.set(dispX, regs.LY, bgColorVal);
+        dispBuf.set(dispX, regs.LY, bgColorVal);
     }
     else {
         // we have a list of colors and associated information:
@@ -419,7 +424,7 @@ void PPU::renderPixel(uint32_t dispX)
         while (objIt != objsPixInfo.end() && !objIt->priority) {
 
             if (objIt->colorVal != 0) {
-                display.set(dispX, regs.LY, objIt->colorVal);
+                dispBuf.set(dispX, regs.LY, objIt->colorVal);
                 return;
             }
             ++objIt;
@@ -427,15 +432,15 @@ void PPU::renderPixel(uint32_t dispX)
 
         // done with objects above the background, check if the background is 0 and objects might be drawn behind it
         if (bgColorVal != 0) {
-            display.set(dispX, regs.LY, bgColorVal);
+            dispBuf.set(dispX, regs.LY, bgColorVal);
             return;
         }
 
         // draw the color of the first object behind the background (if any), otherwise draw the background color
         if (objIt != objsPixInfo.end())
-            display.set(dispX, regs.LY, objIt->colorVal);
+            dispBuf.set(dispX, regs.LY, objIt->colorVal);
         else 
-            display.set(dispX, regs.LY, bgColorVal);
+            dispBuf.set(dispX, regs.LY, bgColorVal);
     }
 }
 
