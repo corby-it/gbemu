@@ -582,53 +582,6 @@ bool CartridgeHeader::canLoad() const
 
 
 
-// ------------------------------------------------------------------------------------------------
-// MBC
-// ------------------------------------------------------------------------------------------------
-
-MbcInterface::MbcInterface(MbcType type, const std::vector<uint8_t>& rom, std::vector<uint8_t>& ram)
-    : mType(type)
-    , mRom(rom)
-    , mRam(ram)
-    , mRomCurrBank(0)
-    , mRamCurrBank(0)
-{}
-
-void MbcInterface::reset()
-{
-    mRomCurrBank = 0;
-    mRamCurrBank = 0;
-    
-    onReset();
-}
-
-
-
-MbcNone::MbcNone(const std::vector<uint8_t>& rom, std::vector<uint8_t>& ram)
-    : MbcInterface(MbcType::None, rom, ram)
-{}
-
-uint8_t MbcNone::read8(uint16_t addr) const 
-{
-    if(addr > mmap::rom::end)
-        return 0x00;
-
-    return mRom[addr];
-}
-
-void MbcNone::write8(uint16_t /*addr*/, uint8_t /*val*/)
-{
-    // with no MBC there are no register to write to
-    // so writes have no effect
-}
-
-void MbcNone::onReset()
-{
-    // when there is no MBC the current rom bank is always 1
-    mRomCurrBank = 1;
-}
-
-
 
 // ------------------------------------------------------------------------------------------------
 // Cartridge
@@ -696,6 +649,18 @@ CartridgeLoadingRes Cartridge::loadRomFile(const fs::path& romPath)
     switch (tmpHeader.cartType()) {
     case CartridgeType::NoMBC:
         mbc = std::make_unique<MbcNone>(rom, ram);
+        break;
+
+    case CartridgeType::MBC1:
+        mbc = std::make_unique<Mbc1>(rom, ram, false, false);
+        break;
+
+    case CartridgeType::MBC1Ram:
+        mbc = std::make_unique<Mbc1>(rom, ram, true, false);
+        break;
+
+    case CartridgeType::MBC1RamBattery:
+        mbc = std::make_unique<Mbc1>(rom, ram, true, true);
         break;
     
     default:

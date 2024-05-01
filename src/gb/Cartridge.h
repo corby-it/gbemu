@@ -3,7 +3,7 @@
 #ifndef GBEMU_SRC_GB_CARTRIDGE_H_
 #define GBEMU_SRC_GB_CARTRIDGE_H_
 
-#include "Ram.h"
+#include "Mbc.h"
 #include <cstdint>
 #include <array>
 #include <string_view>
@@ -121,66 +121,6 @@ private:
     const uint8_t* mRomBaseAddr;
 
 };
-
-
-
-// ------------------------------------------------------------------------------------------------
-// MBC
-// ------------------------------------------------------------------------------------------------
-
-enum class  MbcType {
-    None,
-    Mbc1,
-    Mbc2,
-    Mbc3,
-    Mbc5,
-    Mbc6,
-    Mbc7,
-};
-
-
-class MbcInterface {
-public:
-    MbcInterface(MbcType type, const std::vector<uint8_t>& rom, std::vector<uint8_t>& ram);
-    virtual ~MbcInterface() {}
-
-    void reset();
-
-    virtual uint8_t read8(uint16_t addr) const = 0;
-    virtual void write8(uint16_t addr, uint8_t val) = 0;
-
-    MbcType type() const { return mType; }
-
-    uint8_t getRomBankId() const { return mRomCurrBank; }
-    uint8_t getRamBankId() const { return mRamCurrBank; }
-
-protected:
-
-    virtual void onReset() {}
-
-    const MbcType mType;
-
-    const std::vector<uint8_t>& mRom;
-    std::vector<uint8_t>& mRam;
-    
-    uint8_t mRomCurrBank;
-    uint8_t mRamCurrBank;
-};
-
-
-class MbcNone : public MbcInterface {
-public:
-    MbcNone(const std::vector<uint8_t>& rom, std::vector<uint8_t>& ram);
-
-    uint8_t read8(uint16_t addr) const override;
-    void write8(uint16_t addr, uint8_t val) override;
-
-private:
-
-    void onReset() override;
-
-};
-
 
 
 

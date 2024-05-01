@@ -162,49 +162,6 @@ TEST_CASE("Cartridge header - check if can load")
 }
 
 
-// ------------------------------------------------------------------------------------------------
-
-
-
-
-TEST_CASE("MbcNone test")
-{
-    std::vector<uint8_t> rom(32 * 1024, 0);
-    std::vector<uint8_t> ram;
-
-    // write some values in specific locations
-    rom[0x0000] = 1;
-    rom[0x3FA4] = 2;
-    rom[0x4DC1] = 3;
-    rom[0x544F] = 4;
-    rom[0x7FFF] = 5;
-    
-    MbcNone mbc(rom, ram);
-
-    // try reading the values back
-    CHECK(mbc.read8(0x0000) == 1);
-    CHECK(mbc.read8(0x3FA4) == 2);
-    CHECK(mbc.read8(0x4DC1) == 3);
-    CHECK(mbc.read8(0x544F) == 4);
-    CHECK(mbc.read8(0x7FFF) == 5);
-
-    // try writing something and verify that there is no effect
-    mbc.write8(0x0000, 50);
-    mbc.write8(0x3FA4, 50);
-
-    CHECK(mbc.read8(0x0000) == 1);
-    CHECK(mbc.read8(0x3FA4) == 2);
-
-    // rom and ram banks must be 0
-    CHECK(mbc.getRomBankId() == 0);
-    CHECK(mbc.getRamBankId() == 0);
-}
-
-
-
-
-// ------------------------------------------------------------------------------------------------
-
 
 
 TEST_CASE("Test Cartridge")
@@ -221,7 +178,7 @@ TEST_CASE("Test Cartridge")
         auto parsing = c.loadRomFile(testFilesRoot / "tetris-fake-rom-good.gb");
 
         REQUIRE(parsing == CartridgeLoadingRes::Ok);
-        
+
         CHECK(c.header.romSize() == 32 * 1024);
         CHECK(c.rom.size() == c.header.romSize());
 
@@ -234,6 +191,4 @@ TEST_CASE("Test Cartridge")
         CHECK(c.read8(mmap::rom::start) == 0xC3);
         CHECK(c.read8(mmap::rom::end) == 0xF5);
     }
-
-
 }

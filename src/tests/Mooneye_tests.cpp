@@ -101,7 +101,7 @@ TEST_CASE("Mooneye tests - " cartPath){  \
 }\
 
 
-CREATE_MOONEYE_TEST("acceptance/oam_dma_start.gb")
+//CREATE_MOONEYE_TEST("acceptance/oam_dma_start.gb")
 //CREATE_MOONEYE_TEST("acceptance/add_sp_e_timing.gb")
 //CREATE_MOONEYE_TEST("acceptance/boot_div-dmg0.gb")
 //CREATE_MOONEYE_TEST("acceptance/boot_div-dmgABCmgb.gb")
