@@ -350,57 +350,23 @@ void PPU::oamScan()
 }
 
 
-
-static bool oamEqualX(const OAMData* lhs, const OAMData* rhs)
-{
-    return lhs->x() == rhs->x();
-}
-
-static bool oamCompareTileId(const OAMData* lhs, const OAMData* rhs)
-{
-    return lhs->tileId() < rhs->tileId();
-}
-
-static bool oamCompareX(const OAMData* lhs, const OAMData* rhs)
-{
-    return lhs->x() < rhs->x();
-}
-
-
-const OAMData* PPU::findCurrOam(uint32_t currX) const
+std::vector<const OAMData*> PPU::findCurrOams(uint32_t currX) const
 {
     // we scan the register to find if we have objects whose x-range corresponds the
     // the currX position of the screen
-   
-    const OAMData* reg[OAMRegister::maxCount] = { nullptr };
-    size_t count = 0;
+
+    std::vector<const OAMData*> oams;
+    oams.reserve(OAMRegister::maxCount);
 
     for (auto& currOam : mOamScanRegister) {
         auto xLeft = currOam.x() - 8;
         auto xRight = xLeft + 8;
 
         if ((int32_t)currX >= xLeft && (int32_t)currX < xRight)
-            reg[count++] = &currOam;
+            oams.push_back(&currOam);
     }
 
-    if (count == 0) {
-        // no objects found
-        return nullptr;
-    }
-    else if (count == 1) {
-        // only 1 object found
-        return reg[0];
-    }
-    else {
-        // multiple objects found
-        // if multiple objects overlap, in the DMG, priority is given as follows
-        // - if objects have different X coordinates: priority is given to the one with the lowest X
-        // - if objects have the same X coordinates: priority is given to the one with the lowest ID
-
-        bool allSameX = std::equal(reg + 1, reg + count, reg, oamEqualX);
-
-        return *std::min_element(reg, reg + count, allSameX ? oamCompareTileId : oamCompareX);
-    }
+    return oams;
 }
 
 void PPU::onDisabled()
@@ -431,29 +397,45 @@ void PPU::renderPixel(uint32_t dispX)
 
     bgColorVal = regs.BGP.id2val(bgColorId);
 
-    // get object info for this pixel
-    uint8_t objColorId = 0;
-    bool objPalette = false;
-    bool objPriority = false;
-    bool hasObj = renderPixelGetObjVal(dispX, objColorId, objPalette, objPriority);
+    // get objects info for this pixel
 
-    if (!hasObj) {
-        // if there is no object in this pixel we draw the bg pixel
+    auto objsPixInfo = renderPixelGetObjsValues(dispX);
+
+    if (objsPixInfo.empty()) {
+        // no objects for this pixel, draw the background color
         display.set(dispX, regs.LY, bgColorVal);
     }
     else {
-        // if we have an object we draw the object pixel over the background unless the object 
-        // pixel has color 0 (white) which means transparent
-        // the object priority bit, if true, inverts this behavior, that is: we draw the background pixel
-        // over the object unless the background has color 0, which means transparent
-        
-        auto& obp = objPalette ? regs.OBP1 : regs.OBP0;
-        auto objColorVal = obp.id2val(objColorId);
+        // we have a list of colors and associated information:
+        // - colors with priority == false must be drawn above the background, unless they are 0 (transparent)
+        // - colors with priority == true must be drawn behind the background, only if the background color is 0 (transparent)
+        // we start from top to bottom, from the first object, if the object is transparent then we go down and check the next object
+        // then, when objects above the background are over we check the background color, if it's 0 we also check for objects that must
+        // be drawn behind the background, etc.
 
-        if (objPriority)
-            display.set(dispX, regs.LY, bgColorVal == 0 ? objColorVal : bgColorVal);
+        auto objIt = objsPixInfo.begin();
+        
+        // check object colors above the background (priority == false)
+        while (objIt != objsPixInfo.end() && !objIt->priority) {
+
+            if (objIt->colorVal != 0) {
+                display.set(dispX, regs.LY, objIt->colorVal);
+                return;
+            }
+            ++objIt;
+        }
+
+        // done with objects above the background, check if the background is 0 and objects might be drawn behind it
+        if (bgColorVal != 0) {
+            display.set(dispX, regs.LY, bgColorVal);
+            return;
+        }
+
+        // draw the color of the first object behind the background (if any), otherwise draw the background color
+        if (objIt != objsPixInfo.end())
+            display.set(dispX, regs.LY, objIt->colorVal);
         else 
-            display.set(dispX, regs.LY, objColorVal == 0 ? bgColorVal : objColorVal);
+            display.set(dispX, regs.LY, bgColorVal);
     }
 }
 
@@ -491,15 +473,17 @@ bool PPU::renderPixelGetWinVal(uint32_t dispX, uint8_t& colorId)
 
     // check if the current display coordinate is inside the window
     uint32_t dispY = regs.LY;
+    uint32_t winX = regs.WX - 7; // x coord of the window must always be shifted by 7
+    uint32_t winY = regs.WY;
 
-    if (dispY < regs.WY || dispX < (uint8_t)(regs.WX - 7)) {
+    if (dispY < regs.WY || dispX < winX) {
         colorId = 0;
         return false;
     }
 
     // find the coordinates in the background space
-    uint32_t bgX = dispX - regs.WX;
-    uint32_t bgY = dispY - regs.WY;
+    uint32_t bgX = dispX - winX;
+    uint32_t bgY = dispY - winY;
 
     // get the current background tile map
     auto bgTileMap = vram.getTileMap(regs.LCDC.winTileMapArea);
@@ -513,39 +497,59 @@ bool PPU::renderPixelGetWinVal(uint32_t dispX, uint8_t& colorId)
     return true;
 }
 
-bool PPU::renderPixelGetObjVal(uint32_t currX, uint8_t& colorId, bool& palette, bool& priority)
+std::vector<PPU::OAMPixelInfo> PPU::renderPixelGetObjsValues(uint32_t currX)
 {
-    // to find the color id of the current object we first have to find from which
-    // object we have to extract color data
+    // to find the color ids of the objects on the current pixel we first have to find from which
+    // objects we have to extract color data
 
-    // get the object involved in the current pixel
-    auto oam = findCurrOam(currX);
-    if (!oam) {
-        // no object is involved in the current pixel
-        colorId = 0;
-        return false;
+    std::vector<OAMPixelInfo> pixInfo;
+    pixInfo.reserve(10);
+
+    // get the objects involved in the current pixel
+    for (auto oam : findCurrOams(currX)) {
+
+        // TODO check signed/unsigned math
+        auto oamAttr = oam->attr();
+
+        // find coordinates inside the object
+        uint32_t objX = currX - (oam->x() - 8);
+        uint32_t objY = regs.LY - (oam->y() - 16);
+
+        // flip x and y coordinates if needed
+        if (oamAttr.hFlip())
+            objX = 7 - objX;
+
+        if (oamAttr.vFlip())
+            objY = (regs.LCDC.objDoubleH ? 15 : 7) - objY;
+
+        // get tile data from vram
+        auto tile = vram.getObjTile(oam->tileId(), regs.LCDC.objDoubleH);
+
+        OAMPixelInfo info;
+        info.oam = oam;
+        info.colorId = tile.get(objX, objY);
+        info.palette = oamAttr.dmgPalette();
+        info.priority = oamAttr.priority();
+
+        auto& obp = info.palette ? regs.OBP1 : regs.OBP0;
+        info.colorVal = obp.id2val(info.colorId);
+        
+        pixInfo.push_back(info);
     }
 
-    // TODO check signed/unsigned math
-    auto oamAttr = oam->attr();
+    // in the DMG different objects will be given priority as follows:
+    // - if objects have different X coordinates: priority is given to the one with the lowest X
+    // - if objects have the same X coordinates: priority is given to the one with the lowest ID
+    // in this sorting we put the objects with the priority flag == false first
 
-    // find coordinates inside the object
-    uint32_t objX = currX - (oam->x() - 8);
-    uint32_t objY = regs.LY - (oam->y() - 16);
+    std::sort(pixInfo.begin(), pixInfo.end(), [](const OAMPixelInfo& lhs, const OAMPixelInfo& rhs) {
+        if (lhs.priority != rhs.priority)
+            return lhs.priority ? false : true;
+        else if (lhs.oam->x() == rhs.oam->x())
+            return lhs.oam->tileId() < rhs.oam->tileId();
+        else
+            return lhs.oam->x() < rhs.oam->x();
+    });
 
-    // flip x and y coordinates if needed
-    if (oamAttr.hFlip())
-        objX = 7 - objX;
-
-    if (oamAttr.vFlip())
-        objY = (regs.LCDC.objDoubleH ? 15 : 7) - objY;
-
-    // get tile data from vram
-    auto tile = vram.getObjTile(oam->tileId(), regs.LCDC.objDoubleH);
-
-    colorId = tile.get(objX, objY);
-    palette = oamAttr.dmgPalette();
-    priority = oamAttr.priority();
-
-    return true;
+    return pixInfo;
 }

@@ -99,7 +99,7 @@ struct PaletteReg : public RegU8 {
     {
         switch (colorId) {
         default:
-        case 0: return valForId0; 
+        case 0: return valForId0;
         case 1: return valForId1;
         case 2: return valForId2;
         case 3: return valForId3;
@@ -266,18 +266,26 @@ public:
 
 private:
 
+    struct OAMPixelInfo {
+        const OAMData* oam;
+        uint8_t colorId;
+        uint8_t colorVal;
+        bool palette;
+        bool priority;
+    };
+
     void lockRamAreas(bool lock);
 
     void updateSTAT();
     void oamScan();
-    const OAMData* findCurrOam(uint32_t currX) const;
+    std::vector<const OAMData*> findCurrOams(uint32_t currX) const;
 
     void onDisabled();
 
     void renderPixel(uint32_t dispX);
     uint8_t renderPixelGetBgVal(uint32_t dispX);
     bool renderPixelGetWinVal(uint32_t dispX, uint8_t& colorId);
-    bool renderPixelGetObjVal(uint32_t dispX, uint8_t& colorId, bool& palette, bool& priority);
+    std::vector<OAMPixelInfo> renderPixelGetObjsValues(uint32_t currX);
 
     Bus& mBus;
 
