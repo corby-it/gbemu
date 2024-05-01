@@ -87,7 +87,7 @@ StepRes CPU::step()
         if ((joypad & 0x0F) != 0x0F) 
             mIsStopped = false;
         else 
-            return { true, 0 };
+            return { true, 1 };
     }
 
     // check if interrupt occurred
@@ -125,7 +125,7 @@ StepRes CPU::step()
     
     // if the cpu is in the HALT state we don't execute instructions and return now
     if (mIsHalted)
-        return { true, 0 };
+        return { true, 1 };
 
 
     // if ime was scheduled to be set, set it now
