@@ -198,9 +198,9 @@ TEST_CASE("Test TileMap set() function")
 }
 
 
-TEST_CASE("Test Dispaly get/set functions")
+TEST_CASE("Test DispalyBuf get/set functions")
 {
-    Display d;
+    DisplayBuf d(Display::w, Display::h);
 
     d.set(0, 0, 0);
     d.set(10, 10, 1);

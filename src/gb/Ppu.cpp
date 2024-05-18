@@ -151,7 +151,7 @@ void PPU::stepFrame(uint32_t n)
 }
 
 
-void PPU::step(uint32_t mCycles)
+bool PPU::step(uint32_t mCycles)
 {
     // the PPU goes through a cycle of its own, separate from that of the CPU.
     // it draws 153 lines, top to bottom and left to right, from line 0 to 143 it 
@@ -183,6 +183,8 @@ void PPU::step(uint32_t mCycles)
     
     // mDotCounter counts the dots for the current line while the LY register counts the lines,
     // each line has 456 dots
+
+    bool frameReady = false;
     
     // do nothing if the lcd and ppu are not enabled 
     if(regs.LCDC.lcdEnable) {
@@ -223,8 +225,11 @@ void PPU::step(uint32_t mCycles)
 
                     mBus.write8(mmap::regs::IF, newIrqMask | currIF);
 
-                    // when we enter the v-blank mode we also have to swap the display buffers
-                    display.swap();
+                    // when we enter the v-blank mode it means the PPU is done drawing the current frame:
+                    // - swap the display buffers top bring the complete frame on the front
+                    // - return frameReady = true to tell the rest of the app that the frame is ready
+                    display.swapBufs();
+                    frameReady = true;
                 }
 
                 // check if we have to trigger the LY==LYC irq
@@ -263,6 +268,8 @@ void PPU::step(uint32_t mCycles)
     // or unlock video related memory depending on the current PPU mode
     // and on the lcd enable flag
     lockRamAreas(regs.LCDC.lcdEnable);
+
+    return frameReady;
 }
 
 void PPU::writeLCDC(uint8_t val)

@@ -225,7 +225,7 @@ public:
 
     void reset();
 
-    void step(uint32_t mCycles);
+    bool step(uint32_t mCycles);
     void stepLine(uint32_t n = 1);
     void stepFrame(uint32_t n = 1);
 

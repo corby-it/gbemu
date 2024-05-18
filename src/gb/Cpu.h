@@ -105,7 +105,7 @@ struct Registers {
 
 
 
-struct StepRes {
+struct CpuStepRes {
     bool ok;
     uint32_t cycles;
 };
@@ -118,7 +118,7 @@ public:
 
     void reset();
 
-    StepRes step();
+    CpuStepRes step();
 
     uint32_t elapsedCycles() const { return mCycles; }
 

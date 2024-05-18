@@ -18,9 +18,14 @@
 #include <filesystem>
 
 
+struct GbStepRes {
+    bool frameReady;
+    CpuStepRes cpuRes;
+};
+
 struct EmulateRes {
     bool stillGoing;
-    uint32_t elapsedMCycles;
+    GbStepRes stepRes;
 };
 
 
@@ -77,7 +82,7 @@ public:
 private:
 
     void gbReset();
-    uint32_t gbStep();
+    GbStepRes gbStep();
 
     bool mStepInstruction;
 

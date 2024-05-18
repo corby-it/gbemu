@@ -79,19 +79,23 @@ void GameBoyClassic::gbReset()
     mCycleTimeAvg = 0ns;
 }
 
-uint32_t GameBoyClassic::gbStep()
+GbStepRes GameBoyClassic::gbStep()
 {
-    auto [ok, cycles] = cpu.step();
+    auto cpuRes = cpu.step();
 
-    dma.step(cycles);
-    ppu.step(cycles);
-    timer.step(cycles);
-    joypad.step(cycles);
+    dma.step(cpuRes.cycles);
+    bool frameReady = ppu.step(cpuRes.cycles);
+    timer.step(cpuRes.cycles);
+    joypad.step(cpuRes.cycles);
 
     if(status != Status::Running)
         dbg.updateInstructionToStr(*this);
 
-    return cycles;
+    GbStepRes res;
+    res.cpuRes = cpuRes;
+    res.frameReady = frameReady;
+
+    return res;
 }
 
 
@@ -103,7 +107,6 @@ EmulateRes GameBoyClassic::emulate()
 
     EmulateRes res;
     res.stillGoing = false;
-    res.elapsedMCycles = 0;
 
     switch (status) {
     default:
@@ -117,7 +120,7 @@ EmulateRes GameBoyClassic::emulate()
     {
         // emulate the gameboy, full speed
         auto before = hr_clock::now();
-        res.elapsedMCycles = gbStep();
+        res.stepRes = gbStep();
         auto after = hr_clock::now();
 
         auto elapsed = after - before;
@@ -133,7 +136,7 @@ EmulateRes GameBoyClassic::emulate()
     case GameBoyClassic::Status::Stepping: {
         // execute 1 instruction only if the user wants to
         if (mStepInstruction) {
-            res.elapsedMCycles = gbStep();
+            res.stepRes = gbStep();
             mStepInstruction = false;
         }
         res.stillGoing = false;

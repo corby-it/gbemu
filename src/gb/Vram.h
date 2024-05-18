@@ -272,12 +272,15 @@ public:
     static constexpr uint8_t h = 144;
 
     DisplayBuf& getFrontBuf() { return mIsFrontA ? mBufA : mBufB; }
+    const DisplayBuf& getFrontBuf() const { return mIsFrontA ? mBufA : mBufB; }
+
     DisplayBuf& getBackBuf() { return mIsFrontA ? mBufB : mBufA; }
+    const DisplayBuf& getBackBuf() const { return mIsFrontA ? mBufB : mBufA; }
 
     DisplayBuf& getA() { return mBufA; }
     DisplayBuf& getB() { return mBufB; }
 
-    void swap() { mIsFrontA = !mIsFrontA; }
+    void swapBufs() { mIsFrontA = !mIsFrontA; }
 
 private:
 

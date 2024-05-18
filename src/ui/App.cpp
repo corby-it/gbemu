@@ -69,27 +69,39 @@ bool App::emulate()
     mGameboy.joypad.action(getPressedButtons());
 
     // emulate for a while
-    if (auto targetGbTime = emulateFor(); targetGbTime) {
-        // emulate until a target amount of time has passed for the emulated gameboy
-        nanoseconds elapsedGbTime = 0ns;
+    if (mConfig.emulationSpeed == EmulationSpeed::Full) {
+        // when emulating at 100% speed we emulate exactly for 1 frame
 
-        while (elapsedGbTime < targetGbTime) {
-            auto[stillGoing, cycles] = mGameboy.emulate();
+        while (true) {
+            auto [stillGoing, stepRes] = mGameboy.emulate();
 
-            if (!stillGoing)
+            if (stepRes.frameReady || !stillGoing)
                 break;
-
-            elapsedGbTime += GameBoyClassic::machinePeriod * cycles;
         }
     }
     else {
-        // unbound emulation speed, emulate as much as possible for 1/60 seconds
-        // since we run the app at 60fps
-        // actually run for 16ms, leave some time for drawing the ui and other stuff
-        auto start = hr_clock::now();
+        if (auto targetGbTime = emulateFor(); targetGbTime) {
+            // emulate until a target amount of time has passed for the emulated gameboy
+            nanoseconds elapsedGbTime = 0ns;
 
-        while (hr_clock::now() - start < 16ms) {
-            mGameboy.emulate();
+            while (elapsedGbTime < targetGbTime) {
+                auto [stillGoing, stepRes] = mGameboy.emulate();
+
+                if (!stillGoing)
+                    break;
+
+                elapsedGbTime += GameBoyClassic::machinePeriod * stepRes.cpuRes.cycles;
+            }
+        }
+        else {
+            // unbound emulation speed, emulate as much as possible for 1/60 seconds
+            // since we run the app at 60fps
+            // actually run for 16ms, leave some time for drawing the ui and other stuff
+            auto start = hr_clock::now();
+
+            while (hr_clock::now() - start < 16ms) {
+                mGameboy.emulate();
+            }
         }
     }
 

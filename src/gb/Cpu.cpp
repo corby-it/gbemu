@@ -72,7 +72,7 @@ void CPU::reset()
     irqs.reset();
 }
 
-StepRes CPU::step()
+CpuStepRes CPU::step()
 {
     // in one step we execute one instruction, the instruction can take 1 or more machine cycles
 

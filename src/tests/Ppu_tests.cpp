@@ -299,7 +299,7 @@ TEST_CASE("PPU test drawing simple objects, no window, no overlaps")
     auto checkObjDisplayArea = [&](OAMData& oam, uint8_t color) {
         for (uint32_t y = oam.y() - 16; (int32_t)y < oam.y() - 8; ++y) {
             for (uint32_t x = oam.x() - 8; x < oam.x(); ++x) {
-                if (p.display.get(x, y) != color)
+                if (p.display.getFrontBuf().get(x, y) != color)
                     return false;
             }
         }
@@ -322,7 +322,7 @@ TEST_CASE("PPU test drawing simple objects, no window, no overlaps")
                     }
                 }
 
-                if (!insideObj && p.display.get(x, y) != bgColor)
+                if (!insideObj && p.display.getFrontBuf().get(x, y) != bgColor)
                     return false;
             }
         }
@@ -408,7 +408,7 @@ TEST_CASE("PPU test object overlaps (different x coordinates)")
     {
         for (uint32_t y = yt; y < yb; ++y) {
             for (uint32_t x = xl; x < xr; ++x) {
-                if (p.display.get(x, y) != color)
+                if (p.display.getFrontBuf().get(x, y) != color)
                     return false;
             }
         }
@@ -431,7 +431,7 @@ TEST_CASE("PPU test object overlaps (different x coordinates)")
                     }
                 }
 
-                if (!insideObj && p.display.get(x, y) != bgColor)
+                if (!insideObj && p.display.getFrontBuf().get(x, y) != bgColor)
                     return false;
             }
         }
@@ -518,7 +518,7 @@ TEST_CASE("PPU test object overlaps (same x coordinates)")
     {
         for (uint32_t y = yt; y < yb; ++y) {
             for (uint32_t x = xl; x < xr; ++x) {
-                if (p.display.get(x, y) != color)
+                if (p.display.getFrontBuf().get(x, y) != color)
                     return false;
             }
         }
@@ -541,7 +541,7 @@ TEST_CASE("PPU test object overlaps (same x coordinates)")
                     }
                 }
 
-                if (!insideObj && p.display.get(x, y) != bgColor)
+                if (!insideObj && p.display.getFrontBuf().get(x, y) != bgColor)
                     return false;
             }
         }
@@ -568,7 +568,7 @@ TEST_CASE("PPU test disabling the display")
     auto checkDisplay = [](const Display& disp) {
         for (uint32_t y = 0; y < Display::h; ++y) {
             for (uint32_t x = 0; x < Display::w; ++x) {
-                if (disp.get(x, y) != 0)
+                if (disp.getFrontBuf().get(x, y) != 0)
                     return false;
             }
         }
