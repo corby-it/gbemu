@@ -430,7 +430,7 @@ void PPU::renderPixel(uint32_t dispX)
         // check object colors above the background (priority == false)
         while (objIt != objsPixInfo.end() && !objIt->priority) {
 
-            if (objIt->colorVal != 0) {
+            if (objIt->colorId != 0) {
                 dispBuf.set(dispX, regs.LY, objIt->colorVal);
                 return;
             }
@@ -438,7 +438,7 @@ void PPU::renderPixel(uint32_t dispX)
         }
 
         // done with objects above the background, check if the background is 0 and objects might be drawn behind it
-        if (bgColorVal != 0) {
+        if (bgColorId != 0) {
             dispBuf.set(dispX, regs.LY, bgColorVal);
             return;
         }
