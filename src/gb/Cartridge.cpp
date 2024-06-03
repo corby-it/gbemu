@@ -652,15 +652,12 @@ CartridgeLoadingRes Cartridge::loadRomFile(const fs::path& romPath)
         break;
 
     case CartridgeType::MBC1:
-        mbc = std::make_unique<Mbc1>(rom, ram, false, false);
+        mbc = std::make_unique<Mbc1>(rom, ram, false);
         break;
 
     case CartridgeType::MBC1Ram:
-        mbc = std::make_unique<Mbc1>(rom, ram, true, false);
-        break;
-
     case CartridgeType::MBC1RamBattery:
-        mbc = std::make_unique<Mbc1>(rom, ram, true, true);
+        mbc = std::make_unique<Mbc1>(rom, ram, true);
         break;
     
     default:

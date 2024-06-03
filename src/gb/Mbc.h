@@ -89,7 +89,7 @@ private:
 
 class Mbc1 : public MbcInterface {
 public:
-    Mbc1(const std::vector<uint8_t>& rom, std::vector<uint8_t>& ram, bool hasRam, bool hasBattery);
+    Mbc1(const std::vector<uint8_t>& rom, std::vector<uint8_t>& ram, bool hasRam);
 
     uint8_t read8(uint16_t addr) const override;
     void write8(uint16_t addr, uint8_t val) override;
@@ -101,10 +101,12 @@ private:
     void updateBankConfiguration();
 
     const bool mHasRam;
-    const bool mHasBattery;
 
     bool mRamEnabled;
     bool mAddrMode1;
+
+    static uint8_t computeRomBankLowMask(uint8_t romBanksCount);
+    const uint8_t mRomBankLowMask;
 
     uint8_t mRomBankLow;
     uint8_t mRomBankHigh;

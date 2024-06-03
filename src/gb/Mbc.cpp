@@ -67,10 +67,24 @@ void MbcNone::onReset()
 
 // see https://gbdev.io/pandocs/MBC1.html for a detailed explanation of how this works
 
-Mbc1::Mbc1(const std::vector<uint8_t>& rom, std::vector<uint8_t>& ram, bool hasRam, bool hasBattery)
+uint8_t Mbc1::computeRomBankLowMask(uint8_t romBanksCount)
+{
+    if (romBanksCount <= 2)
+        return 0x01;
+    else if (romBanksCount > 2 && romBanksCount <= 4)
+        return 0x03;
+    else if (romBanksCount > 4 && romBanksCount <= 8)
+        return 0x07;
+    else if (romBanksCount > 8 && romBanksCount <= 16)
+        return 0x0F;
+    else
+        return 0x1F;
+}
+
+Mbc1::Mbc1(const std::vector<uint8_t>& rom, std::vector<uint8_t>& ram, bool hasRam)
     : MbcInterface(MbcType::Mbc1, rom, ram)
     , mHasRam(hasRam)
-    , mHasBattery(hasBattery)
+    , mRomBankLowMask(computeRomBankLowMask(mRomBanksCount))
 {
     onReset();
 }
@@ -192,18 +206,6 @@ void Mbc1::write8(uint16_t addr, uint8_t val)
 
 void Mbc1::updateBankConfiguration()
 {
-    uint8_t romLowMask = 0x1F;
-    if (mRomBanksCount <= 2)
-        romLowMask = 0x01;
-    else if (mRomBanksCount > 2 && mRomBanksCount <= 4)
-        romLowMask = 0x03;
-    else if (mRomBanksCount > 4 && mRomBanksCount <= 8)
-        romLowMask = 0x07;
-    else if (mRomBanksCount > 8 && mRomBanksCount <= 16)
-        romLowMask = 0x0F;
-    else
-        romLowMask = 0x1F;
-
     if (mAddrMode1) {
         // ram bank is selected using the value in the upper 2 bits of the rom bank
         mRamCurrBank = mRomBankHigh;
@@ -211,7 +213,7 @@ void Mbc1::updateBankConfiguration()
         // rom bank in the 4000-7FFF range is selected using both rom bank low and rom bank high 
         // the value is then masked depending on the number of available banks (in the actual hardware
         // the upper pins would not be connected in case of smaller roms)
-        mRomCurrBank = (mRomBankLow | mRomBankHigh << 5) & romLowMask;
+        mRomCurrBank = ((mRomBankLow & mRomBankLowMask) | (mRomBankHigh << 5));
 
         // rom bank in the 0000-3FFF range is selected using rom bank high shifted by 5
         mRomCurrBankLow = mRomBankHigh << 5;
@@ -221,7 +223,7 @@ void Mbc1::updateBankConfiguration()
         mRamCurrBank = 0;
 
         // same as in mode 1
-        mRomCurrBank = (mRomBankLow | mRomBankHigh << 5) & romLowMask;
+        mRomCurrBank = ((mRomBankLow & mRomBankLowMask) | (mRomBankHigh << 5));
 
         // always maps the first bank
         mRomCurrBankLow = 0;
