@@ -86,7 +86,6 @@ private:
 // Mbc1
 // ------------------------------------------------------------------------------------------------
 
-
 class Mbc1 : public MbcInterface {
 public:
     Mbc1(const std::vector<uint8_t>& rom, std::vector<uint8_t>& ram, bool hasRam);
@@ -115,5 +114,24 @@ private:
 };
 
 
+
+
+// ------------------------------------------------------------------------------------------------
+// Mbc3
+// ------------------------------------------------------------------------------------------------
+
+class Mbc3 : public MbcInterface {
+public:
+    Mbc3(const std::vector<uint8_t>& rom, std::vector<uint8_t>& ram, bool hasRam);
+
+    uint8_t read8(uint16_t addr) const override;
+    void write8(uint16_t addr, uint8_t val) override;
+
+private:
+
+    void onReset() override;
+
+    const bool mHasRam;
+};
 
 #endif // GBEMU_SRC_GB_MBC_H_

@@ -229,3 +229,30 @@ void Mbc1::updateBankConfiguration()
         mRomCurrBankLow = 0;
     }
 }
+
+
+
+
+// ------------------------------------------------------------------------------------------------
+// Mbc3
+// ------------------------------------------------------------------------------------------------
+
+Mbc3::Mbc3(const std::vector<uint8_t>& rom, std::vector<uint8_t>& ram, bool hasRam)
+    : MbcInterface(MbcType::Mbc3, rom, ram)
+    , mHasRam(hasRam)
+{}
+
+void Mbc3::onReset()
+{
+
+}
+
+uint8_t Mbc3::read8(uint16_t /*addr*/) const
+{
+    return 0;
+}
+
+void Mbc3::write8(uint16_t /*addr*/, uint8_t /*val*/)
+{
+
+}
