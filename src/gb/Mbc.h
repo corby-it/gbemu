@@ -3,6 +3,7 @@
 #ifndef GBEMU_SRC_GB_MBC_H_
 #define GBEMU_SRC_GB_MBC_H_
 
+#include "Utils.h"
 #include <cstdint>
 #include <vector>
 
@@ -104,7 +105,6 @@ private:
     bool mRamEnabled;
     bool mAddrMode1;
 
-    static uint8_t computeRomBankLowMask(uint8_t romBanksCount);
     const uint8_t mRomBankLowMask;
 
     uint8_t mRomBankLow;
@@ -132,6 +132,14 @@ private:
     void onReset() override;
 
     const bool mHasRam;
+    const uint8_t mRomBankMask;
+    const uint8_t mRamBankMask;
+
+    RTC mRtc;
+    uint8_t mRtcLatchReg;
+
+    bool mRamRtcEnabled;
+
 };
 
 #endif // GBEMU_SRC_GB_MBC_H_

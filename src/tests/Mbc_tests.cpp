@@ -2,7 +2,15 @@
 
 #include "gb/Mbc.h"
 #include "gb/GbCommons.h"
+#include "gb/Utils.h"
+#include <thread>
+#include <chrono>
 #include <doctest/doctest.h>
+
+using namespace std::chrono;
+using namespace std::chrono_literals;
+
+
 
 static constexpr uint32_t romBankAddr(uint32_t num)
 {
@@ -367,4 +375,27 @@ TEST_CASE("Mbc1 test - 2M rom (128 banks), 32K ram (4 banks)")
         CHECK(mbc.read8(0x4DC1) == 0x41);
         CHECK(mbc.read8(0x544F) == 0x41);
     }
+}
+
+
+
+TEST_CASE("Test RTC")
+{
+    RTC rtc;
+
+    rtc.latch();
+
+    rtc.writeSec(30);
+    std::this_thread::sleep_for(1s);
+    rtc.latch();
+    auto sec = rtc.readSec();
+
+    CHECK(sec == 31);
+
+    rtc.writeSec(59);
+    std::this_thread::sleep_for(1s);
+    rtc.latch();
+    sec = rtc.readSec();
+    
+    CHECK(sec == 0);
 }
