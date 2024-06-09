@@ -40,13 +40,6 @@ bool Registers::equal(const Registers& other)
 }
 
 
-void Irqs::reset()
-{
-    ime = false;
-    IF = 0;
-    IE = 0;
-}
-
 
 
 
@@ -91,7 +84,7 @@ CpuStepRes CPU::step()
     }
 
     // check if interrupt occurred
-    auto irqRequest = checkIrq();
+    auto irqRequest = irqs.getCurrentIrq();
 
     if (mCheckForHaltBug) {
         mCheckForHaltBug = false;
@@ -112,7 +105,7 @@ CpuStepRes CPU::step()
             // as soon as an interrupt is serviced the IME flags is reset and the corresponding
             // bit in the IF register is reset as well
             irqs.ime = false;
-            irqs.IF &= ~Irqs::mask(irqType);
+            irqs.writeIF(irqs.readIF() & ~Irqs::mask(irqType));
 
             // calling an interrupt has the same effect as a CALL instruction
             auto cycles = opCallIrq(irqType);
@@ -146,35 +139,6 @@ CpuStepRes CPU::step()
     mCycles += cycles;
 
     return { ok, cycles };
-}
-
-
-std::optional<Irqs::Type> CPU::checkIrq()
-{
-    // We have to check which interrupts are both
-    // enabled in the IE registers and which ones are currently requested
-    // more than one interrupt at a time can be requested, in this case the 
-    // priority is the following:
-    // 1 - VBlank
-    // 2 - LCD status
-    // 3 - Timer
-    // 4 - Serial
-    // 5 - Joypad
-
-    uint8_t currentIrqs = irqs.IE & irqs.IF;
-    
-    if (currentIrqs & Irqs::mask(Irqs::Type::VBlank))
-        return Irqs::Type::VBlank;
-    if (currentIrqs & Irqs::mask(Irqs::Type::Lcd))
-        return Irqs::Type::Lcd;
-    if (currentIrqs & Irqs::mask(Irqs::Type::Timer))
-        return Irqs::Type::Timer;
-    if (currentIrqs & Irqs::mask(Irqs::Type::Serial))
-        return Irqs::Type::Serial;
-    if (currentIrqs & Irqs::mask(Irqs::Type::Joypad))
-        return Irqs::Type::Joypad;
-
-    return {};
 }
 
 

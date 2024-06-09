@@ -15,12 +15,17 @@ Timer::Timer(Bus& bus)
 
 void Timer::reset()
 {
-    mDiv = 0;
+    // DIV starts from AC00 because before executing the actual cartridge code the 
+    // gameboy executes its own boot rom that obviously takes a while to run
+    // TAC unused bits are initially set to 1
+
+    mDiv = initialDivVal << 8;
     mTima = 0;
     mTimaSubcounter = 0;
     mTma = 0;
     mTimaEnabled = false;
     mClockSelect = ClockSelect::N1024;
+    mTacVal = 0xF8;
 }
 
 void Timer::step(uint32_t mCycles)
@@ -56,13 +61,9 @@ void Timer::step(uint32_t mCycles)
     }
 }
 
-uint8_t Timer::readTAC() const
-{
-    return mTimaEnabled << 2 | (uint8_t)mClockSelect;
-}
-
 void Timer::writeTAC(uint8_t val)
 {
+    mTacVal = val & 0xF8;
     auto newClockSelect = (ClockSelect)(val & 0x3);
     auto newTimaEnabled = val & 0x4;
 

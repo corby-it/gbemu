@@ -19,6 +19,8 @@
 // ------------------------------------------------------------------------------------------------
 
 struct LCDCReg : public RegU8 {
+    LCDCReg::LCDCReg();
+
     // 0xFF40
     // LCDC - LCD Control register
     // This is the main LCD control register. Its bits toggle what elements are displayed on the screen, and how
@@ -55,7 +57,9 @@ enum PPUMode : uint8_t {
     Draw = 3
 };
 
-struct STATReg :public RegU8 {
+struct STATReg : public RegU8 {
+    STATReg::STATReg();
+
     // 0xFF41
     // STAT - LCD Status register
     // this register contains the status of the lcd and ppu
@@ -81,6 +85,8 @@ struct STATReg :public RegU8 {
 
 
 struct PaletteReg : public RegU8 {
+    PaletteReg::PaletteReg();
+
     // this register assigns gray shades to the 3 possible colors for a pixel
     // bit  function
     // 0..1 Color value for color ID 0
@@ -127,6 +133,7 @@ struct PaletteReg : public RegU8 {
 
 
 struct PPURegs {
+    PPURegs::PPURegs();
 
     // 0xFF40
     LCDCReg LCDC;

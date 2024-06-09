@@ -70,13 +70,19 @@ bool App::emulate()
 
     // emulate for a while
     if (mConfig.emulationSpeed == EmulationSpeed::Full) {
-        // when emulating at 100% speed we emulate exactly for 1 frame
+        // when emulating at 100% speed we emulate exactly for 1 frame (or for the target gb time,
+        // whichever comes first, in case the ppu is disabled and a frame is not ready for a while)
 
-        while (true) {
+        auto targetGbTime = emulateFor();
+        nanoseconds elapsedGbTime = 0ns;
+
+        while (elapsedGbTime < targetGbTime) {
             auto [stillGoing, stepRes] = mGameboy.emulate();
 
             if (stepRes.frameReady || !stillGoing)
                 break;
+
+            elapsedGbTime += GameBoyClassic::machinePeriod * stepRes.cpuRes.cycles;
         }
     }
     else {
@@ -348,9 +354,9 @@ void App::UIDrawCpuRegTable()
         { fmtHex4, "BC", mGameboy.cpu.regs.BC() },
         { fmtHex4, "PC", mGameboy.cpu.regs.PC },
         { fmtHex4, "DE", mGameboy.cpu.regs.DE() },
-        { fmtHex2, "IE", mGameboy.cpu.irqs.IE },
+        { fmtHex2, "IE", mGameboy.cpu.irqs.readIE()},
         { fmtHex4, "HL", mGameboy.cpu.regs.HL() },
-        { fmtHex2, "IF", mGameboy.cpu.irqs.IF },
+        { fmtHex2, "IF", mGameboy.cpu.irqs.readIF()},
     };
 
     if (ImGui::BeginTable("cpuRegsTable", 4, tableFlags))

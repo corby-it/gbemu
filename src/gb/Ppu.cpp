@@ -9,6 +9,17 @@
 // PPURegs
 // ------------------------------------------------------------------------------------------------
 
+LCDCReg::LCDCReg()
+    : bgWinEnable(false)
+    , objEnable(false)
+    , objDoubleH(false)
+    , bgTileMapArea(false)
+    , bgWinTileDataArea(false)
+    , winEnable(false)
+    , winTileMapArea(false)
+    , lcdEnable(false)
+{}
+
 uint8_t LCDCReg::asU8() const
 {
     uint8_t val = (uint8_t)bgWinEnable
@@ -36,6 +47,15 @@ void LCDCReg::fromU8(uint8_t b)
 }
 
 
+STATReg::STATReg()
+    : ppuMode(PPUMode::OAMScan)
+    , lycEqual(false)
+    , mode0IrqEnable(false)
+    , mode1IrqEnable(false)
+    , mode2IrqEnable(false)
+    , lycIrqEnable(false)
+{}
+
 uint8_t STATReg::asU8() const
 {
     uint8_t val = (ppuMode & 0x03)
@@ -58,6 +78,13 @@ void STATReg::fromU8(uint8_t b)
 }
 
 
+PaletteReg::PaletteReg()
+    : valForId0(0)
+    , valForId1(1)
+    , valForId2(2)
+    , valForId3(3)
+{}
+
 uint8_t PaletteReg::asU8() const
 {
     uint8_t val = valForId0
@@ -77,6 +104,15 @@ void PaletteReg::fromU8(uint8_t b)
 }
 
 
+
+PPURegs::PPURegs()
+    : SCY(0)
+    , SCX(0)
+    , LY(0)
+    , LYC(0)
+    , WY(0)
+    , WX(0)
+{}
 
 void PPURegs::reset()
 {
@@ -262,6 +298,10 @@ bool PPU::step(uint32_t mCycles)
                 renderPixel(currX);
             }
         }
+    }
+    else {
+        // update the STAT register even if the ppu is disabled
+        updateSTAT();
     }
 
     // before returning control to the main loop we have to lock 

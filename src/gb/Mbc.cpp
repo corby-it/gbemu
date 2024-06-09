@@ -276,14 +276,32 @@ uint8_t Mbc3::read8(uint16_t addr) const
     }
     else if (addr >= mmap::external_ram::start && addr <= mmap::external_ram::end) {
         // read from ram or rtc
-        if(!mHasRam || !mRamEnabled)
-            return 0xFF;
-
-        // ram banks are 8KB in size so from the received address we discard the upper 3 bits
-        addr &= 0x1FFF;
-        uint32_t ramAddr = mRamCurrBank * ramBankSize + addr;
         
-        return mRam[ramAddr];
+        switch (mRamCurrBank) {
+        case 0x00:
+        case 0x01:
+        case 0x02:
+        case 0x03: {
+            // try reading to RAM
+            // ram banks are 8KB in size so from the received address we discard the upper 3 bits
+            if (!mHasRam || !mRamRtcEnabled)
+                return 0xFF;
+
+            addr &= 0x1FFF;
+            uint32_t ramAddr = mRamCurrBank * ramBankSize + addr;
+
+            return mRam[ramAddr];
+        }
+        case 0x08: return mRamRtcEnabled ? mRtc.readSec() : 0xFF; break;
+        case 0x09: return mRamRtcEnabled ? mRtc.readMin() : 0xFF; break;
+        case 0x0A: return mRamRtcEnabled ? mRtc.readHours() : 0xFF; break;
+        case 0x0B: return mRamRtcEnabled ? mRtc.readDaysL() : 0xFF; break;
+        case 0x0C: return mRamRtcEnabled ? mRtc.readDaysH() : 0xFF; break;
+        default:
+            // shouldn't happen
+            assert(false);
+            return 0xFF;
+        }
     }
     else {
         // wrong address

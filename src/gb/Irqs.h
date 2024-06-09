@@ -5,6 +5,7 @@
 
 #include <cstdint>
 #include <cassert>
+#include <optional>
 
 
 struct Irqs {
@@ -69,10 +70,54 @@ struct Irqs {
     }
 
     bool ime;
+
+    uint8_t readIF() const { return IF | 0xE0; }
+    uint8_t readIE() const { return IE | 0xE0; } // top unused bits are always 1
+
+    void writeIF(uint8_t val) { IF = val; }
+    void writeIE(uint8_t val) { IE = val | 0xE0; }
+
+    
+    void Irqs::reset() {
+        ime = false;
+        IF = 0;
+        IE = 0;;
+    }
+
+    std::optional<Irqs::Type> getCurrentIrq()
+    {
+        // We have to check which interrupts are both
+        // enabled in the IE registers and which ones are currently requested
+        // more than one interrupt at a time can be requested, in this case the 
+        // priority is the following:
+        // 1 - VBlank
+        // 2 - LCD status
+        // 3 - Timer
+        // 4 - Serial
+        // 5 - Joypad
+
+        uint8_t currentIrqs = IE & IF & 0x1F;
+
+        if (currentIrqs & mask(Type::VBlank))
+            return Type::VBlank;
+        if (currentIrqs & mask(Type::Lcd))
+            return Type::Lcd;
+        if (currentIrqs & mask(Type::Timer))
+            return Type::Timer;
+        if (currentIrqs & mask(Type::Serial))
+            return Type::Serial;
+        if (currentIrqs & mask(Type::Joypad))
+            return Type::Joypad;
+
+        return {};
+    }
+
+
+private:
     uint8_t IF;
     uint8_t IE;
 
-    void reset();
+
 };
 
 

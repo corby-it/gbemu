@@ -11,13 +11,13 @@ TEST_CASE("Timer test DIV increase")
     Timer t(bus);
 
     t.step(10);
-    CHECK(t.readDIV() == 0); // should still be 0
+    CHECK(t.readDIV() == Timer::initialDivVal); // should still be the initial value
 
     t.step(0x100);
-    CHECK(t.readDIV() == ((0x100 + 10)*4) >> 8);
+    CHECK(t.readDIV() == Timer::initialDivVal + (((0x100 + 10)*4) >> 8));
 
     t.writeDIV(100);
-    CHECK(t.readDIV() == 0); // writing resets div
+    CHECK(t.readDIV() == 0); // writing resets div to 0
 }
 
 TEST_CASE("Timer test DIV overflow")
@@ -25,7 +25,12 @@ TEST_CASE("Timer test DIV overflow")
     TestBus bus;
     Timer t(bus);
 
-    t.step(0x3FFF);
+    // DIV starts from AC00 so, to get to read FF and overflow we have to
+    // start from (FFFF-AC00) / 4 = 14FF
+
+    uint32_t steps = (0xFFFF - (Timer::initialDivVal << 8)) / 4;
+
+    t.step(steps);
     CHECK(t.readDIV() == 0xFF);
 
     t.step(1);

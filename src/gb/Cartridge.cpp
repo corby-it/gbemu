@@ -659,6 +659,16 @@ CartridgeLoadingRes Cartridge::loadRomFile(const fs::path& romPath)
     case CartridgeType::MBC1RamBattery:
         mbc = std::make_unique<Mbc1>(rom, ram, true);
         break;
+
+    case CartridgeType::MBC3:
+        mbc = std::make_unique<Mbc3>(rom, ram, false);
+        break;
+
+    case CartridgeType::MBC3Ram:
+    case CartridgeType::MBC3RamBattery:
+    case CartridgeType::MBC3TimerRamBattery:
+        mbc = std::make_unique<Mbc3>(rom, ram, true);
+        break;
     
     default:
         // MBC type not supported yet

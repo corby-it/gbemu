@@ -27,7 +27,7 @@ public:
     uint8_t readDIV() const { return mDiv >> 8; }
     uint8_t readTIMA() const { return mTima & 0x00FF; }
     uint8_t readTMA() const { return mTma; }
-    uint8_t readTAC() const;
+    uint8_t readTAC() const { return mTacVal; }
 
     void writeDIV(uint8_t /*val*/) { mDiv = 0; }
     void writeTIMA(uint8_t val) { mTima = val; }
@@ -41,6 +41,7 @@ public:
 
     uint16_t getTimaSubcounter() const { return mTimaSubcounter; }
 
+    static constexpr uint8_t initialDivVal = 0xAC;
 
 private:
     Bus& mBus;
@@ -77,6 +78,7 @@ private:
     // bits 3-7: unused
     bool mTimaEnabled;
     ClockSelect mClockSelect;
+    uint8_t mTacVal;
 
     static constexpr uint16_t clockDividers[4] = { 1024, 16, 64, 256 };
 

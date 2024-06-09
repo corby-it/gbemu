@@ -131,13 +131,13 @@ uint8_t GBBus::realRead(uint16_t addr) const
     }
 
     if (addr == mmap::regs::IF)
-        return mCpu->irqs.IF;
+        return mCpu->irqs.readIF();
 
     if (addr >= mmap::hiram::start && addr <= mmap::hiram::end)
         return mHiRam->read8(addr);
 
     if (addr == mmap::IE)
-        return mCpu->irqs.IE;
+        return mCpu->irqs.readIE();
     
     return 0xFF;
 }
@@ -199,11 +199,11 @@ void GBBus::realWrite(uint16_t addr, uint8_t val)
     }
 
     if (addr == mmap::regs::IF)
-        mCpu->irqs.IF = val;
+        mCpu->irqs.writeIF(val);
 
     if (addr >= mmap::hiram::start && addr <= mmap::hiram::end)
         mHiRam->write8(addr, val);
 
     if (addr == mmap::IE)
-        mCpu->irqs.IE = val;
+        mCpu->irqs.writeIE(val);
 }

@@ -134,8 +134,6 @@ public:
 
 private:
 
-    std::optional<Irqs::Type> checkIrq();
-
 
     uint8_t execute(uint8_t opcode, bool& ok);
     uint8_t executeCb(bool& ok);
