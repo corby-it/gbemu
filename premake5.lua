@@ -27,7 +27,7 @@ workspace(project_name)
     }
 
 
-    configurations { "debug", "release" }
+    configurations { "debug", "release", "profiling" }
     architecture "x86_64"
     location(build_base)
 
@@ -75,6 +75,16 @@ workspace(project_name)
 
     filter "configurations:release"
         symbols "Off"
+        optimize "Speed"
+        flags {
+            "LinkTimeOptimization"
+        }
+        defines { 
+            "DOCTEST_CONFIG_DISABLE" 
+        }
+
+    filter "configurations:profiling"
+        symbols "On"
         optimize "Speed"
         flags {
             "LinkTimeOptimization"

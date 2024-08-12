@@ -280,19 +280,51 @@ private:
         bool palette;
         bool priority;
     };
+    
+    template<typename T, size_t N>
+    class List {
+    public:
+        List()
+            : mData()
+            , mCount(0)
+        {}
+
+        bool empty() const { return mCount == 0; }
+
+        void add(const T& info) {
+            if (mCount < N) {
+                mData[mCount] = info;
+                ++mCount;
+            }
+        }
+
+        auto begin() { return mData.begin(); }
+        auto end() { return mData.begin() + mCount; }
+
+
+    private:
+        std::array<T, N> mData;
+        size_t mCount;
+    };
+
+
+    typedef List<const OAMData*, OAMRegister::maxCount> OAMDataPtrList;
+    typedef List<OAMPixelInfo, OAMRegister::maxCount>   OAMPixelInfoList;
+
+
 
     void lockRamAreas(bool lock);
 
     void updateSTAT();
     void oamScan();
-    std::vector<const OAMData*> findCurrOams(uint32_t currX) const;
+    OAMDataPtrList findCurrOams(uint32_t currX) const;
 
     void onDisabled();
 
     void renderPixel(uint32_t dispX);
     uint8_t renderPixelGetBgVal(uint32_t dispX);
     bool renderPixelGetWinVal(uint32_t dispX, uint8_t& colorId);
-    std::vector<OAMPixelInfo> renderPixelGetObjsValues(uint32_t currX);
+    OAMPixelInfoList renderPixelGetObjsValues(uint32_t currX);
 
     Bus& mBus;
 

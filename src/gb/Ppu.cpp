@@ -3,6 +3,7 @@
 #include "Ppu.h"
 #include "Irqs.h"
 #include <algorithm>
+#include <array>
 
 
 // ------------------------------------------------------------------------------------------------
@@ -400,20 +401,19 @@ void PPU::oamScan()
 }
 
 
-std::vector<const OAMData*> PPU::findCurrOams(uint32_t currX) const
+PPU::OAMDataPtrList PPU::findCurrOams(uint32_t currX) const
 {
     // we scan the register to find if we have objects whose x-range corresponds the
     // the currX position of the screen
 
-    std::vector<const OAMData*> oams;
-    oams.reserve(OAMRegister::maxCount);
+    OAMDataPtrList oams;
 
     for (auto& currOam : mOamScanRegister) {
         auto xLeft = currOam.x() - 8;
         auto xRight = xLeft + 8;
 
         if ((int32_t)currX >= xLeft && (int32_t)currX < xRight)
-            oams.push_back(&currOam);
+            oams.add(&currOam);
     }
 
     return oams;
@@ -431,6 +431,8 @@ void PPU::onDisabled()
 
     updateSTAT();
 }
+
+
 
 void PPU::renderPixel(uint32_t dispX)
 {
@@ -549,13 +551,12 @@ bool PPU::renderPixelGetWinVal(uint32_t dispX, uint8_t& colorId)
     return true;
 }
 
-std::vector<PPU::OAMPixelInfo> PPU::renderPixelGetObjsValues(uint32_t currX)
+PPU::OAMPixelInfoList PPU::renderPixelGetObjsValues(uint32_t currX)
 {
     // to find the color ids of the objects on the current pixel we first have to find from which
     // objects we have to extract color data
 
-    std::vector<OAMPixelInfo> pixInfo;
-    pixInfo.reserve(10);
+    OAMPixelInfoList pixInfo;
 
     // get the objects involved in the current pixel
     for (auto oam : findCurrOams(currX)) {
@@ -586,7 +587,7 @@ std::vector<PPU::OAMPixelInfo> PPU::renderPixelGetObjsValues(uint32_t currX)
         auto& obp = info.palette ? regs.OBP1 : regs.OBP0;
         info.colorVal = obp.id2val(info.colorId);
         
-        pixInfo.push_back(info);
+        pixInfo.add(info);
     }
 
     // in the DMG different objects will be given priority as follows:
