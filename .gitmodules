@@ -2,3 +2,6 @@
 	path = src/imgui
 	url = https://github.com/ocornut/imgui.git
 	branch = docking
+[submodule "src/third-party/tracy"]
+	path = src/third-party/tracy
+	url = https://github.com/wolfpld/tracy.git
