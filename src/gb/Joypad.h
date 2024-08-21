@@ -3,7 +3,7 @@
 #define GBEMU_SRC_GB_JOYPAD_H_
 
 #include "Bus.h"
-#include <set>
+#include <array>
 
 // reference for how the joypad works in the gameboy: https://gbdev.io/pandocs/Joypad_Input.html
 
@@ -15,9 +15,29 @@ public:
         Down, Up, Left, Right
     };
 
+    static constexpr size_t btnCount = 8;
+
     static constexpr Btn allBtns[] = {
         Btn::Start, Btn::Select, Btn::B, Btn::A,
         Btn::Down, Btn::Up, Btn::Left, Btn::Right
+    };
+
+    struct PressedButton {
+        PressedButton()
+            : pressed()
+            , count(0)
+        {}
+
+        void add(Joypad::Btn btn) {
+            if (count == pressed.max_size())
+                return;
+
+            pressed[count] = btn;
+            ++count;
+        }
+
+        std::array<Joypad::Btn, Joypad::btnCount> pressed;
+        size_t count;
     };
 
 
@@ -34,7 +54,7 @@ public:
     void press(Btn bt);
     void release(Btn bt);
 
-    void action(const std::set<Btn>& pressedBtns);
+    void action(const PressedButton& pressedBtns);
 
 private:
     enum class Selection : uint8_t {

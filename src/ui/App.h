@@ -15,12 +15,13 @@ public:
     App();
     virtual ~App() {}
 
-    void startup() override {}
+    void startup() override;
     bool emulate() override;
     void updateUI() override;
 
 
 private:
+
 
     std::optional<std::chrono::nanoseconds> emulateFor() const;
 
@@ -34,8 +35,7 @@ private:
     void UIDrawTimerRegTable();
     void UIDrawPpuRegTable();
 
-    std::set<Joypad::Btn> getPressedButtons() const;
-
+    
     AppConfig mConfig;
     GameBoyClassic mGameboy;
 

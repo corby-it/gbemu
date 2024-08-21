@@ -132,6 +132,8 @@ public:
     size_t callNesting() const { return mCallNesting.size(); }
 
 
+    static constexpr uint32_t longestInstructionCycles = 6;
+
 private:
 
 

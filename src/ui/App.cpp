@@ -43,25 +43,56 @@ static bool LoadTextureFromMatrix(const Matrix& mat, GLuint& outTexture, RgbaBuf
     return true;
 }
 
+static Joypad::PressedButton getPressedButtons()
+{
+    Joypad::PressedButton btns;
+
+    if (ImGui::IsKeyDown(ImGuiKey_W)) btns.add(Joypad::Btn::Up);
+    if (ImGui::IsKeyDown(ImGuiKey_A)) btns.add(Joypad::Btn::Left);
+    if (ImGui::IsKeyDown(ImGuiKey_S)) btns.add(Joypad::Btn::Down);
+    if (ImGui::IsKeyDown(ImGuiKey_D)) btns.add(Joypad::Btn::Right);
+
+    if (ImGui::IsKeyDown(ImGuiKey_N)) btns.add(Joypad::Btn::A);
+    if (ImGui::IsKeyDown(ImGuiKey_M)) btns.add(Joypad::Btn::B);
+    if (ImGui::IsKeyDown(ImGuiKey_Enter)) btns.add(Joypad::Btn::Start);
+    if (ImGui::IsKeyDown(ImGuiKey_0)) btns.add(Joypad::Btn::Select);
+
+    return btns;
+}
+
 std::optional<nanoseconds> App::emulateFor() const
 {
     // when emulating at 100% speed we have to emulate at 60 gameboy frames per second,
     // the app is limited to 60fps so we have to emulate for 1 frame
 
-    // 1 frame at 60 fps takes 16.66666667ms so we have to emulate until the total amount of
-    // m-cycles executed amounts to that number
+    // the gameboy is actually running slightly slower than 60fps.
+    // the PPU renders one line in 108.7us so, considering that we have 144 lines + 10 v-blank lines,
+    // a full frame takes 108.7us * 154 = 16.7398ms.
+    // This means that the gameboy runs at 59.737870 fps
+    // 
+    // 1 frame at 59.737...fps takes 16.7398ms so we have to emulate until the total amount of
+    // executed m-cycles amounts to that time value
 
     // an empty optional means 'unbound'
 
+    static constexpr auto frameTime = 16739800ns;
+
     switch (mConfig.emulationSpeed) {
-    case EmulationSpeed::Quarter: return 4166667ns;
-    case EmulationSpeed::Half: return 8333333ns;
-    case EmulationSpeed::Full: return 16666667ns;
+    case EmulationSpeed::Quarter: return frameTime/4;
+    case EmulationSpeed::Half: return frameTime/2;
+    case EmulationSpeed::Full: return frameTime;
     default:
     case EmulationSpeed::Unbound: return {};
     }
 }
 
+
+const char* const overshootPlotName = "EmulateOvershoot";
+
+void App::startup()
+{
+    TracyPlotConfig(overshootPlotName, tracy::PlotFormatType::Number, false, false, 0);
+}
 
 bool App::emulate()
 {
@@ -76,16 +107,30 @@ bool App::emulate()
         // when emulating at 100% speed we emulate exactly for 1 frame (or for the target gb time,
         // whichever comes first, in case the ppu is disabled and a frame is not ready for a while)
 
-        auto targetGbTime = emulateFor();
+        auto realTargetGbTime = emulateFor().value();
+        auto targetGbTime = realTargetGbTime + (2 * CPU::longestInstructionCycles * GameBoyClassic::machinePeriod);
         nanoseconds elapsedGbTime = 0ns;
 
+        bool gotFrame = false;
         while (elapsedGbTime < targetGbTime) {
             auto [stillGoing, stepRes] = mGameboy.emulate();
+            
+            elapsedGbTime += GameBoyClassic::machinePeriod * stepRes.cpuRes.cycles;
 
-            if (stepRes.frameReady || !stillGoing)
+            if (stepRes.frameReady) {
+                gotFrame = true;
+                break;
+            }
+
+            if (!stillGoing)
                 break;
 
-            elapsedGbTime += GameBoyClassic::machinePeriod * stepRes.cpuRes.cycles;
+        }
+
+        TracyPlot(overshootPlotName, (elapsedGbTime - realTargetGbTime).count());
+
+        if (!gotFrame) {
+            TracyMessageL("No frame!");
         }
     }
     else {
@@ -117,23 +162,6 @@ bool App::emulate()
     return true;
 }
 
-
-std::set<Joypad::Btn> App::getPressedButtons() const
-{
-    std::set<Joypad::Btn> btns;
-
-    if (ImGui::IsKeyDown(ImGuiKey_W)) btns.insert(Joypad::Btn::Up);
-    if (ImGui::IsKeyDown(ImGuiKey_A)) btns.insert(Joypad::Btn::Left);
-    if (ImGui::IsKeyDown(ImGuiKey_S)) btns.insert(Joypad::Btn::Down);
-    if (ImGui::IsKeyDown(ImGuiKey_D)) btns.insert(Joypad::Btn::Right);
-
-    if (ImGui::IsKeyDown(ImGuiKey_N)) btns.insert(Joypad::Btn::A);
-    if (ImGui::IsKeyDown(ImGuiKey_M)) btns.insert(Joypad::Btn::B);
-    if (ImGui::IsKeyDown(ImGuiKey_Enter)) btns.insert(Joypad::Btn::Start);
-    if (ImGui::IsKeyDown(ImGuiKey_0)) btns.insert(Joypad::Btn::Select);
-
-    return btns;
-}
 
 
 

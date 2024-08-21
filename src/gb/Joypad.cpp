@@ -150,14 +150,13 @@ void Joypad::release(Btn bt)
     }
 }
 
-void Joypad::action(const std::set<Btn>& pressedBtns)
+void Joypad::action(const PressedButton& pressedBtns)
 {
-    for(auto btn : allBtns) {
-        if (pressedBtns.find(btn) != std::end(pressedBtns))
-            press(btn);
-        else
-            release(btn);
-    }
+    for(auto btn : allBtns) 
+        release(btn);
+    
+    for (size_t i = 0; i < pressedBtns.count; ++i)
+        press(pressedBtns.pressed[i]);
 }
 
 bool Joypad::inCurrentSelection(Joypad::Btn btn) const
