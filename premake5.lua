@@ -45,7 +45,8 @@ workspace(project_name)
         src_base .. "/imgui/*.h",
         src_base .. "/imgui/backends/imgui_impl_glfw.cpp",
         src_base .. "/imgui/backends/imgui_impl_opengl3.cpp",
-        src_base .. "/third-party/ImGuiFileDialog/ImGuiFileDialog.cpp"
+        src_base .. "/third-party/ImGuiFileDialog/ImGuiFileDialog.cpp",
+        src_base .. "/third-party/tracy/public/TracyClient.cpp",
     }
 
     includedirs {
@@ -55,14 +56,15 @@ workspace(project_name)
     externalincludedirs {
         src_base .. "/imgui",
         src_base .. "/imgui/backends",
-        src_base .. "/third-party"
+        src_base .. "/third-party",
+        src_base .. "/third-party/tracy/public",
     }
 
     defines {
         "PROJECT_NAME=" .. project_name,
         "MAJOR_VER=" ..  _OPTIONS["major_ver"],
         "MINOR_VER=" .. _OPTIONS["minor_ver"],
-        "BUILD_VER=" .. _OPTIONS["build_ver"]
+        "BUILD_VER=" .. _OPTIONS["build_ver"],
     }
 
     warnings "Extra"
@@ -90,7 +92,9 @@ workspace(project_name)
             "LinkTimeOptimization"
         }
         defines { 
-            "DOCTEST_CONFIG_DISABLE" 
+            "DOCTEST_CONFIG_DISABLE",
+            "TRACY_ENABLE",
+            "TRACY_NO_SAMPLING",
         }
 
     filter { "system:linux", "action:gmake" }

@@ -2,6 +2,7 @@
 #include "Cpu.h"
 #include "Opcodes.h"
 #include "GbCommons.h"
+#include <tracy/Tracy.hpp>
 #include <cassert>
 
 
@@ -67,6 +68,8 @@ void CPU::reset()
 
 CpuStepRes CPU::step()
 {
+    ZoneScoped;
+
     // in one step we execute one instruction, the instruction can take 1 or more machine cycles
 
     bool triggerHaltBug = false;
@@ -80,7 +83,7 @@ CpuStepRes CPU::step()
         if ((joypad & 0x0F) != 0x0F) 
             mIsStopped = false;
         else 
-            return { true, 1 };
+            return { true, 4 };
     }
 
     // check if interrupt occurred
@@ -118,7 +121,7 @@ CpuStepRes CPU::step()
     
     // if the cpu is in the HALT state we don't execute instructions and return now
     if (mIsHalted)
-        return { true, 1 };
+        return { true, 4 };
 
 
     // if ime was scheduled to be set, set it now

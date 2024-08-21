@@ -2,6 +2,7 @@
 
 #include "App.h"
 #include "ImGuiFileDialog/ImGuiFileDialog.h"
+#include <tracy/Tracy.hpp>
 #include <cassert>
 
 using namespace std::chrono;
@@ -20,12 +21,12 @@ App::App()
 
 
 // Simple helper function to load an image into a OpenGL texture with common settings
-static bool LoadTextureFromMatrix(const Matrix& mat, GLuint& outTexture, RgbBuffer& buffer)
+static bool LoadTextureFromMatrix(const Matrix& mat, GLuint& outTexture, RgbaBuffer& buffer)
 {
     glBindTexture(GL_TEXTURE_2D, outTexture);
 
     // turn the tile data into an RGB buffer
-    mat.fillRgbBuffer(buffer);
+    mat.fillRgbaBuffer(buffer);
 
     // Setup filtering parameters for display
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -37,7 +38,7 @@ static bool LoadTextureFromMatrix(const Matrix& mat, GLuint& outTexture, RgbBuff
 #if defined(GL_UNPACK_ROW_LENGTH) && !defined(__EMSCRIPTEN__)
     glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
 #endif
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, mat.width(), mat.height(), 0, GL_RGB, GL_UNSIGNED_BYTE, buffer.ptr());
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, mat.width(), mat.height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, buffer.ptr());
 
     return true;
 }
@@ -64,6 +65,8 @@ std::optional<nanoseconds> App::emulateFor() const
 
 bool App::emulate()
 {
+    ZoneScoped;
+
     // check which buttons are pressed once here (input state won't be 
     // updated until the next call to the app loop)
     mGameboy.joypad.action(getPressedButtons());
@@ -324,6 +327,8 @@ void App::UIDrawControlWindow()
 void App::UIDrawEmulationWindow()
 {
     LoadTextureFromMatrix(mGameboy.ppu.display.getFrontBuf(), mGLDisplayTexture, mDisplayBuffer);
+
+    FrameImage(mDisplayBuffer.ptr(), mGameboy.ppu.display.w, mGameboy.ppu.display.h, 0, false);
 
     ImGui::Begin("GB Display");
     ImGui::Text("Status: %s", GameBoyClassic::statusToStr(mGameboy.status));

@@ -4,6 +4,7 @@
 #include "GbCommons.h"
 #include "Opcodes.h"
 #include "gbdebug/Debug.h"
+#include <tracy/Tracy.hpp>
 
 
 
@@ -81,6 +82,8 @@ void GameBoyClassic::gbReset()
 
 GbStepRes GameBoyClassic::gbStep()
 {
+    ZoneScoped;
+
     auto cpuRes = cpu.step();
 
     dma.step(cpuRes.cycles);
@@ -88,8 +91,10 @@ GbStepRes GameBoyClassic::gbStep()
     timer.step(cpuRes.cycles);
     joypad.step(cpuRes.cycles);
 
-    if(status != Status::Running)
+    if (status != Status::Running) {
+        ZoneScoped;
         dbg.updateInstructionToStr(*this);
+    }
 
     GbStepRes res;
     res.cpuRes = cpuRes;
@@ -102,6 +107,8 @@ GbStepRes GameBoyClassic::gbStep()
 
 EmulateRes GameBoyClassic::emulate()
 {
+    ZoneScoped;
+
     // return true if there is more emulation work to be done (that is, if
     // the emulation is not stopped or paused)
 

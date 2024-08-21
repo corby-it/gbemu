@@ -194,6 +194,73 @@ private:
 };
 
 
+
+struct RgbaPixel {
+    uint8_t R;
+    uint8_t G;
+    uint8_t B;
+    uint8_t A;
+};
+
+static constexpr RgbaPixel blackA = { 0, 0, 0, 255 };
+static constexpr RgbaPixel darkGreyA = { 120, 120, 120, 255 };
+static constexpr RgbaPixel lightGreyA = { 200, 200, 200, 255 };
+static constexpr RgbaPixel whiteA = { 255, 255, 255, 255 };
+
+
+class RgbaPixelRef {
+public:
+    RgbaPixelRef(uint8_t* ptr)
+        : mPtr(ptr)
+    {}
+
+    uint8_t& R() { return mPtr[0]; }
+    uint8_t& G() { return mPtr[1]; }
+    uint8_t& B() { return mPtr[2]; }
+    uint8_t& A() { return mPtr[3]; }
+
+    RgbaPixelRef& operator=(RgbaPixel pix) {
+        mPtr[0] = pix.R;
+        mPtr[1] = pix.G;
+        mPtr[2] = pix.B;
+        mPtr[3] = pix.A;
+        return *this;
+    }
+
+private:
+    uint8_t* mPtr;
+
+};
+
+
+
+class RgbaBuffer {
+public:
+    RgbaBuffer(uint32_t w, uint32_t h)
+        : mWidth(w)
+        , mHeight(h)
+        , mSize(w * h * 4)
+        , mData(std::make_unique<uint8_t[]>(mSize))
+    {}
+
+    uint8_t* ptr() { return mData.get(); }
+    size_t size() const { return mSize; }
+
+    RgbaPixelRef operator()(uint32_t x, uint32_t y)
+    {
+        x %= mWidth;
+        y %= mHeight;
+        return RgbaPixelRef(ptr() + (y * mWidth * 4) + (x * 4));
+    }
+
+private:
+    const uint32_t mWidth;
+    const uint32_t mHeight;
+    const size_t mSize;
+    std::unique_ptr<uint8_t[]> mData;
+};
+
+
 class Matrix {
 public:
     Matrix(uint32_t w, uint32_t h)
@@ -231,6 +298,21 @@ public:
                 case 1: buf(x, y) = lightGrey; break;
                 case 2: buf(x, y) = darkGrey; break;
                 case 3: buf(x, y) = black; break;
+                }
+            }
+        }
+    }
+
+    virtual void fillRgbaBuffer(RgbaBuffer& buf) const
+    {
+        for (uint32_t y = 0; y < mHeight; ++y) {
+            for (uint32_t x = 0; x < mWidth; ++x) {
+                switch (get(x, y)) {
+                default:
+                case 0: buf(x, y) = whiteA; break;
+                case 1: buf(x, y) = lightGreyA; break;
+                case 2: buf(x, y) = darkGreyA; break;
+                case 3: buf(x, y) = blackA; break;
                 }
             }
         }

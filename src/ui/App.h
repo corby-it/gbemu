@@ -39,7 +39,7 @@ private:
     AppConfig mConfig;
     GameBoyClassic mGameboy;
 
-    RgbBuffer mDisplayBuffer;
+    RgbaBuffer mDisplayBuffer;
     GLuint mGLDisplayTexture;
 
     int mEmulationSpeedComboIdx;

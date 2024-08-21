@@ -2,6 +2,7 @@
 
 #include "Ppu.h"
 #include "Irqs.h"
+#include <tracy/Tracy.hpp>
 #include <algorithm>
 #include <array>
 
@@ -190,6 +191,8 @@ void PPU::stepFrame(uint32_t n)
 
 bool PPU::step(uint32_t mCycles)
 {
+    ZoneScoped;
+
     // the PPU goes through a cycle of its own, separate from that of the CPU.
     // it draws 153 lines, top to bottom and left to right, from line 0 to 143 it 
     // draws the lines seen on the display, from lines 155 to 153 its in the vblank mode
