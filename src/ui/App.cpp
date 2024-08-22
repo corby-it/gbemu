@@ -14,6 +14,7 @@ using hr_clock = std::chrono::high_resolution_clock;
 App::App()
     : mDisplayBuffer(Display::w, Display::h)
     , mEmulationSpeedComboIdx(static_cast<int>(EmulationSpeed::Full))
+    , mLastEmulateCall(-1ns)
 {
     // create an OpenGL texture identifier for the display image
     glGenTextures(1, &mGLDisplayTexture);
@@ -60,6 +61,7 @@ static Joypad::PressedButton getPressedButtons()
     return btns;
 }
 
+
 std::optional<nanoseconds> App::emulateFor() const
 {
     // when emulating at 100% speed we have to emulate at 60 gameboy frames per second,
@@ -87,75 +89,111 @@ std::optional<nanoseconds> App::emulateFor() const
 }
 
 
-const char* const overshootPlotName = "EmulateOvershoot";
+const char* const plotOvershootPlotName = "EmulateOvershoot";
+const char* const plotTimeSinceLastEmulateCall = "TimeSinceLastEmulateCall";
+const char* const plotRequiredFrames = "RequiredFrames";
 
 void App::startup()
 {
-    TracyPlotConfig(overshootPlotName, tracy::PlotFormatType::Number, false, false, 0);
+    TracyPlotConfig(plotOvershootPlotName, tracy::PlotFormatType::Number, false, false, 0);
+    TracyPlotConfig(plotTimeSinceLastEmulateCall, tracy::PlotFormatType::Number, false, false, 0);
+    TracyPlotConfig(plotRequiredFrames, tracy::PlotFormatType::Number, false, false, 0);
 }
 
 bool App::emulate()
 {
     ZoneScoped;
 
+    auto currTime = getCurrTime();
+
     // check which buttons are pressed once here (input state won't be 
     // updated until the next call to the app loop)
     mGameboy.joypad.action(getPressedButtons());
 
     // emulate for a while
-    if (mConfig.emulationSpeed == EmulationSpeed::Full) {
-        // when emulating at 100% speed we emulate exactly for 1 frame (or for the target gb time,
-        // whichever comes first, in case the ppu is disabled and a frame is not ready for a while)
+    if (mConfig.emulationSpeed == EmulationSpeed::Full)
+        emulateFullSpeed(currTime);
+    else
+        emulateOtherSpeeds(currTime);
 
-        auto realTargetGbTime = emulateFor().value();
-        auto targetGbTime = realTargetGbTime + (2 * CPU::longestInstructionCycles * GameBoyClassic::machinePeriod);
+    mLastEmulateCall = currTime;
+
+    return true;
+}
+
+
+bool App::emulateFullSpeed(std::chrono::nanoseconds currTime)
+{
+    // when emulating at 100% speed we emulate exactly for the required number of frames, taking into 
+    // account how much time elapsed between the current call and the last App::emulate() call
+    // 
+    // if the requested number of frames is not reached in the corresponding gb tim we return anyway,
+    // if the ppu is disabled frames won't be ready but the emulation must keep going.
+
+    uint32_t requiredFrames = 1;
+
+    if (mLastEmulateCall != -1ns) {
+        auto timeSinceLastCall = currTime - mLastEmulateCall;
+        TracyPlot(plotTimeSinceLastEmulateCall, timeSinceLastCall.count());
+
+        requiredFrames = uint32_t(timeSinceLastCall / 16666667ns);
+        if (requiredFrames == 0)
+            ++requiredFrames;
+    }
+
+    TracyPlot(plotRequiredFrames, (int64_t)requiredFrames);
+
+
+    auto realTargetGbTime = emulateFor().value();
+    auto targetGbTime = realTargetGbTime + (2 * CPU::longestInstructionCycles * GameBoyClassic::machinePeriod);
+    nanoseconds elapsedGbTime = 0ns;
+
+    uint32_t renderedFrames = 0;
+    while (elapsedGbTime < targetGbTime && renderedFrames < requiredFrames) {
+        auto [stillGoing, stepRes] = mGameboy.emulate();
+
+        elapsedGbTime += GameBoyClassic::machinePeriod * stepRes.cpuRes.cycles;
+
+        if (stepRes.frameReady) {
+            ++renderedFrames;
+        }
+
+        if (!stillGoing)
+            break;
+    }
+
+    TracyPlot(plotOvershootPlotName, (elapsedGbTime - realTargetGbTime).count());
+
+    if (renderedFrames == 0) {
+        TracyMessageL("No frame!");
+    }
+
+    return true;
+}
+
+bool App::emulateOtherSpeeds(std::chrono::nanoseconds /*currTime*/)
+{
+    if (auto targetGbTime = emulateFor(); targetGbTime) {
+        // emulate until a target amount of time has passed for the emulated gameboy
         nanoseconds elapsedGbTime = 0ns;
 
-        bool gotFrame = false;
         while (elapsedGbTime < targetGbTime) {
             auto [stillGoing, stepRes] = mGameboy.emulate();
-            
-            elapsedGbTime += GameBoyClassic::machinePeriod * stepRes.cpuRes.cycles;
-
-            if (stepRes.frameReady) {
-                gotFrame = true;
-                break;
-            }
 
             if (!stillGoing)
                 break;
 
-        }
-
-        TracyPlot(overshootPlotName, (elapsedGbTime - realTargetGbTime).count());
-
-        if (!gotFrame) {
-            TracyMessageL("No frame!");
+            elapsedGbTime += GameBoyClassic::machinePeriod * stepRes.cpuRes.cycles;
         }
     }
     else {
-        if (auto targetGbTime = emulateFor(); targetGbTime) {
-            // emulate until a target amount of time has passed for the emulated gameboy
-            nanoseconds elapsedGbTime = 0ns;
+        // unbound emulation speed, emulate as much as possible for 1/60 seconds
+        // since we run the app at 60fps
+        // actually run for 16ms, leave some time for drawing the ui and other stuff
+        auto start = hr_clock::now();
 
-            while (elapsedGbTime < targetGbTime) {
-                auto [stillGoing, stepRes] = mGameboy.emulate();
-
-                if (!stillGoing)
-                    break;
-
-                elapsedGbTime += GameBoyClassic::machinePeriod * stepRes.cpuRes.cycles;
-            }
-        }
-        else {
-            // unbound emulation speed, emulate as much as possible for 1/60 seconds
-            // since we run the app at 60fps
-            // actually run for 16ms, leave some time for drawing the ui and other stuff
-            auto start = hr_clock::now();
-
-            while (hr_clock::now() - start < 16ms) {
-                mGameboy.emulate();
-            }
+        while (hr_clock::now() - start < 16ms) {
+            mGameboy.emulate();
         }
     }
 

@@ -22,6 +22,8 @@ public:
 
 private:
 
+    bool emulateFullSpeed(std::chrono::nanoseconds currTime);
+    bool emulateOtherSpeeds(std::chrono::nanoseconds currTime);
 
     std::optional<std::chrono::nanoseconds> emulateFor() const;
 
@@ -43,6 +45,8 @@ private:
     GLuint mGLDisplayTexture;
 
     int mEmulationSpeedComboIdx;
+
+    std::chrono::nanoseconds mLastEmulateCall;
 
 };
 

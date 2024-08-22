@@ -19,7 +19,7 @@
 // ------------------------------------------------------------------------------------------------
 
 struct LCDCReg : public RegU8 {
-    LCDCReg::LCDCReg();
+    LCDCReg();
 
     // 0xFF40
     // LCDC - LCD Control register
@@ -58,7 +58,7 @@ enum PPUMode : uint8_t {
 };
 
 struct STATReg : public RegU8 {
-    STATReg::STATReg();
+    STATReg();
 
     // 0xFF41
     // STAT - LCD Status register
@@ -85,7 +85,7 @@ struct STATReg : public RegU8 {
 
 
 struct PaletteReg : public RegU8 {
-    PaletteReg::PaletteReg();
+    PaletteReg();
 
     // this register assigns gray shades to the 3 possible colors for a pixel
     // bit  function
@@ -133,7 +133,7 @@ struct PaletteReg : public RegU8 {
 
 
 struct PPURegs {
-    PPURegs::PPURegs();
+    PPURegs();
 
     // 0xFF40
     LCDCReg LCDC;

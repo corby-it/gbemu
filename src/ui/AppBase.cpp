@@ -25,6 +25,12 @@
 #include "../libs/emscripten/emscripten_mainloop_stub.h"
 #endif
 
+
+using namespace std::chrono;
+using namespace std::chrono_literals;
+
+
+
 static void glfw_error_callback(int error, const char* description)
 {
     fprintf(stderr, "GLFW Error %d: %s\n", error, description);
@@ -203,5 +209,12 @@ void AppBase::run()
 void AppBase::closeWindow()
 {
     glfwSetWindowShouldClose(mWindow, GLFW_TRUE);
+}
+
+std::chrono::nanoseconds AppBase::getCurrTime() const
+{
+    auto glfwTime = glfwGetTime();
+
+    return nanoseconds(int64_t(glfwTime * 1000000000));
 }
 

@@ -78,7 +78,7 @@ struct Irqs {
     void writeIE(uint8_t val) { IE = val | 0xE0; }
 
     
-    void Irqs::reset() {
+    void reset() {
         ime = false;
         IF = 0;
         IE = 0;;

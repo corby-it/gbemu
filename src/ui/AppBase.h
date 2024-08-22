@@ -7,6 +7,7 @@
 #include <gl/GL.h>
 #include "imgui.h"
 #include <vector>
+#include <chrono>
 
 
 
@@ -24,6 +25,8 @@ public:
 protected:
 
     void closeWindow();
+
+    std::chrono::nanoseconds getCurrTime() const;
 
 
 private:
