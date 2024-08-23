@@ -28,8 +28,12 @@ void Timer::reset()
     mTacVal = 0xF8;
 }
 
-void Timer::step(uint32_t mCycles)
+void Timer::step(uint32_t mCycles, bool isCpuStopped)
 {
+    // when the cpu is stopped the timer doesn't tick
+    if (isCpuStopped)
+        return;
+
     // the mCycles argument represents the number of machine cycles that 
     // have elapsed since the last step call
     // 1 machine cycle is equal to 4 clock cycles and DIV counts the number of clock cycles

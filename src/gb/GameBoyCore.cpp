@@ -85,7 +85,7 @@ GbStepRes GameBoyClassic::gbStep()
 
     dma.step(cpuRes.cycles);
     bool frameReady = ppu.step(cpuRes.cycles);
-    timer.step(cpuRes.cycles);
+    timer.step(cpuRes.cycles, cpu.isStopped());
     joypad.step(cpuRes.cycles);
 
     if (status != Status::Running) {

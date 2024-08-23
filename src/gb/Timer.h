@@ -22,7 +22,7 @@ public:
 
     void reset();
 
-    void step(uint32_t mCycles);
+    void step(uint32_t mCycles, bool isCpuStopped = false);
 
     uint8_t readDIV() const { return mDiv >> 8; }
     uint8_t readTIMA() const { return mTima & 0x00FF; }

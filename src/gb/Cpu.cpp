@@ -2238,6 +2238,9 @@ uint8_t CPU::opStop()
 
     mIsStopped = true;
 
+    // the stop instruction also resets the div register in the timer
+    mBus.write8(mmap::regs::timer::DIV, 0);
+
     return 1;
 }
 
