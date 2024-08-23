@@ -2369,7 +2369,7 @@ TEST_CASE("CPU test DAA") {
         // 0x4B     0100 1011 +
         // 0xFA     1111 1010 =
         //          -----------
-        // 0x45     0100 0101 (+carry)
+        // 0x45     0100 0101 (no carry, see the table in the gameboy programming manual, page 122)
 
 
         bus.write8(pc, op::SUB_A_B);
@@ -2389,7 +2389,7 @@ TEST_CASE("CPU test DAA") {
         CHECK(cpu.regs.A == 0x45);
         CHECK_FALSE(cpu.regs.flags.Z);
         CHECK_FALSE(cpu.regs.flags.H); // H is always false
-        CHECK(cpu.regs.flags.C);
+        CHECK_FALSE(cpu.regs.flags.C);
         CHECK(cpu.elapsedCycles() == 2);
     }
 }

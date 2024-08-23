@@ -1424,7 +1424,9 @@ uint8_t CPU::opDaa()
     // in the following the example values are assumed to be the result of valid BCD operations
     // in the other cases we don't really know
 
-    // For addition (when N == true)
+    // this table is from the gameboy programming manual v1.1 (page 122)
+
+    // For addition (when N == false)
     //  C   H   hi  lo      val     C (after)
     //  0   0   0-9 0-9     00      0
     //          0-8 A-F     06      0
@@ -1443,43 +1445,36 @@ uint8_t CPU::opDaa()
     //  1   0   7-F 0-9     A0      1
     //  1   1   6-F 6-F     9A      1
 
-    // after the addition C and Z are updated accordingly, H is always 0 and N is unchanged
+    // after DAA, C is updated according to the table, Z is updated as usual, H is always 0 and N is unchanged
 
     uint8_t valToAdd = 0;
+    bool nextC = false;
 
-    if (regs.flags.N) {
-        // N is set so the last operation was a subtraction
-        // in this case the value only depends on the C and H flags
-        if (!regs.flags.C && !regs.flags.H) valToAdd = 0x00;
-        else if (!regs.flags.C && regs.flags.H) valToAdd = 0xFA;
-        else if (regs.flags.C && !regs.flags.H) valToAdd = 0xA0;
-        else valToAdd = 0x9A;
+    if (!regs.flags.N) {
+        // previous instruction was an addition
+        if (regs.flags.C || regs.A > 0x99) {
+            valToAdd = 0x60;
+            nextC = true;
+        }
+        if (regs.flags.H || lnib(regs.A) > 0x09) {
+            valToAdd += 0x06;
+        }
     }
     else {
-        // N is not set so we assume that the last operation was an addition
-        if (!regs.flags.C && !regs.flags.H) {
-            if (lnib(regs.A) < 0xA && hnib(regs.A) < 0xA) valToAdd = 0x00;
-            else if (lnib(regs.A) >= 0xA && hnib(regs.A) < 0x9) valToAdd = 0x06;
-            else if (lnib(regs.A) < 0xA && hnib(regs.A) >= 0xA) valToAdd = 0x60;
-            else if (lnib(regs.A) >= 0xA && hnib(regs.A) >= 0x9) valToAdd = 0x66;
-            else // ???
-                valToAdd = 0;
-        }
-        else if (!regs.flags.C && regs.flags.H) {
-            valToAdd = hnib(regs.A) < 0xA ? 0x06 : 0x66;
-        }
-        else if (regs.flags.C && !regs.flags.H) {
-            valToAdd = lnib(regs.A) < 0xA ? 0x60 : 0x66;
+        // previous instruction was a subtraction
+        if (regs.flags.C) {
+            valToAdd = regs.flags.H ? 0x9A : 0xA0;
+            nextC = true;
         }
         else {
-            valToAdd = 0x66;
+            valToAdd = regs.flags.H ? 0xFA : 0x00;
         }
     }
 
     uint16_t res = regs.A + valToAdd;
 
     regs.flags.Z = (uint8_t)res == 0;
-    regs.flags.C = checkCarry(regs.A, valToAdd);
+    regs.flags.C = nextC;
     regs.flags.H = false;
 
     regs.A = (uint8_t)res;
