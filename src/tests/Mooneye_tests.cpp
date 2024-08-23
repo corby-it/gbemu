@@ -101,7 +101,6 @@ TEST_CASE("Mooneye tests - " cartPath){  \
 }\
 
 
-//CREATE_MOONEYE_TEST("acceptance/oam_dma_start.gb")
 //CREATE_MOONEYE_TEST("acceptance/add_sp_e_timing.gb")
 //CREATE_MOONEYE_TEST("acceptance/boot_div-dmg0.gb")
 //CREATE_MOONEYE_TEST("acceptance/boot_div-dmgABCmgb.gb")
@@ -114,7 +113,7 @@ TEST_CASE("Mooneye tests - " cartPath){  \
 //CREATE_MOONEYE_TEST("acceptance/call_timing.gb")
 //CREATE_MOONEYE_TEST("acceptance/call_timing2.gb")
 //CREATE_MOONEYE_TEST("acceptance/di_timing-GS.gb")
-//CREATE_MOONEYE_TEST("acceptance/div_timing.gb")
+CREATE_MOONEYE_TEST("acceptance/div_timing.gb")
 //CREATE_MOONEYE_TEST("acceptance/ei_sequence.gb")
 //CREATE_MOONEYE_TEST("acceptance/ei_timing.gb")
 //CREATE_MOONEYE_TEST("acceptance/halt_ime0_ei.gb")
@@ -126,6 +125,7 @@ TEST_CASE("Mooneye tests - " cartPath){  \
 //CREATE_MOONEYE_TEST("acceptance/jp_cc_timing.gb")
 //CREATE_MOONEYE_TEST("acceptance/jp_timing.gb")
 //CREATE_MOONEYE_TEST("acceptance/ld_hl_sp_e_timing.gb")
+//CREATE_MOONEYE_TEST("acceptance/oam_dma_start.gb")
 //CREATE_MOONEYE_TEST("acceptance/oam_dma_restart.gb")
 //CREATE_MOONEYE_TEST("acceptance/oam_dma_timing.gb")
 //CREATE_MOONEYE_TEST("acceptance/pop_timing.gb")

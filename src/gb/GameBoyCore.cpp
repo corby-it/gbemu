@@ -75,9 +75,6 @@ void GameBoyClassic::gbReset()
     hiRam.reset();
 
     dbg.updateInstructionToStr(*this);
-
-    mCycleTimeCount = 1;
-    mCycleTimeAvg = 0ns;
 }
 
 GbStepRes GameBoyClassic::gbStep()
@@ -126,16 +123,7 @@ EmulateRes GameBoyClassic::emulate()
     case GameBoyClassic::Status::Running:
     {
         // emulate the gameboy, full speed
-        auto before = hr_clock::now();
         res.stepRes = gbStep();
-        auto after = hr_clock::now();
-
-        auto elapsed = after - before;
-
-        mCycleTimeAvg = ((mCycleTimeCount - 1) * mCycleTimeAvg + elapsed) / mCycleTimeCount;
-
-        ++mCycleTimeCount;
-
         res.stillGoing = true;
         break;
     }

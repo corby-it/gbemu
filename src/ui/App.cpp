@@ -314,8 +314,6 @@ void App::UIDrawControlWindow()
     if (mGameboy.cpu.callNesting() == 0)
         ImGui::EndDisabled();
 
-    ImGui::Text("Average step time: %u ns", (uint32_t)mGameboy.avgCycleTime().count());
-
     
     static const ImGuiComboFlags comboFlags = ImGuiComboFlags_None;
     static const char* speedItems[] = {

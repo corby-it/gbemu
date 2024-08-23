@@ -52,8 +52,6 @@ public:
 
     CartridgeLoadingRes loadCartridge(const std::filesystem::path& path);
 
-    std::chrono::nanoseconds avgCycleTime() const { return mCycleTimeAvg; }
-
     GBBus bus;
     CPU cpu;
     WorkRam wram;
@@ -85,9 +83,6 @@ private:
     GbStepRes gbStep();
 
     bool mStepInstruction;
-
-    uint64_t mCycleTimeCount;
-    std::chrono::nanoseconds mCycleTimeAvg;
 
 };
 

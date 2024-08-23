@@ -640,6 +640,8 @@ CartridgeLoadingRes Cartridge::loadRomFile(const fs::path& romPath)
     if (!tmpHeader.canLoad())
         return CartridgeLoadingRes::HeaderVerificationFailed;
 
+    bool actuallyHasRam = tmpHeader.ramSize() != 0;
+
     // re-initialize rom, ram, mbc, etc.
     rom.resize(tmpHeader.romSize());
     
@@ -657,7 +659,7 @@ CartridgeLoadingRes Cartridge::loadRomFile(const fs::path& romPath)
 
     case CartridgeType::MBC1Ram:
     case CartridgeType::MBC1RamBattery:
-        mbc = std::make_unique<Mbc1>(rom, ram, true);
+        mbc = std::make_unique<Mbc1>(rom, ram, actuallyHasRam);
         break;
 
     case CartridgeType::MBC3:
@@ -667,7 +669,7 @@ CartridgeLoadingRes Cartridge::loadRomFile(const fs::path& romPath)
     case CartridgeType::MBC3Ram:
     case CartridgeType::MBC3RamBattery:
     case CartridgeType::MBC3TimerRamBattery:
-        mbc = std::make_unique<Mbc3>(rom, ram, true);
+        mbc = std::make_unique<Mbc3>(rom, ram, actuallyHasRam);
         break;
     
     default:
