@@ -932,19 +932,20 @@ uint8_t CPU::opLdHlSpOffset()
     // LD HL,SP+e8
     // loads in HL the stack pointer value plus an immediate 1-byte signed offset
     // Z and N are always zero
-    // H is 1 if there is a carry from bit 11
-    // C is 1 if there is a carry from bit 15
+    // H is 1 if there is a carry from bit 3
+    // C is 1 if there is a carry from bit 7
     // 3 cycles
 
-    // TODO: other emulators check for H and C in the in bits 3 and 7 respsectively
-    // but the GameBoy programmer manual states that bit 11 and 15 are used...
+    // NOTE: the gameboy programming manual states that the H and C flags are checked 
+    // in bits 11 and 15 respectively BUT, many other emulators check those flags 
+    // in bits 3 and 7 respectively, as if this wasn't a 16 bit operation but an 8 bit one
 
     int16_t val = (int8_t)mBus.read8(regs.PC++);
 
     regs.setHL(regs.SP + val);
 
-    regs.flags.C = checkCarry16(regs.SP, (int32_t)val);
-    regs.flags.H = checkHalfCarry16(regs.SP, (int32_t)val);
+    regs.flags.C = checkCarry(regs.SP, (uint16_t)val);
+    regs.flags.H = checkHalfCarry((uint8_t)regs.SP, (uint8_t)val);
     regs.flags.Z = false;
     regs.flags.N = false;
 

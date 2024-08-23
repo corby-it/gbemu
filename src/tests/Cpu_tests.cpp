@@ -929,11 +929,13 @@ TEST_CASE("CPU test LD HL,SP+e8") {
 
     // load in HL the value of SP plus an immediate 1-byte offset
     // Z and N are always zero
-    // H is 1 if there is a carry from bit 11
-    // C is 1 if there is a carry from bit 15
+    // H is 1 if there is a carry from bit 3
+    // C is 1 if there is a carry from bit 7
+    // 3 cycles
 
-    // TODO: other emulators check for H and C in the in bits 3 and 7 respsectively
-    // but the GameBoy programmer manual states that bit 11 and 15 are used...
+    // NOTE: the gameboy programming manual states that the H and C flags are checked 
+    // in bits 11 and 15 respectively BUT, many other emulators check those flags 
+    // in bits 3 and 7 respectively, as if this wasn't a 16 bit operation but an 8 bit one
 
     SUBCASE("Test LD HL,SP+e8 no flags") {
         bus.write8(pc + 1, 10);
@@ -942,7 +944,7 @@ TEST_CASE("CPU test LD HL,SP+e8") {
 
         CHECK(cpu.regs.HL() == 20);
         CHECK_FALSE(cpu.regs.flags.Z);
-        CHECK_FALSE(cpu.regs.flags.H);
+        CHECK(cpu.regs.flags.H);
         CHECK_FALSE(cpu.regs.flags.C);
         CHECK_FALSE(cpu.regs.flags.N);
         CHECK(cpu.elapsedCycles() == 3);
@@ -4367,11 +4369,11 @@ TEST_CASE("CPU test irq handling") {
     bus.write8(pc + 2, op::NOP);
 
     // enable all interrupts
-    cpu.irqs.IE = Irqs::mask(Irqs::Type::VBlank)
+    cpu.irqs.writeIE(Irqs::mask(Irqs::Type::VBlank)
         | Irqs::mask(Irqs::Type::Lcd)
         | Irqs::mask(Irqs::Type::Timer)
         | Irqs::mask(Irqs::Type::Serial)
-        | Irqs::mask(Irqs::Type::Joypad);
+        | Irqs::mask(Irqs::Type::Joypad));
      
 
     // enable interrutps and execute the first NOP (IME becomes true only
@@ -4382,54 +4384,54 @@ TEST_CASE("CPU test irq handling") {
     auto oldPC = cpu.regs.PC;
 
     SUBCASE("Test VBlank irq handling") {
-        cpu.irqs.IF = Irqs::mask(Irqs::Type::VBlank);
+        cpu.irqs.writeIF(Irqs::mask(Irqs::Type::VBlank));
 
         cpu.step();
 
         CHECK(cpu.regs.PC == Irqs::addr(Irqs::Type::VBlank));
         CHECK(bus.read16(cpu.regs.SP) == oldPC);
         CHECK(cpu.irqNesting() == 1);
-        CHECK((cpu.irqs.IF & Irqs::mask(Irqs::Type::VBlank)) == 0);
+        CHECK((cpu.irqs.readIF() & Irqs::mask(Irqs::Type::VBlank)) == 0);
     }
     SUBCASE("Test LCD irq handling") {
-        cpu.irqs.IF = Irqs::mask(Irqs::Type::Lcd);
+        cpu.irqs.writeIF(Irqs::mask(Irqs::Type::Lcd));
 
         cpu.step();
 
         CHECK(cpu.regs.PC == Irqs::addr(Irqs::Type::Lcd));
         CHECK(bus.read16(cpu.regs.SP) == oldPC);
         CHECK(cpu.irqNesting() == 1);
-        CHECK((cpu.irqs.IF & Irqs::mask(Irqs::Type::Lcd)) == 0);
+        CHECK((cpu.irqs.readIF() & Irqs::mask(Irqs::Type::Lcd)) == 0);
     }
     SUBCASE("Test timer irq handling") {
-        cpu.irqs.IF = Irqs::mask(Irqs::Type::Timer);
+        cpu.irqs.writeIF(Irqs::mask(Irqs::Type::Timer));
 
         cpu.step();
 
         CHECK(cpu.regs.PC == Irqs::addr(Irqs::Type::Timer));
         CHECK(bus.read16(cpu.regs.SP) == oldPC);
         CHECK(cpu.irqNesting() == 1);
-        CHECK((cpu.irqs.IF & Irqs::mask(Irqs::Type::Timer)) == 0);
+        CHECK((cpu.irqs.readIF() & Irqs::mask(Irqs::Type::Timer)) == 0);
     }
     SUBCASE("Test serial irq handling") {
-        cpu.irqs.IF = Irqs::mask(Irqs::Type::Serial);
+        cpu.irqs.writeIF(Irqs::mask(Irqs::Type::Serial));
 
         cpu.step();
 
         CHECK(cpu.regs.PC == Irqs::addr(Irqs::Type::Serial));
         CHECK(bus.read16(cpu.regs.SP) == oldPC);
         CHECK(cpu.irqNesting() == 1);
-        CHECK((cpu.irqs.IF & Irqs::mask(Irqs::Type::Serial)) == 0);
+        CHECK((cpu.irqs.readIF() & Irqs::mask(Irqs::Type::Serial)) == 0);
     }
     SUBCASE("Test joypad irq handling") {
-        cpu.irqs.IF = Irqs::mask(Irqs::Type::Joypad);
+        cpu.irqs.writeIF(Irqs::mask(Irqs::Type::Joypad));
 
         cpu.step();
 
         CHECK(cpu.regs.PC == Irqs::addr(Irqs::Type::Joypad));
         CHECK(bus.read16(cpu.regs.SP) == oldPC);
         CHECK(cpu.irqNesting() == 1);
-        CHECK((cpu.irqs.IF & Irqs::mask(Irqs::Type::Joypad)) == 0);
+        CHECK((cpu.irqs.readIF() & Irqs::mask(Irqs::Type::Joypad)) == 0);
     }
 }
 
@@ -4445,11 +4447,11 @@ TEST_CASE("CPU test irq handling priorities") {
     bus.write8(pc + 2, op::NOP);
 
     // enable all interrupts
-    cpu.irqs.IE = Irqs::mask(Irqs::Type::VBlank)
+    cpu.irqs.writeIE(Irqs::mask(Irqs::Type::VBlank)
         | Irqs::mask(Irqs::Type::Lcd)
         | Irqs::mask(Irqs::Type::Timer)
         | Irqs::mask(Irqs::Type::Serial)
-        | Irqs::mask(Irqs::Type::Joypad);
+        | Irqs::mask(Irqs::Type::Joypad));
 
     // enable interrutps and execute the first NOP (IME becomes true only
     // after the next instruction has been executed)
@@ -4459,7 +4461,7 @@ TEST_CASE("CPU test irq handling priorities") {
     auto oldPC = cpu.regs.PC;
 
     // raise both lcd and timer interrupts
-    cpu.irqs.IF = Irqs::mask(Irqs::Type::Lcd) | Irqs::mask(Irqs::Type::Timer);
+    cpu.irqs.writeIF(Irqs::mask(Irqs::Type::Lcd) | Irqs::mask(Irqs::Type::Timer));
 
     cpu.step();
 
@@ -4467,7 +4469,7 @@ TEST_CASE("CPU test irq handling priorities") {
     CHECK(cpu.regs.PC == Irqs::addr(Irqs::Type::Lcd));
     CHECK(bus.read16(cpu.regs.SP) == oldPC);
     CHECK(cpu.irqNesting() == 1);
-    CHECK((cpu.irqs.IF & Irqs::mask(Irqs::Type::Lcd)) == 0);
+    CHECK((cpu.irqs.readIF() &Irqs::mask(Irqs::Type::Lcd)) == 0);
 }
 
 
@@ -4485,7 +4487,7 @@ TEST_CASE("CPU test irq returns") {
     bus.write8(irqAddr + 1, op::RETI);
 
     // we use the timer interrupt for this test
-    cpu.irqs.IE = Irqs::mask(Irqs::Type::Timer);
+    cpu.irqs.writeIE(Irqs::mask(Irqs::Type::Timer));
 
 
     // enable interrutps and execute the first NOP (IME becomes true only
@@ -4496,13 +4498,13 @@ TEST_CASE("CPU test irq returns") {
     auto oldPC = cpu.regs.PC;
 
     // raise timer irq
-    cpu.irqs.IF = Irqs::mask(Irqs::Type::Timer);
+    cpu.irqs.writeIF(Irqs::mask(Irqs::Type::Timer));
     cpu.step();
 
     CHECK(cpu.regs.PC == Irqs::addr(Irqs::Type::Timer));
     CHECK(bus.read16(cpu.regs.SP) == oldPC);
     CHECK(cpu.irqNesting() == 1);
-    CHECK((cpu.irqs.IF & Irqs::mask(Irqs::Type::Timer)) == 0);
+    CHECK((cpu.irqs.readIF() &Irqs::mask(Irqs::Type::Timer)) == 0);
 
     SUBCASE("Test RETI results") {
         bus.write8(irqAddr + 1, op::RETI);
@@ -4549,7 +4551,7 @@ TEST_CASE("CPU test irq nesting") {
     bus.write8(irqTimerAddr + 2, op::RET);
 
     // enable relevant interrupts
-    cpu.irqs.IE = Irqs::mask(Irqs::Type::VBlank) | Irqs::mask(Irqs::Type::Timer);
+    cpu.irqs.writeIE(Irqs::mask(Irqs::Type::VBlank) | Irqs::mask(Irqs::Type::Timer));
 
 
     // enable interrutps and execute the first NOP (IME becomes true only
@@ -4560,13 +4562,13 @@ TEST_CASE("CPU test irq nesting") {
     auto pcBeforeVblank = cpu.regs.PC;
 
     // raise vblank irq
-    cpu.irqs.IF = Irqs::mask(Irqs::Type::VBlank);
+    cpu.irqs.writeIF(Irqs::mask(Irqs::Type::VBlank));
     cpu.step();
 
     CHECK(cpu.regs.PC == Irqs::addr(Irqs::Type::VBlank));
     CHECK(bus.read16(cpu.regs.SP) == pcBeforeVblank);
     CHECK(cpu.irqNesting() == 1);
-    CHECK((cpu.irqs.IF & Irqs::mask(Irqs::Type::VBlank)) == 0);
+    CHECK((cpu.irqs.readIF() &Irqs::mask(Irqs::Type::VBlank)) == 0);
     CHECK_FALSE(cpu.irqs.ime);
 
     // execute vblank interrupt routine ---------------------------------------
@@ -4578,13 +4580,13 @@ TEST_CASE("CPU test irq nesting") {
     // raise timer interrupt
     auto pcBeforeTimer = cpu.regs.PC;
 
-    cpu.irqs.IF = Irqs::mask(Irqs::Type::Timer);
+    cpu.irqs.writeIF(Irqs::mask(Irqs::Type::Timer));
     cpu.step();
 
     CHECK(cpu.regs.PC == Irqs::addr(Irqs::Type::Timer));
     CHECK(bus.read16(cpu.regs.SP) == pcBeforeTimer);
     CHECK(cpu.irqNesting() == 2);
-    CHECK((cpu.irqs.IF & Irqs::mask(Irqs::Type::Timer)) == 0);
+    CHECK((cpu.irqs.readIF() &Irqs::mask(Irqs::Type::Timer)) == 0);
     CHECK_FALSE(cpu.irqs.ime);
 
     // execute timer interrupt routine ----------------------------------------
@@ -4623,7 +4625,7 @@ TEST_CASE("CPU test HALT mode with interrupts enabled") {
     bus.write8(irqAddr, op::RETI);
 
     // enable timer interrupts
-    cpu.irqs.IE = Irqs::mask(Irqs::Type::Timer);
+    cpu.irqs.writeIE(Irqs::mask(Irqs::Type::Timer));
 
     // enable interrupts and execute the first NOP (IME becomes true only
     // after the next instruction has been executed)
@@ -4646,7 +4648,7 @@ TEST_CASE("CPU test HALT mode with interrupts enabled") {
     CHECK(cpu.regs.PC == oldPC);
 
     // raise timer interrupt 
-    cpu.irqs.IF = Irqs::mask(Irqs::Type::Timer);
+    cpu.irqs.writeIF(Irqs::mask(Irqs::Type::Timer));
     cpu.step();
     
     CHECK_FALSE(cpu.isHalted());
@@ -4672,7 +4674,7 @@ TEST_CASE("CPU test HALT mode with interrupts disabled") {
 
     // don't enable interrupts (EI + NOP)
     // enable timer interrupts
-    cpu.irqs.IE = Irqs::mask(Irqs::Type::Timer);
+    cpu.irqs.writeIE(Irqs::mask(Irqs::Type::Timer));
 
     // enter HALT state
     cpu.step();
@@ -4690,7 +4692,7 @@ TEST_CASE("CPU test HALT mode with interrupts disabled") {
 
     // raise timer interrupt that won't be handled because
     // IME is false 
-    cpu.irqs.IF = Irqs::mask(Irqs::Type::Timer);
+    cpu.irqs.writeIF(Irqs::mask(Irqs::Type::Timer));
     cpu.step();
 
     CHECK_FALSE(cpu.isHalted());
@@ -4718,7 +4720,7 @@ TEST_CASE("CPU test HALT mode, trigger HALT bug on 1-byte instruction") {
 
     // don't enable interrupts (EI + NOP)
     // enable timer interrupts
-    cpu.irqs.IE = Irqs::mask(Irqs::Type::Timer);
+    cpu.irqs.writeIE(Irqs::mask(Irqs::Type::Timer));
 
     // enter HALT state
     cpu.step();
@@ -4732,7 +4734,7 @@ TEST_CASE("CPU test HALT mode, trigger HALT bug on 1-byte instruction") {
     // - fail to increment the PC as expected
     auto oldPC = cpu.regs.PC;
 
-    cpu.irqs.IF = Irqs::mask(Irqs::Type::Timer);
+    cpu.irqs.writeIF(Irqs::mask(Irqs::Type::Timer));
     cpu.step();
 
     CHECK_FALSE(cpu.isHalted());
@@ -4768,7 +4770,7 @@ TEST_CASE("CPU test HALT mode, trigger HALT bug on 2-byte instruction") {
 
     // don't enable interrupts (EI + NOP)
     // enable timer interrupts
-    cpu.irqs.IE = Irqs::mask(Irqs::Type::Timer);
+    cpu.irqs.writeIE(Irqs::mask(Irqs::Type::Timer));
 
     // enter HALT state
     cpu.step();
@@ -4787,7 +4789,7 @@ TEST_CASE("CPU test HALT mode, trigger HALT bug on 2-byte instruction") {
     // 04       INC B
     auto oldPC = cpu.regs.PC;
 
-    cpu.irqs.IF = Irqs::mask(Irqs::Type::Timer);
+    cpu.irqs.writeIF(Irqs::mask(Irqs::Type::Timer));
     cpu.step();
 
     CHECK_FALSE(cpu.isHalted());
@@ -4815,7 +4817,7 @@ TEST_CASE("CPU test HALT mode, double HALT bug") {
     
     // don't enable interrupts (EI + NOP)
     // enable timer interrupts
-    cpu.irqs.IE = Irqs::mask(Irqs::Type::Timer);
+    cpu.irqs.writeIE(Irqs::mask(Irqs::Type::Timer));
 
     // enter HALT state
     cpu.step();
@@ -4827,7 +4829,7 @@ TEST_CASE("CPU test HALT mode, double HALT bug") {
     // executed forever, effectively locking the cpu
     auto oldPC = cpu.regs.PC;
 
-    cpu.irqs.IF = Irqs::mask(Irqs::Type::Timer);
+    cpu.irqs.writeIF(Irqs::mask(Irqs::Type::Timer));
     cpu.step();
 
     // the cpu must still be in the halted state and the PC shouldn't increment
