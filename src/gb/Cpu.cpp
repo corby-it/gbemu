@@ -1115,13 +1115,14 @@ uint8_t CPU::opSbcCommon(uint8_t rhs, uint8_t cycles)
     // the C flag is active, the result is stored in A
     // e.g.: SBC A,0x12  -->  A = A - 0x12 - carry
 
-    int16_t res = regs.A - (rhs + regs.flags.C);
+    bool prevC = regs.flags.C;
+    int16_t res = regs.A - (rhs + prevC);
 
     // set N because a subtraction just happened
     regs.flags.Z = (uint8_t)res == 0;
-    regs.flags.H = checkHalfBorrow(regs.A, rhs, regs.flags.C);
+    regs.flags.H = checkHalfBorrow(regs.A, rhs, prevC);
     regs.flags.N = true;
-    regs.flags.C = checkBorrow(regs.A, rhs);
+    regs.flags.C = checkBorrow(regs.A, rhs, prevC);
 
     regs.A = (uint8_t)res;
 

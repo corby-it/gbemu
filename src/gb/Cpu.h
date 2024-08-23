@@ -320,8 +320,8 @@ private:
         return ((lhs & 0x0f) + (rhs & 0x0f) + carry) > 0x0f;
     }
 
-    bool checkBorrow(uint8_t lhs, uint8_t rhs) {
-        return lhs < rhs;
+    bool checkBorrow(uint16_t lhs, uint16_t rhs, bool carry = false) {
+        return lhs < rhs + carry;
     }
 
     bool checkHalfBorrow(uint8_t lhs, uint8_t rhs, bool carry = false) {
