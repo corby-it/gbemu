@@ -112,6 +112,11 @@ struct Irqs {
         return {};
     }
 
+    template<class Archive>
+        void serialize(Archive& ar) {
+        ar(ime, IE, IF);
+    }
+
 
 private:
     uint8_t IF;

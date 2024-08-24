@@ -58,6 +58,7 @@ workspace(project_name)
         src_base .. "/imgui/backends",
         src_base .. "/third-party",
         src_base .. "/third-party/tracy/public",
+        src_base .. "/third-party/cereal-1.3.2/include",
     }
 
     defines {

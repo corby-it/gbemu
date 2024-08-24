@@ -95,6 +95,14 @@ public:
 
     static constexpr size_t headerSize = 0x150;
 
+    std::array<uint8_t, headerSize> asArray() const;
+
+    bool operator==(const std::array<uint8_t, headerSize>& buffer) const;
+    
+    bool operator!=(const std::array<uint8_t, headerSize>& buffer) const {
+        return !operator==(buffer);
+    }
+
 
     EntryPointData entryPoint() const;
     LogoData logoData() const;

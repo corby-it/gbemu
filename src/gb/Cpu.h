@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <optional>
 #include <stack>
+#include <cereal/types/stack.hpp>
 
 
 // the GB uses a CPU similar to the Zilog Z80
@@ -50,6 +51,11 @@ struct Flags : public RegU8 {
     static constexpr const uint8_t maskN = 0b01000000;
     static constexpr const uint8_t maskH = 0b00100000;
     static constexpr const uint8_t maskC = 0b00010000;
+
+    template<class Archive>
+    void serialize(Archive& ar) {
+        ar(Z, N, H, C);
+    }
 };
 
 
@@ -101,6 +107,11 @@ struct Registers {
     static constexpr const uint16_t PCinitialValue = 0x0100;
     static constexpr const uint16_t SPinitialValue = 0xFFFE;
 
+    template<class Archive>
+    void serialize(Archive& ar) {
+        ar(A, B, C, D, E, H, L, PC, SP, flags);
+    }
+
 };
 
 
@@ -133,6 +144,15 @@ public:
 
 
     static constexpr uint32_t longestInstructionCycles = 6;
+
+
+    template<class Archive>
+    void serialize(Archive& ar) {
+        ar(regs, irqs);
+        ar(mCycles, mImeScheduled, mIsHalted, mCheckForHaltBug, mIsStopped);
+        ar(mIrqNesting, mCallNesting);
+    }
+
 
 private:
 

@@ -127,7 +127,7 @@ private:
     uint8_t realRead(uint16_t addr) const;
     void realWrite(uint16_t addr, uint8_t val);
 
-    uint8_t dummyRead(uint16_t /*addr*/) const { return 0; }
+    uint8_t dummyRead(uint16_t /*addr*/) const { return 0xFF; }
     void dummyWrite(uint16_t /*addr*/, uint8_t /*val*/) { }
 
 

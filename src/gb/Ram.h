@@ -6,7 +6,8 @@
 #include <cstring>
 #include <cassert>
 #include <memory>
-
+#include <cereal/cereal.hpp>
+#include <cereal/types/memory.hpp>
 
 
 
@@ -53,6 +54,12 @@ public:
     void reset()
     {
         memset(mData.get(), 0, Size);
+    }
+
+    template<class Archive>
+    void serialize(Archive& ar)
+    {
+        ar(mStartAddr, cereal::binary_data(mData.get(), Size));
     }
 
 protected:

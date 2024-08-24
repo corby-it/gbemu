@@ -4,6 +4,7 @@
 
 #include "Bus.h"
 #include <cstdint>
+#include <cereal/cereal.hpp>
 
 
 class DMA {
@@ -18,6 +19,12 @@ public:
 
     bool isTransferring() const { return mIsTransferring; }
     bool isScheduled() const { return mIsScheduled; }
+
+
+    template<class Archive>
+    void serialize(Archive& ar) {
+        ar(mReg, mWrittenAddr, mCurrAddr, mCounter, mIsScheduled, mStartTransfer, mIsTransferring);
+    }
 
 
 private:

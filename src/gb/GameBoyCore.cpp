@@ -5,6 +5,9 @@
 #include "Opcodes.h"
 #include "gbdebug/Debug.h"
 #include <tracy/Tracy.hpp>
+#include <cereal/archives/binary.hpp>
+#include <cereal/types/array.hpp>
+#include <fstream>
 
 
 
@@ -12,8 +15,22 @@ using hr_clock = std::chrono::high_resolution_clock;
 using namespace std::chrono;
 using namespace std::chrono_literals;
 
+namespace fs = std::filesystem;
 
 
+
+const char* saveStateErrorToStr(SaveStateError err)
+{
+    switch (err) {
+    case SaveStateError::NoError: return "No error";
+    case SaveStateError::OpenFileError: return "Can't open file";
+    case SaveStateError::CartridgeMismatch: return "The currently loaded cartridge header doesn't match the save state cartridge header";
+    case SaveStateError::LoadingError: return "Loading error";
+    default:
+        assert(false);
+        return "Unknown error";
+    }
+}
 
 
 
@@ -191,15 +208,79 @@ void GameBoyClassic::stepReturn()
     status = Status::Running;
 }
 
+
 CartridgeLoadingRes GameBoyClassic::loadCartridge(const std::filesystem::path& path)
 {
     auto res = cartridge.loadRomFile(path);
 
-    if (res == CartridgeLoadingRes::Ok)
+    if (res == CartridgeLoadingRes::Ok) {
+        romFilePath = path;
         gbReset();
+    }
 
     // also try to load debug symbols (if any)
     dbg.symTable.parseSymbolFile(path);
 
     return res;
 }
+
+SaveStateError GameBoyClassic::saveState(const fs::path& path)
+{
+    std::ofstream ofs(path, std::ios::binary);
+    if(!ofs)
+        return SaveStateError::OpenFileError;
+
+    {
+        cereal::BinaryOutputArchive oar(ofs);
+
+        // write the content of the cartridge header file first, this will be used to check
+        // if a save state is compatible with the currently loaded cartridge
+        oar(cartridge.header.asArray());
+
+        //oar(cpu);
+        //oar(wram);
+        ////oar(ppu);
+        //oar(dma);
+        oar(cartridge);
+        //oar(timer);
+        //oar(joypad);
+        //oar(audio);
+        //oar(serial);
+        //oar(hiRam);
+    }
+
+    return SaveStateError::NoError;
+}
+
+SaveStateError GameBoyClassic::loadState(const fs::path& path)
+{
+    std::ifstream ifs(path, std::ios::binary);
+    if (!ifs)
+        return SaveStateError::OpenFileError;
+
+    {
+        cereal::BinaryInputArchive iar(ifs);
+
+        // first verify if the header of the currently loaded cartridge is compatible with
+        // the one contained in the save state
+        std::array<uint8_t, CartridgeHeader::headerSize> buf;
+        iar(buf);
+
+        if (cartridge.header != buf)
+            return SaveStateError::CartridgeMismatch;
+
+        //iar(cpu);
+        //iar(wram);
+        ////iar(ppu);
+        //iar(dma);
+        iar(cartridge);
+        //iar(timer);
+        //iar(joypad);
+        //iar(audio);
+        //iar(serial);
+        //iar(hiRam);
+    }
+
+    return SaveStateError::NoError;
+}
+

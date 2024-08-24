@@ -4,6 +4,7 @@
 
 #include "Bus.h"
 #include <array>
+#include <cereal/cereal.hpp>
 
 // reference for how the joypad works in the gameboy: https://gbdev.io/pandocs/Joypad_Input.html
 
@@ -55,6 +56,12 @@ public:
     void release(Btn bt);
 
     void action(const PressedButton& pressedBtns);
+
+
+    template<class Archive>
+    void serialize(Archive& ar) {
+        ar(mSelection, mDpadByte, mBtnsByte, mCounterEnabled, mCyclesCounter);
+    }
 
 private:
     enum class Selection : uint8_t {

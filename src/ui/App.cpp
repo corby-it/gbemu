@@ -269,11 +269,13 @@ void App::UIDrawControlWindow()
 
     // --------------------------------------------------------------------------------------------
     ImGui::SeparatorText("Controls");
+
+    auto btnSize = ImVec2(60, 0);
     
     ImGui::PushStyleColor(ImGuiCol_Button, (ImVec4)ImColor::HSV(0.f, 0.71f, 0.6f));
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, (ImVec4)ImColor::HSV(0.f, 0.71f, 0.7f));
     ImGui::PushStyleColor(ImGuiCol_ButtonActive, (ImVec4)ImColor::HSV(0.f, 0.81f, 0.8f));
-    if (ImGui::Button("Stop")) { mGameboy.stop(); }
+    if (ImGui::Button("Stop", btnSize)) { mGameboy.stop(); }
     ImGui::PopStyleColor(3);
 
     ImGui::SameLine();
@@ -281,7 +283,7 @@ void App::UIDrawControlWindow()
     ImGui::PushStyleColor(ImGuiCol_Button, (ImVec4)ImColor::HSV(0.33f, 0.71f, 0.6f));
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, (ImVec4)ImColor::HSV(0.33f, 0.71f, 0.7f));
     ImGui::PushStyleColor(ImGuiCol_ButtonActive, (ImVec4)ImColor::HSV(0.33f, 0.81f, 0.8f));
-    if (ImGui::Button("Start")) { mGameboy.play(); }
+    if (ImGui::Button("Start", btnSize)) { mGameboy.play(); }
     ImGui::PopStyleColor(3);
 
     ImGui::SameLine();
@@ -289,15 +291,16 @@ void App::UIDrawControlWindow()
     ImGui::PushStyleColor(ImGuiCol_Button, (ImVec4)ImColor::HSV(0.16f, 0.71f, 0.6f));
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, (ImVec4)ImColor::HSV(0.16f, 0.71f, 0.7f));
     ImGui::PushStyleColor(ImGuiCol_ButtonActive, (ImVec4)ImColor::HSV(0.16f, 0.81f, 0.8f));
-    if (ImGui::Button("Pause")) { mGameboy.pause(); }
+    if (ImGui::Button("Pause", btnSize)) { mGameboy.pause(); }
     ImGui::PopStyleColor(3);
 
     // next line
+    btnSize = ImVec2(80, 0);
 
     ImGui::PushStyleColor(ImGuiCol_Button, (ImVec4)ImColor::HSV(0.60f, 0.71f, 0.6f));
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, (ImVec4)ImColor::HSV(0.60f, 0.71f, 0.7f));
     ImGui::PushStyleColor(ImGuiCol_ButtonActive, (ImVec4)ImColor::HSV(0.60f, 0.81f, 0.8f));
-    if (ImGui::Button("Step in")) { mGameboy.step(); }
+    if (ImGui::Button("Step in", btnSize)) { mGameboy.step(); }
     ImGui::PopStyleColor(3);
 
     ImGui::SameLine();
@@ -308,7 +311,7 @@ void App::UIDrawControlWindow()
     ImGui::PushStyleColor(ImGuiCol_Button, (ImVec4)ImColor::HSV(0.60f, 0.71f, 0.6f));
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, (ImVec4)ImColor::HSV(0.60f, 0.71f, 0.7f));
     ImGui::PushStyleColor(ImGuiCol_ButtonActive, (ImVec4)ImColor::HSV(0.60f, 0.81f, 0.8f));
-    if (ImGui::Button("Step out")) { mGameboy.stepReturn(); }
+    if (ImGui::Button("Step out", btnSize)) { mGameboy.stepReturn(); }
     ImGui::PopStyleColor(3);
 
     if (mGameboy.cpu.callNesting() == 0)
@@ -342,7 +345,69 @@ void App::UIDrawControlWindow()
     }
 
     // --------------------------------------------------------------------------------------------
+    ImGui::SeparatorText("Save states");
+
+    if (ImGui::Button("Save state", btnSize)) {
+
+        IGFD::FileDialogConfig config;
+        config.path = ".";
+        config.flags = ImGuiFileDialogFlags_Modal | ImGuiFileDialogFlags_ConfirmOverwrite;
+        ImGuiFileDialog::Instance()->OpenDialog("SaveStateFileDlgKey", "Save current emulation state", ".gbstate", config);
+    }
+
+    if (ImGuiFileDialog::Instance()->Display("SaveStateFileDlgKey", ImGuiWindowFlags_NoCollapse, ImVec2{ 350, 250 })) {
+        if (ImGuiFileDialog::Instance()->IsOk()) { // action if OK
+            mConfig.currentSaveStateErr = mGameboy.saveState(ImGuiFileDialog::Instance()->GetFilePathName());
+
+            if (mConfig.currentSaveStateErr != SaveStateError::NoError) {
+                ImGui::OpenPopup("Save state error");
+            }
+        }
+
+        ImGuiFileDialog::Instance()->Close();
+    }
+
+
+    ImGui::SameLine();
+    
+    
+    if (ImGui::Button("Load state", btnSize)) {
+        IGFD::FileDialogConfig config;
+        config.path = ".";
+        config.flags = ImGuiFileDialogFlags_Modal;
+        ImGuiFileDialog::Instance()->OpenDialog("LoadStateFileDlgKey", "Load emulation state", ".gbstate", config);
+    }
+
+    if (ImGuiFileDialog::Instance()->Display("LoadStateFileDlgKey", ImGuiWindowFlags_NoCollapse, ImVec2{ 350, 250 })) {
+        if (ImGuiFileDialog::Instance()->IsOk()) { // action if OK
+            mConfig.currentSaveStateErr = mGameboy.loadState(ImGuiFileDialog::Instance()->GetFilePathName());
+
+            if (mConfig.currentSaveStateErr != SaveStateError::NoError) {
+                ImGui::OpenPopup("Save state error");
+            }
+        }
+
+        ImGuiFileDialog::Instance()->Close();
+    }
+
+    if (ImGui::BeginPopupModal("Save state error", NULL, ImGuiWindowFlags_AlwaysAutoResize))
+    {
+        ImGui::Text("%s", saveStateErrorToStr(mConfig.currentSaveStateErr));
+        ImGui::Spacing();
+        ImGui::Separator();
+
+        if (ImGui::Button("OK", ImVec2(120, 0))) {
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+    }
+
+
+    // --------------------------------------------------------------------------------------------
     ImGui::SeparatorText("Cartridge info");
+
+    ImGui::TextWrapped("Path: %s", mGameboy.romFilePath.string().c_str());
+    ImGui::Spacing();
 
     static const ImGuiTableFlags tableFlags = ImGuiTableFlags_Resizable | ImGuiTableFlags_Reorderable
         | ImGuiTableFlags_Hideable | ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersV;

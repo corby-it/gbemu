@@ -24,6 +24,7 @@ public:
 
     std::filesystem::path currentRomPath;
     CartridgeLoadingRes loadingRes;
+    SaveStateError currentSaveStateErr;
 
     EmulationSpeed emulationSpeed;
 

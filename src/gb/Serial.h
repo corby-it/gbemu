@@ -24,6 +24,11 @@ public:
     void writeData(uint8_t val) { mData = val; }
     void writeCtrl(uint8_t val) { mCtrl = val; }
 
+    template<class Archive>
+    void serialize(Archive& ar) {
+        ar(mData, mCtrl);
+    }
+
 private:
     uint8_t mData;
     uint8_t mCtrl;

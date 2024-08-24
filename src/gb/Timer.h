@@ -43,6 +43,12 @@ public:
 
     static constexpr uint8_t initialDivVal = 0xAC;
 
+    template<class Archive>
+    void serialize(Archive& ar) {
+        ar(mDiv, mTima, mTimaSubcounter, mTma, mTimaEnabled, mClockSelect, mTacVal);
+    }
+
+
 private:
     Bus& mBus;
 

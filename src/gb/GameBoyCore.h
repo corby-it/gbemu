@@ -28,6 +28,15 @@ struct EmulateRes {
     GbStepRes stepRes;
 };
 
+enum class SaveStateError {
+    NoError,
+    OpenFileError,
+    CartridgeMismatch,
+    LoadingError,
+};
+
+const char* saveStateErrorToStr(SaveStateError err);
+
 
 class GameBoyClassic {
 public:
@@ -50,7 +59,15 @@ public:
     void step();
     void stepReturn();
 
+
+    SaveStateError saveState(const std::filesystem::path& path);
+    SaveStateError loadState(const std::filesystem::path& path);
+
+
     CartridgeLoadingRes loadCartridge(const std::filesystem::path& path);
+
+    std::filesystem::path romFilePath;
+
 
     GBBus bus;
     CPU cpu;
