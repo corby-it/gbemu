@@ -25,17 +25,15 @@ static constexpr uint32_t ramBankAddr(uint32_t num)
 
 TEST_CASE("MbcNone test")
 {
-    std::vector<uint8_t> rom(32 * 1024, 0);
-    std::vector<uint8_t> ram;
+    MbcNone mbc(32 * 1024, 0);
 
     // write some values in specific locations
-    rom[0x0000] = 1;
-    rom[0x3FA4] = 2;
-    rom[0x4DC1] = 3;
-    rom[0x544F] = 4;
-    rom[0x7FFF] = 5;
+    mbc.rom[0x0000] = 1;
+    mbc.rom[0x3FA4] = 2;
+    mbc.rom[0x4DC1] = 3;
+    mbc.rom[0x544F] = 4;
+    mbc.rom[0x7FFF] = 5;
 
-    MbcNone mbc(rom, ram);
 
     // try reading the values back
     CHECK(mbc.read8(0x0000) == 1);
@@ -67,22 +65,20 @@ TEST_CASE("MbcNone test")
 
 TEST_CASE("Mbc1 test - 64K rom (4 banks) no ram")
 {
-    std::vector<uint8_t> rom(64 * 1024, 0);
-    std::vector<uint8_t> ram;
+    Mbc1 mbc(64 * 1024, 0);
 
     // write some values in specific locations
-    rom[romBankAddr(0) + 0x0000] = 1;   // 0x0000
-    rom[romBankAddr(0) + 0x3FA4] = 2;   // 0x3FA4
-    rom[romBankAddr(1) + 0x0DC1] = 3;   // 0x4DC1
-    rom[romBankAddr(1) + 0x144F] = 4;   // 0x544F
-    rom[romBankAddr(1) + 0x3FFF] = 5;   // 0x7FFF
-    rom[romBankAddr(2) + 0x0DC1] = 6;   // 0x4DC1
-    rom[romBankAddr(2) + 0x144F] = 7;   // 0x544F
-    rom[romBankAddr(3) + 0x0DC1] = 8;   // 0x4DC1
-    rom[romBankAddr(3) + 0x144F] = 9;   // 0x544F
-    rom[romBankAddr(3) + 0x3FFF] = 10;  // 0x7FFF
+    mbc.rom[romBankAddr(0) + 0x0000] = 1;   // 0x0000
+    mbc.rom[romBankAddr(0) + 0x3FA4] = 2;   // 0x3FA4
+    mbc.rom[romBankAddr(1) + 0x0DC1] = 3;   // 0x4DC1
+    mbc.rom[romBankAddr(1) + 0x144F] = 4;   // 0x544F
+    mbc.rom[romBankAddr(1) + 0x3FFF] = 5;   // 0x7FFF
+    mbc.rom[romBankAddr(2) + 0x0DC1] = 6;   // 0x4DC1
+    mbc.rom[romBankAddr(2) + 0x144F] = 7;   // 0x544F
+    mbc.rom[romBankAddr(3) + 0x0DC1] = 8;   // 0x4DC1
+    mbc.rom[romBankAddr(3) + 0x144F] = 9;   // 0x544F
+    mbc.rom[romBankAddr(3) + 0x3FFF] = 10;  // 0x7FFF
 
-    Mbc1 mbc(rom, ram, false);
 
     // reading from ram should return FF
     CHECK(mbc.read8(mmap::external_ram::start + 0x20) == 0xFF);
@@ -134,17 +130,15 @@ TEST_CASE("Mbc1 test - 64K rom (4 banks) no ram")
 
 TEST_CASE("Mbc1 test - 512K rom (32 banks), 8K ram (1 bank)")
 {
-    std::vector<uint8_t> rom(512 * 1024, 0);
-    std::vector<uint8_t> ram(8 * 1024, 0);
-
+    Mbc1 mbc(512 * 1024, 8 * 1024);
+    
     // fill each bank with the bank number
-    for(uint32_t i = 0; i < rom.size() / MbcInterface::romBankSize; ++i) {
+    for(uint32_t i = 0; i < mbc.rom.size() / MbcInterface::romBankSize; ++i) {
         for (uint32_t n = 0; n < MbcInterface::romBankSize; ++n) {
-            rom[romBankAddr(i) + n] = (uint8_t)i;
+            mbc.rom[romBankAddr(i) + n] = (uint8_t)i;
         }
     }
 
-    Mbc1 mbc(rom, ram, true);
 
     SUBCASE("Check RAM") {
         // reading from ram should return FF if not enabled
@@ -243,17 +237,15 @@ TEST_CASE("Mbc1 test - 512K rom (32 banks), 8K ram (1 bank)")
 
 TEST_CASE("Mbc1 test - 2M rom (128 banks), 32K ram (4 banks)")
 {
-    std::vector<uint8_t> rom(2 * 1024 * 1024, 0);
-    std::vector<uint8_t> ram(32 * 1024, 0);
-
+    Mbc1 mbc(2 * 1024 * 1024, 32 * 1024);
+    
     // fill each bank with the bank number
-    for(uint32_t i = 0; i < rom.size() / MbcInterface::romBankSize; ++i) {
+    for(uint32_t i = 0; i < mbc.rom.size() / MbcInterface::romBankSize; ++i) {
         for (uint32_t n = 0; n < MbcInterface::romBankSize; ++n) {
-            rom[romBankAddr(i) + n] = (uint8_t)i;
+            mbc.rom[romBankAddr(i) + n] = (uint8_t)i;
         }
     }
 
-    Mbc1 mbc(rom, ram, true);
 
     SUBCASE("Check RAM") {
         // reading from ram should return FF if not enabled

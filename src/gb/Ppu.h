@@ -8,7 +8,7 @@
 #include "Vram.h"
 #include "GbCommons.h"
 #include <vector>
-
+#include <cereal/cereal.hpp>
 
 
 
@@ -46,7 +46,23 @@ struct LCDCReg : public RegU8 {
 
     uint8_t asU8() const override;
     void fromU8(uint8_t b) override;
+
+
+    template<class Archive>
+    void save(Archive& archive, uint32_t const /*version*/) const {
+        archive(asU8());
+    }
+
+    template<class Archive>
+    void load(Archive& archive, uint32_t const /*version*/) {
+        uint8_t val;
+        archive(val);
+        fromU8(val);
+    }
 };
+
+CEREAL_CLASS_VERSION(LCDCReg, 1);
+
 
 
 
@@ -81,7 +97,23 @@ struct STATReg : public RegU8 {
 
     uint8_t asU8() const override;
     void fromU8(uint8_t b) override;
+    
+
+    template<class Archive>
+    void save(Archive& archive, uint32_t const /*version*/) const {
+        archive(asU8());
+    }
+
+    template<class Archive>
+    void load(Archive& archive, uint32_t const /*version*/) {
+        uint8_t val;
+        archive(val);
+        fromU8(val);
+    }
 };
+
+CEREAL_CLASS_VERSION(STATReg, 1);
+
 
 
 struct PaletteReg : public RegU8 {
@@ -129,7 +161,24 @@ struct PaletteReg : public RegU8 {
         valForId2 = 2;
         valForId3 = 3;
     }
+
+
+    template<class Archive>
+    void save(Archive& archive, uint32_t const /*version*/) const {
+        archive(asU8());
+    }
+
+    template<class Archive>
+    void load(Archive& archive, uint32_t const /*version*/) {
+        uint8_t val;
+        archive(val);
+        fromU8(val);
+    }
 };
+
+CEREAL_CLASS_VERSION(PaletteReg, 1);
+
+
 
 
 struct PPURegs {
@@ -184,8 +233,15 @@ struct PPURegs {
     uint8_t WX;
 
 
+    template<class Archive>
+    void serialize(Archive& ar, uint32_t const /*version*/) {
+        ar(LCDC, STAT, SCY, SCX, LY, LYC, BGP, OBP0, OBP1, WY, WX);
+    }
+
     void reset();
 };
+
+CEREAL_CLASS_VERSION(PPURegs, 1);
 
 
 
@@ -202,6 +258,7 @@ struct OAMRegister {
 
     void reset() {
         oams.clear();
+        oams.reserve(10);
     }
 
     void add(const OAMData& oam) {
@@ -263,6 +320,24 @@ public:
     void writeOBP1(uint8_t val) { regs.OBP1.fromU8(val); }
     void writeWY(uint8_t val) { regs.WY = val; }
     void writeWX(uint8_t val) { regs.WX = val; }
+
+
+    template<class Archive>
+    void save(Archive& ar, uint32_t const /*version*/) const {
+        ar(regs, vram, oamRam, display);
+        ar(mDotCounter, mFirstStep);
+    }
+
+    template<class Archive>
+    void load(Archive& ar, uint32_t const /*version*/) {
+        ar(regs, vram, oamRam, display);
+        ar(mDotCounter, mFirstStep);
+
+        // since the oam scan register contains pointer to the memory it can't
+        // be serialized directly, it's easier to do an oam scan now and fill it again
+        // it's not a problem if the scan doesn't happen at the start of a line
+        oamScan();
+    }
 
 
     PPURegs regs;
@@ -334,6 +409,7 @@ private:
     bool mFirstStep;
 };
 
+CEREAL_CLASS_VERSION(PPU, 1);
 
 
 

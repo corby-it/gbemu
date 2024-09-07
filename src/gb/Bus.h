@@ -4,6 +4,8 @@
 #define GBEMU_SRC_GB_BUS_H_
 
 #include "Ram.h"
+#include <cereal/cereal.hpp>
+
 
 // the GB has a 16-bit address bus that connects the CPU to everything else.
 // Everything is memory mapped on the same bus
@@ -70,6 +72,10 @@ class Serial;
 
 typedef Ram<8 * 1024>   WorkRam;
 typedef Ram<127>        HiRam;
+
+CEREAL_CLASS_VERSION(WorkRam, 1);
+CEREAL_CLASS_VERSION(HiRam, 1);
+
 
 
 class GBBus : public Bus {

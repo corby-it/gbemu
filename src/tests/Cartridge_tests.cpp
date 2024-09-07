@@ -180,10 +180,10 @@ TEST_CASE("Test Cartridge")
         REQUIRE(parsing == CartridgeLoadingRes::Ok);
 
         CHECK(c.header.romSize() == 32 * 1024);
-        CHECK(c.rom.size() == c.header.romSize());
+        CHECK(c.mbc->rom.size() == c.header.romSize());
 
         CHECK(c.header.ramSize() == 0);
-        CHECK(c.ram.size() == c.header.ramSize());
+        CHECK(c.mbc->ram.size() == c.header.ramSize());
 
         CHECK(c.mbc->type() == MbcType::None);
 

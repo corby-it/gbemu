@@ -388,7 +388,7 @@ void PPU::oamScan()
 
     int32_t currY = regs.LY;
 
-    for (uint8_t id = 0; id < OAMRam::oamCount; ++id) {
+    for (uint8_t id = 0; id < OAMRam::oamCount && mOamScanRegister.size() < OAMRegister::maxCount; ++id) {
         auto oam = oamRam.getOAMData(id);
 
         int32_t objY = oam.y() - 16;

@@ -59,7 +59,7 @@ public:
 
 
     template<class Archive>
-    void serialize(Archive& ar) {
+    void serialize(Archive& ar, uint32_t const /*version*/) {
         ar(mSelection, mDpadByte, mBtnsByte, mCounterEnabled, mCyclesCounter);
     }
 
@@ -84,6 +84,8 @@ private:
     uint32_t mCyclesCounter;
 
 };
+
+CEREAL_CLASS_VERSION(Joypad, 1);
 
 
 

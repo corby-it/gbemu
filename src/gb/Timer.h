@@ -4,6 +4,7 @@
 
 #include "Bus.h"
 #include <cstdint>
+#include <cereal/cereal.hpp>
 
 
 class Timer {
@@ -44,7 +45,7 @@ public:
     static constexpr uint8_t initialDivVal = 0xAC;
 
     template<class Archive>
-    void serialize(Archive& ar) {
+    void serialize(Archive& ar, uint32_t const /*version*/) {
         ar(mDiv, mTima, mTimaSubcounter, mTma, mTimaEnabled, mClockSelect, mTacVal);
     }
 
@@ -89,6 +90,8 @@ private:
     static constexpr uint16_t clockDividers[4] = { 1024, 16, 64, 256 };
 
 };
+
+CEREAL_CLASS_VERSION(Timer, 1);
 
 
 #endif // GBEMU_SRC_GB_TIMER_H_

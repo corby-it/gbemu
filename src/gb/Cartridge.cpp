@@ -624,15 +624,12 @@ const char* cartridgeLoadingResToStr(CartridgeLoadingRes lr)
 
 
 Cartridge::Cartridge()
-    : rom(32 * 1024, 0)
-    , ram()
-    , mbc(std::make_unique<MbcNone>(rom, ram))
+    : mbc(std::make_unique<MbcNone>(32 * 1024, 0))
 {}
 
 void Cartridge::reset()
 {
     mbc->reset();
-    std::fill(ram.begin(), ram.end(), 0);
 }
 
 CartridgeLoadingRes Cartridge::loadRomFile(const fs::path& romPath)
@@ -661,36 +658,23 @@ CartridgeLoadingRes Cartridge::loadRomFile(const fs::path& romPath)
     if (!tmpHeader.canLoad())
         return CartridgeLoadingRes::HeaderVerificationFailed;
 
-    bool actuallyHasRam = tmpHeader.ramSize() != 0;
-
-    // re-initialize rom, ram, mbc, etc.
-    rom.resize(tmpHeader.romSize());
-    
-    ram.resize(tmpHeader.ramSize());
-    std::fill(ram.begin(), ram.end(), 0);
-    
+    // create the mbc
     switch (tmpHeader.cartType()) {
     case CartridgeType::NoMBC:
-        mbc = std::make_unique<MbcNone>(rom, ram);
+        mbc = std::make_unique<MbcNone>(tmpHeader.romSize(), tmpHeader.ramSize());
         break;
 
     case CartridgeType::MBC1:
-        mbc = std::make_unique<Mbc1>(rom, ram, false);
-        break;
-
     case CartridgeType::MBC1Ram:
     case CartridgeType::MBC1RamBattery:
-        mbc = std::make_unique<Mbc1>(rom, ram, actuallyHasRam);
+        mbc = std::make_unique<Mbc1>(tmpHeader.romSize(), tmpHeader.ramSize());
         break;
 
     case CartridgeType::MBC3:
-        mbc = std::make_unique<Mbc3>(rom, ram, false);
-        break;
-
     case CartridgeType::MBC3Ram:
     case CartridgeType::MBC3RamBattery:
     case CartridgeType::MBC3TimerRamBattery:
-        mbc = std::make_unique<Mbc3>(rom, ram, actuallyHasRam);
+        mbc = std::make_unique<Mbc3>(tmpHeader.romSize(), tmpHeader.ramSize());
         break;
     
     default:
@@ -700,12 +684,12 @@ CartridgeLoadingRes Cartridge::loadRomFile(const fs::path& romPath)
 
     mbc->reset();
 
-    // read rom file content into mRom
+    // read rom file content into mbc rom
     ifs.seekg(0);
-    ifs.read((char*)rom.data(), tmpHeader.romSize());
+    ifs.read((char*)mbc->rom.data(), tmpHeader.romSize());
 
     // update the actual cartridge header
-    header = CartridgeHeader(rom.data());
+    header = CartridgeHeader(mbc->rom.data());
 
     // ready to go
     return CartridgeLoadingRes::Ok;

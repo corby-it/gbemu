@@ -22,10 +22,10 @@ static constexpr uint8_t bankMask(uint8_t maxbits, uint8_t nbanks)
 // MbcInterface
 // ------------------------------------------------------------------------------------------------
 
-MbcInterface::MbcInterface(MbcType type, const std::vector<uint8_t>& rom, std::vector<uint8_t>& ram)
-    : mType(type)
-    , mRom(rom)
-    , mRam(ram)
+MbcInterface::MbcInterface(MbcType type, size_t romSize, size_t ramSize)
+    : rom(romSize, 0)
+    , ram(ramSize, 0)
+    , mType(type)
     , mRomBanksCount(uint8_t(rom.size() / romBankSize))
     , mRamBanksCount(uint8_t(ram.size() / ramBankSize))
     , mRomCurrBank(0)
@@ -37,6 +37,8 @@ void MbcInterface::reset()
     mRomCurrBank = 0;
     mRamCurrBank = 0;
 
+    std::fill(ram.begin(), ram.end(), 0);
+
     onReset();
 }
 
@@ -47,8 +49,8 @@ void MbcInterface::reset()
 // MbcNone
 // ------------------------------------------------------------------------------------------------
 
-MbcNone::MbcNone(const std::vector<uint8_t>& rom, std::vector<uint8_t>& ram)
-    : MbcInterface(MbcType::None, rom, ram)
+MbcNone::MbcNone(size_t romSize, size_t ramSize)
+    : MbcInterface(MbcType::None, romSize, ramSize)
 {}
 
 uint8_t MbcNone::read8(uint16_t addr) const
@@ -56,7 +58,7 @@ uint8_t MbcNone::read8(uint16_t addr) const
     if (addr > mmap::rom::end)
         return 0xFF;
 
-    return mRom[addr];
+    return rom[addr];
 }
 
 void MbcNone::write8(uint16_t /*addr*/, uint8_t /*val*/)
@@ -81,9 +83,8 @@ void MbcNone::onReset()
 // see https://gbdev.io/pandocs/MBC1.html for a detailed explanation of how this works
 
 
-Mbc1::Mbc1(const std::vector<uint8_t>& rom, std::vector<uint8_t>& ram, bool hasRam)
-    : MbcInterface(MbcType::Mbc1, rom, ram)
-    , mHasRam(hasRam)
+Mbc1::Mbc1(size_t romSize, size_t ramSize)
+    : MbcInterface(MbcType::Mbc1, romSize, ramSize)
     , mRomBankLowMask(bankMask(5, mRomBanksCount))
 {
     onReset();
@@ -117,18 +118,18 @@ uint8_t Mbc1::read8(uint16_t addr) const
             romAddr = mRomCurrBank * romBankSize + addr;
         }
 
-        return mRom[romAddr];
+        return rom[romAddr];
     }
     else if (addr >= mmap::external_ram::start && addr <= mmap::external_ram::end) {
         // read from ram
-        if(!mHasRam || !mRamEnabled)
+        if(ram.size() == 0 || !mRamEnabled)
             return 0xFF;
 
         // ram banks are 8KB in size so from the received address we discard the upper 3 bits
         addr &= 0x1FFF;
         uint32_t ramAddr = mRamCurrBank * ramBankSize + addr;
         
-        return mRam[ramAddr];
+        return ram[ramAddr];
     }
     else {
         // wrong address
@@ -192,14 +193,14 @@ void Mbc1::write8(uint16_t addr, uint8_t val)
     }
     else if (addr >= mmap::external_ram::start && addr <= mmap::external_ram::end) {
         // write to ram
-        if (!mHasRam || !mRamEnabled)
+        if (ram.size() == 0 || !mRamEnabled)
             return;
         
         // ram banks are 8KB in size so from the received address we discard the upper 3 bits
         addr &= 0x1FFF;
         uint32_t ramAddr = mRamCurrBank * ramBankSize + addr;
 
-        mRam[ramAddr] = val;
+        ram[ramAddr] = val;
     }
 }
 
@@ -237,9 +238,8 @@ void Mbc1::updateBankConfiguration()
 // Mbc3
 // ------------------------------------------------------------------------------------------------
 
-Mbc3::Mbc3(const std::vector<uint8_t>& rom, std::vector<uint8_t>& ram, bool hasRam)
-    : MbcInterface(MbcType::Mbc3, rom, ram)
-    , mHasRam(hasRam)
+Mbc3::Mbc3(size_t romSize, size_t ramSize)
+    : MbcInterface(MbcType::Mbc3, romSize, ramSize)
     , mRomBankMask(bankMask(7, mRomBanksCount))
     , mRamBankMask(bankMask(2, mRamBanksCount))
 {
@@ -272,7 +272,7 @@ uint8_t Mbc3::read8(uint16_t addr) const
             romAddr = mRomCurrBank * romBankSize + addr;
         }
 
-        return mRom[romAddr];
+        return rom[romAddr];
     }
     else if (addr >= mmap::external_ram::start && addr <= mmap::external_ram::end) {
         // read from ram or rtc
@@ -284,13 +284,13 @@ uint8_t Mbc3::read8(uint16_t addr) const
         case 0x03: {
             // try reading to RAM
             // ram banks are 8KB in size so from the received address we discard the upper 3 bits
-            if (!mHasRam || !mRamRtcEnabled)
+            if (ram.size() == 0 || !mRamRtcEnabled)
                 return 0xFF;
 
             addr &= 0x1FFF;
             uint32_t ramAddr = mRamCurrBank * ramBankSize + addr;
 
-            return mRam[ramAddr];
+            return ram[ramAddr];
         }
         case 0x08: return mRamRtcEnabled ? mRtc.readSec() : 0xFF; break;
         case 0x09: return mRamRtcEnabled ? mRtc.readMin() : 0xFF; break;
@@ -373,11 +373,11 @@ void Mbc3::write8(uint16_t addr, uint8_t val)
             case 0x03: {
                 // try writing to RAM
                 // ram banks are 8KB in size so from the received address we discard the upper 3 bits
-                if(mHasRam) {
+                if(ram.size() != 0) {
                     addr &= 0x1FFF;
                     uint32_t ramAddr = mRamCurrBank * ramBankSize + addr;
 
-                    mRam[ramAddr] = val;
+                    ram[ramAddr] = val;
                 }
                 break;
             }

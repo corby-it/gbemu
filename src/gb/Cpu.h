@@ -53,10 +53,13 @@ struct Flags : public RegU8 {
     static constexpr const uint8_t maskC = 0b00010000;
 
     template<class Archive>
-    void serialize(Archive& ar) {
+    void serialize(Archive& ar, uint32_t const /*version*/) {
         ar(Z, N, H, C);
     }
 };
+
+CEREAL_CLASS_VERSION(Flags, 1);
+
 
 
 struct Registers {
@@ -108,11 +111,13 @@ struct Registers {
     static constexpr const uint16_t SPinitialValue = 0xFFFE;
 
     template<class Archive>
-    void serialize(Archive& ar) {
+    void serialize(Archive& ar, uint32_t const /*version*/) {
         ar(A, B, C, D, E, H, L, PC, SP, flags);
     }
 
 };
+
+CEREAL_CLASS_VERSION(Registers, 1);
 
 
 
@@ -147,7 +152,7 @@ public:
 
 
     template<class Archive>
-    void serialize(Archive& ar) {
+    void serialize(Archive& ar, uint32_t const /*version*/) {
         ar(regs, irqs);
         ar(mCycles, mImeScheduled, mIsHalted, mCheckForHaltBug, mIsStopped);
         ar(mIrqNesting, mCallNesting);
@@ -381,6 +386,8 @@ private:
     std::stack<uint16_t> mCallNesting;
 
 };
+
+CEREAL_CLASS_VERSION(CPU, 1);
 
 
 #endif // GBEMU_SRC_GB_CPU_H_

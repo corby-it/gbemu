@@ -10,6 +10,7 @@
 #include <memory>
 #include <vector>
 #include <filesystem>
+#include <cereal/types/memory.hpp>
 
 
 
@@ -165,15 +166,23 @@ public:
     }
 
 
+    template<class Archive>
+    void save(Archive& archive, uint32_t const /*version*/) const {
+        archive(mbc);
+    }
 
-    std::vector<uint8_t> rom;
-    std::vector<uint8_t> ram;
+    template<class Archive>
+    void load(Archive& archive, uint32_t const /*version*/) {
+        archive(mbc);
+        header = CartridgeHeader(mbc->rom.data());
+    }
 
     std::unique_ptr<MbcInterface> mbc;
 
     CartridgeHeader header;
 };
 
+CEREAL_CLASS_VERSION(Cartridge, 1);
 
 
 

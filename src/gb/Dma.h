@@ -22,7 +22,7 @@ public:
 
 
     template<class Archive>
-    void serialize(Archive& ar) {
+    void serialize(Archive& ar, uint32_t const /*version*/) {
         ar(mReg, mWrittenAddr, mCurrAddr, mCounter, mIsScheduled, mStartTransfer, mIsTransferring);
     }
 
@@ -42,6 +42,7 @@ private:
 
 };
 
+CEREAL_CLASS_VERSION(DMA, 1);
 
 
 #endif // GBEMU_SRC_GB_DMA_H_

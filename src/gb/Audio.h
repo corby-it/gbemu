@@ -19,7 +19,7 @@ public:
     void write(uint16_t addr, uint8_t val);
 
     template<class Archive>
-    void serialize(Archive& ar) {
+    void serialize(Archive& ar, uint32_t const /*version*/) {
         size_t size = mmap::regs::audio::end - mmap::regs::audio::start + 1;
         ar(cereal::binary_data(mData, size));
     }
@@ -30,6 +30,7 @@ private:
 
 };
 
+CEREAL_CLASS_VERSION(Audio, 1);
 
 
 #endif // GBEMU_SRC_GB_AUDIO_H_

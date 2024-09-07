@@ -4,6 +4,7 @@
 #define GBEMU_SRC_GB_SERIAL_H_
 
 #include <cstdint>
+#include <cereal/cereal.hpp>
 
 // Dummy implementation
 
@@ -25,7 +26,7 @@ public:
     void writeCtrl(uint8_t val) { mCtrl = val; }
 
     template<class Archive>
-    void serialize(Archive& ar) {
+    void serialize(Archive& ar, uint32_t const /*version*/) {
         ar(mData, mCtrl);
     }
 
@@ -34,6 +35,8 @@ private:
     uint8_t mCtrl;
 
 };
+
+CEREAL_CLASS_VERSION(Serial, 1);
 
 
 

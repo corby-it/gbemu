@@ -6,6 +6,7 @@
 #include <cstring>
 #include <cassert>
 #include <memory>
+#include <iostream>
 #include <cereal/cereal.hpp>
 #include <cereal/types/memory.hpp>
 
@@ -57,7 +58,7 @@ public:
     }
 
     template<class Archive>
-    void serialize(Archive& ar)
+    void serialize(Archive& ar, uint32_t const /*version*/)
     {
         ar(mStartAddr, cereal::binary_data(mData.get(), Size));
     }
@@ -74,6 +75,8 @@ protected:
     std::unique_ptr<uint8_t[]> mData;
 
 };
+
+
 
 
 
@@ -105,6 +108,13 @@ public:
 
     void lock(bool l) { mLocked = l; }
     bool isLocked() const { return mLocked; }
+
+
+    template<class Archive>
+    void serialize(Archive& ar, uint32_t const /*version*/)
+    {
+        ar(mStartAddr, cereal::binary_data(mData.get(), Size), mLocked);
+    }
 
 protected:
     bool mLocked;

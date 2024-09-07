@@ -187,7 +187,7 @@ OAMData OAMRam::getOAMData(uint8_t id) const
 
 DisplayBuf::DisplayBuf(uint32_t w, uint32_t h)
     : Matrix(w, h)
-    , mData(std::make_unique<uint8_t[]>(w* h))
+    , mData(std::make_unique<uint8_t[]>(w * h))
 {}
 
 

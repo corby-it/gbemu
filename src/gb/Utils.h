@@ -5,6 +5,7 @@
 
 #include <cstdint>
 #include <chrono>
+#include <cereal/types/chrono.hpp>
 
 
 class RTC {
@@ -27,6 +28,11 @@ public:
 
     void latch();
 
+
+    template<class Archive>
+    void serialize(Archive& ar) {
+        ar(mLastLatch, mSec, mMin, mHours, mDaysL, mDaysH);
+    }
 
 private:
 

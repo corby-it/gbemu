@@ -5,6 +5,7 @@
 
 #include "Ram.h"
 #include "GbCommons.h"
+#include <cereal/cereal.hpp>
 
 
 struct MemoryMappedObj {
@@ -217,6 +218,8 @@ private:
 
 };
 
+CEREAL_CLASS_VERSION(VRam, 1);
+
 
 
 // ------------------------------------------------------------------------------------------------
@@ -236,6 +239,9 @@ private:
 
 };
 
+CEREAL_CLASS_VERSION(OAMRam, 1);
+
+
 
 
 
@@ -248,6 +254,9 @@ public:
     DisplayBuf(uint32_t w, uint32_t h);
 
     void clear();
+
+    uint8_t* data() { return mData.get(); }
+    size_t size() const { return mWidth * mHeight; }
 
 private:
     uint8_t getImpl(uint32_t x, uint32_t y) const override;
@@ -282,6 +291,14 @@ public:
 
     void swapBufs() { mIsFrontA = !mIsFrontA; }
 
+    template<class Archive>
+    void serialize(Archive& ar, uint32_t const /*version*/) {
+        ar(mIsFrontA,
+            cereal::binary_data(mBufA.data(), mBufA.size()), 
+            cereal::binary_data(mBufB.data(), mBufB.size())
+        );
+    }
+
 private:
 
     bool mIsFrontA;
@@ -290,6 +307,7 @@ private:
 
 };
 
+CEREAL_CLASS_VERSION(Display, 1);
 
 
 

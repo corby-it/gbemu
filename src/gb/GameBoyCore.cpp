@@ -237,16 +237,16 @@ SaveStateError GameBoyClassic::saveState(const fs::path& path)
         // if a save state is compatible with the currently loaded cartridge
         oar(cartridge.header.asArray());
 
-        //oar(cpu);
-        //oar(wram);
-        ////oar(ppu);
-        //oar(dma);
+        oar(cpu);
+        oar(wram);
+        oar(ppu);
+        oar(dma);
         oar(cartridge);
-        //oar(timer);
-        //oar(joypad);
-        //oar(audio);
-        //oar(serial);
-        //oar(hiRam);
+        oar(timer);
+        oar(joypad);
+        oar(audio);
+        oar(serial);
+        oar(hiRam);
     }
 
     return SaveStateError::NoError;
@@ -269,16 +269,16 @@ SaveStateError GameBoyClassic::loadState(const fs::path& path)
         if (cartridge.header != buf)
             return SaveStateError::CartridgeMismatch;
 
-        //iar(cpu);
-        //iar(wram);
-        ////iar(ppu);
-        //iar(dma);
+        iar(cpu);
+        iar(wram);
+        iar(ppu);
+        iar(dma);
         iar(cartridge);
-        //iar(timer);
-        //iar(joypad);
-        //iar(audio);
-        //iar(serial);
-        //iar(hiRam);
+        iar(timer);
+        iar(joypad);
+        iar(audio);
+        iar(serial);
+        iar(hiRam);
     }
 
     return SaveStateError::NoError;
