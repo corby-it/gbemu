@@ -30,12 +30,15 @@ private:
     void UIDrawMenu();
     void UIDrawControlWindow();
     void UIDrawEmulationWindow();
+    void UIDrawMemoryEditorWindow();
     
     void UIDrawRegsTables();
     void UIDrawCpuRegTable();
     void UIDrawCpuFlagsTable();
     void UIDrawTimerRegTable();
     void UIDrawPpuRegTable();
+
+    bool loadRomFile(const std::filesystem::path& path);
 
     
     AppConfig mConfig;

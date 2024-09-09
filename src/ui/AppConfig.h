@@ -26,7 +26,11 @@ public:
     CartridgeLoadingRes loadingRes;
     SaveStateError currentSaveStateErr;
 
+    std::vector<std::filesystem::path> recentRomsPath;
+
     EmulationSpeed emulationSpeed;
+
+    bool showMemoryEditor;
 
 };
 

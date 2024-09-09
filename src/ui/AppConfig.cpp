@@ -22,5 +22,6 @@ AppConfig::AppConfig()
     : loadingRes(CartridgeLoadingRes::Ok)
 	, emulationSpeed(EmulationSpeed::Full)
 	, currentSaveStateErr(SaveStateError::NoError)
+	, showMemoryEditor(false)
 {}
 

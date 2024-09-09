@@ -57,6 +57,9 @@ public:
         memset(mData.get(), 0, Size);
     }
 
+    uint8_t* data() { return mData.get(); }
+    uint16_t startAddr() const { return mStartAddr; }
+
     template<class Archive>
     void serialize(Archive& ar, uint32_t const /*version*/)
     {

@@ -2,6 +2,7 @@
 
 #include "App.h"
 #include "ImGuiFileDialog/ImGuiFileDialog.h"
+#include "imgui_memory_editor.h"
 #include <tracy/Tracy.hpp>
 #include <cassert>
 
@@ -209,6 +210,7 @@ void App::updateUI()
     UIDrawControlWindow();
     UIDrawEmulationWindow();
     UIDrawRegsTables();
+    UIDrawMemoryEditorWindow();
 }
 
 void App::UIDrawMenu()
@@ -218,16 +220,37 @@ void App::UIDrawMenu()
         if (ImGui::BeginMenu("File")) {
             if (ImGui::MenuItem("Open rom file...", "CTRL+O")) {
                 IGFD::FileDialogConfig config;
-                config.path = ".";
+
+                if (mConfig.currentRomPath.empty())
+                    config.path = ".";
+                else
+                    config.path = mConfig.currentRomPath.parent_path().string().c_str();
+
                 config.flags = ImGuiFileDialogFlags_Modal;
                 ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose Rom File", ".gb", config);
             }
+            if (ImGui::BeginMenu("Open Recent...")) {
+                if (mConfig.recentRomsPath.empty()) {
+                    ImGui::MenuItem("Recent rom files will\nbe displayed here...", nullptr, nullptr, false);
+                }
+                else {
+                    for (auto it = mConfig.recentRomsPath.rbegin(); it != mConfig.recentRomsPath.rend(); ++it) {
+                        if (ImGui::MenuItem(it->string().c_str())) {
+                            loadRomFile(*it);
+                        }
+                    }
+                }
+
+                ImGui::EndMenu();
+            }
             ImGui::Separator();
-            if (ImGui::MenuItem("Quit", "Alt+F4")) { closeWindow(); }
+            if (ImGui::MenuItem("Quit", "Alt+F4")) {
+                closeWindow();
+            }
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Tools")) {
-            if (ImGui::MenuItem("Todo...")) {} 
+            ImGui::MenuItem("Memory editor", nullptr, &mConfig.showMemoryEditor);
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("About")) {
@@ -239,13 +262,10 @@ void App::UIDrawMenu()
 
     // handle file dialog
     if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey", ImGuiWindowFlags_NoCollapse, ImVec2{ 350, 250 })) {
-        if (ImGuiFileDialog::Instance()->IsOk()) { // action if OK
-            
-            mConfig.currentRomPath = ImGuiFileDialog::Instance()->GetFilePathName();
-            mConfig.loadingRes = mGameboy.loadCartridge(mConfig.currentRomPath);
-
-            if (mConfig.loadingRes != CartridgeLoadingRes::Ok) {
-                ImGui::OpenPopup("Loading failed");
+        if (ImGuiFileDialog::Instance()->IsOk()) {
+            // action if OK
+            if (loadRomFile(ImGuiFileDialog::Instance()->GetFilePathName())) {
+                mConfig.recentRomsPath.push_back(mConfig.currentRomPath);
             }
         }
         
@@ -262,6 +282,22 @@ void App::UIDrawMenu()
         ImGui::EndPopup();
     }
 }
+
+bool App::loadRomFile(const std::filesystem::path& path)
+{
+    mConfig.loadingRes = mGameboy.loadCartridge(path);
+
+    if (mConfig.loadingRes != CartridgeLoadingRes::Ok) {
+        ImGui::OpenPopup("Loading failed");
+        return false;
+    }
+    else {
+        // if loaded successfully we store the path
+        mConfig.currentRomPath = path;
+        return true;
+    }
+}
+
 
 void App::UIDrawControlWindow()
 {
@@ -327,6 +363,7 @@ void App::UIDrawControlWindow()
     };
     auto preview = speedItems[mEmulationSpeedComboIdx];
 
+    ImGui::PushItemWidth(100);
     if (ImGui::BeginCombo("Emulation speed", preview, comboFlags)) {
 
         for (int n = 0; n < IM_ARRAYSIZE(speedItems); n++)
@@ -343,6 +380,8 @@ void App::UIDrawControlWindow()
         }
         ImGui::EndCombo();
     }
+
+    ImGui::PopItemWidth();
 
     // --------------------------------------------------------------------------------------------
     ImGui::SeparatorText("Save states");
@@ -462,6 +501,56 @@ void App::UIDrawEmulationWindow()
     ImGui::Begin("GB Display");
     ImGui::Text("Status: %s", GameBoyClassic::statusToStr(mGameboy.status));
     ImGui::Image((void*)(intptr_t)mGLDisplayTexture, ImVec2(320, 288));
+    ImGui::End();
+}
+
+void App::UIDrawMemoryEditorWindow()
+{
+    if (!mConfig.showMemoryEditor)
+        return;
+
+    ImGui::Begin("Memory Editor", &mConfig.showMemoryEditor);
+    ImGuiTabBarFlags tab_bar_flags = ImGuiTabBarFlags_None;
+    if (ImGui::BeginTabBar("MemoryEditorTabs", tab_bar_flags))
+    {
+        if (ImGui::BeginTabItem("ROM"))
+        {
+            static MemoryEditor memEdit;
+            memEdit.DrawContents(mGameboy.cartridge.mbc->rom.data(), mGameboy.cartridge.mbc->rom.size(), 0);
+            ImGui::EndTabItem();
+        }
+        if (ImGui::BeginTabItem("VRAM"))
+        {
+            static MemoryEditor memEdit;
+            memEdit.DrawContents(mGameboy.ppu.vram.data(), mGameboy.ppu.vram.size(), mGameboy.ppu.vram.startAddr());
+            ImGui::EndTabItem();
+        }
+        if (ImGui::BeginTabItem("ExtRAM"))
+        {
+            static MemoryEditor memEdit;
+            memEdit.DrawContents(mGameboy.cartridge.mbc->ram.data(), mGameboy.cartridge.mbc->ram.size(), mmap::external_ram::start);
+            ImGui::EndTabItem();
+        }
+        if (ImGui::BeginTabItem("RAM"))
+        {
+            static MemoryEditor memEdit;
+            memEdit.DrawContents(mGameboy.wram.data(), mGameboy.wram.size(), mGameboy.wram.startAddr());
+            ImGui::EndTabItem();
+        }
+        if (ImGui::BeginTabItem("OAM"))
+        {
+            static MemoryEditor memEdit;
+            memEdit.DrawContents(mGameboy.ppu.oamRam.data(), mGameboy.ppu.oamRam.size(), mGameboy.ppu.oamRam.startAddr());
+            ImGui::EndTabItem();
+        }
+        if (ImGui::BeginTabItem("HIRAM"))
+        {
+            static MemoryEditor memEdit;
+            memEdit.DrawContents(mGameboy.hiRam.data(), mGameboy.hiRam.size(), mGameboy.hiRam.startAddr());
+            ImGui::EndTabItem();
+        }
+        ImGui::EndTabBar();
+    }
     ImGui::End();
 }
 
@@ -644,6 +733,8 @@ void App::UIDrawPpuRegTable()
         ImGui::EndTable();
     }
 }
+
+
 
 void App::UIDrawRegsTables()
 {
