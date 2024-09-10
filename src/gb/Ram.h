@@ -116,7 +116,7 @@ public:
     template<class Archive>
     void serialize(Archive& ar, uint32_t const /*version*/)
     {
-        ar(mStartAddr, cereal::binary_data(mData.get(), Size), mLocked);
+        ar(this->mStartAddr, cereal::binary_data(this->mData.get(), Size), mLocked);
     }
 
 protected:

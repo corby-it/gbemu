@@ -4,7 +4,6 @@
 #define GBEMU_SRC_UI_APPBASE_H_
 
 #include <GLFW/glfw3.h> // Will drag system OpenGL headers
-#include <gl/GL.h>
 #include "imgui.h"
 #include <vector>
 #include <chrono>

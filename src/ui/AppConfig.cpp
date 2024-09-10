@@ -20,8 +20,8 @@ const char* emulationSpeedToStr(EmulationSpeed es)
 
 AppConfig::AppConfig()
     : loadingRes(CartridgeLoadingRes::Ok)
-	, emulationSpeed(EmulationSpeed::Full)
 	, currentSaveStateErr(SaveStateError::NoError)
+	, emulationSpeed(EmulationSpeed::Full)
 	, showMemoryEditor(false)
 {}
 
