@@ -1,11 +1,12 @@
 
-#ifndef GBEMU_SRC_UI_APP_H_
-#define GBEMU_SRC_UI_APP_H_
+#ifndef GBEMU_SRC_APP_APP_H_
+#define GBEMU_SRC_APP_APP_H_
 
 
 #include "AppBase.h"
 #include "AppConfig.h"
 #include "gb/GameBoyCore.h"
+#include "gb/Matrix.h"
 #include <optional>
 #include <chrono>
 
@@ -31,6 +32,7 @@ private:
     void UIDrawControlWindow();
     void UIDrawEmulationWindow();
     void UIDrawMemoryEditorWindow();
+    void UIDrawTileViewerWindow();
     
     void UIDrawRegsTables();
     void UIDrawCpuRegTable();
@@ -47,6 +49,9 @@ private:
     RgbaBuffer mDisplayBuffer;
     GLuint mGLDisplayTexture;
 
+    std::vector<RgbaBufferArray<TileData::w, TileData::h>> mTileBuffers;
+    std::vector<GLuint> mTileTextures;
+
     int mEmulationSpeedComboIdx;
 
     std::chrono::nanoseconds mLastEmulateCall;
@@ -54,4 +59,4 @@ private:
 };
 
 
-#endif // GBEMU_SRC_UI_APP_H_
+#endif // GBEMU_SRC_APP_APP_H_

@@ -1,7 +1,7 @@
 
 
-#ifndef GBEMU_SRC_UI_APPCONFIG_H_
-#define GBEMU_SRC_UI_APPCONFIG_H_
+#ifndef GBEMU_SRC_APP_APPCONFIG_H_
+#define GBEMU_SRC_APP_APPCONFIG_H_
 
 
 #include "gb/GameBoyCore.h"
@@ -32,8 +32,9 @@ public:
     EmulationSpeed emulationSpeed;
 
     bool showMemoryEditor;
+    bool showTileViewer;
 
 };
 
 
-#endif // GBEMU_SRC_UI_APPCONFIG_H_
+#endif // GBEMU_SRC_APP_APPCONFIG_H_

@@ -1,7 +1,7 @@
 
 
-#ifndef GBEMU_SRC_UI_APPBASE_H_
-#define GBEMU_SRC_UI_APPBASE_H_
+#ifndef GBEMU_SRC_APP_APPBASE_H_
+#define GBEMU_SRC_APP_APPBASE_H_
 
 #include <GLFW/glfw3.h> // Will drag system OpenGL headers
 #include "imgui.h"
@@ -37,4 +37,4 @@ private:
 };
 
 
-#endif // GBEMU_SRC_UI_APPBASE_H_
+#endif // GBEMU_SRC_APP_APPBASE_H_

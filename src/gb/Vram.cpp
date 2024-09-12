@@ -89,12 +89,12 @@ void TileMap::setImpl(uint32_t x, uint32_t y, uint8_t val)
     ptr[y * TileMap::w + x] = val;
 }
 
-void TileMap::fillRgbBuffer(RgbBuffer& buf) const
+void TileMap::fillRgbaBuffer(RgbaBufferIf& buf) const
 {
     for (uint32_t y = 0; y < mHeight; ++y) {
         for (uint32_t x = 0; x < mWidth; ++x) {
             auto val = get(x, y);
-            buf(x, y) = { val, val, val };
+            buf(x, y) = { val, val, val, 255 };
         }
     }
 }
@@ -104,6 +104,25 @@ void TileMap::fillRgbBuffer(RgbBuffer& buf) const
 // ------------------------------------------------------------------------------------------------
 // VRam
 // ------------------------------------------------------------------------------------------------
+
+
+TileData VRam::getGenericTile(uint32_t id) const
+{
+    // get a generic tile in vram, this function is intended to be used for debugging
+    // not by the ppu logic
+    
+    // vram is located between 0x8000 and 0x9800, this means that it can contain up to
+    // 384 16-bytes tiles
+
+    if (id >= maxTiles)
+        id = maxTiles - 1;
+
+    uint16_t addr = mStartAddr + (uint16_t)id * 16;
+
+    return TileData(addr, getPtr(addr));
+}
+
+
 
 ObjTileData VRam::getObjTile(uint8_t id, bool doubleHeight) const
 {

@@ -19,11 +19,18 @@ App::App()
 {
     // create an OpenGL texture identifier for the display image
     glGenTextures(1, &mGLDisplayTexture);
+
+    // create OpenGL textures to display tiles
+    mTileTextures.resize(VRam::maxTiles);
+    glGenTextures(VRam::maxTiles, mTileTextures.data());
+
+    // create buffers for single tiles
+    mTileBuffers.resize(VRam::maxTiles);
 }
 
 
 // Simple helper function to load an image into a OpenGL texture with common settings
-static bool LoadTextureFromMatrix(const Matrix& mat, GLuint& outTexture, RgbaBuffer& buffer)
+static bool LoadTextureFromMatrix(const Matrix& mat, GLuint& outTexture, RgbaBufferIf& buffer)
 {
     glBindTexture(GL_TEXTURE_2D, outTexture);
 
@@ -211,6 +218,7 @@ void App::updateUI()
     UIDrawEmulationWindow();
     UIDrawRegsTables();
     UIDrawMemoryEditorWindow();
+    UIDrawTileViewerWindow();
 }
 
 void App::UIDrawMenu()
@@ -251,6 +259,7 @@ void App::UIDrawMenu()
         }
         if (ImGui::BeginMenu("Tools")) {
             ImGui::MenuItem("Memory editor", nullptr, &mConfig.showMemoryEditor);
+            ImGui::MenuItem("Tile viewer", nullptr, &mConfig.showTileViewer);
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("About")) {
@@ -553,6 +562,45 @@ void App::UIDrawMemoryEditorWindow()
         }
         ImGui::EndTabBar();
     }
+    ImGui::End();
+}
+
+void App::UIDrawTileViewerWindow()
+{
+    if (!mConfig.showTileViewer)
+        return;
+
+    ImGui::Begin("Tile Viewer", &mConfig.showTileViewer);
+
+    if (ImGui::CollapsingHeader("VRAM Tiles")) {
+
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(1, 1));
+    
+        for (uint32_t id = 0; id < VRam::maxTiles; ++id) {
+
+            auto tile = mGameboy.ppu.vram.getGenericTile(id);
+            LoadTextureFromMatrix(tile, mTileTextures[id], mTileBuffers[id]);
+
+            ImGui::Image((void*)(intptr_t)mTileTextures[id], ImVec2(16, 16));
+            if (ImGui::BeginItemTooltip()) {
+
+                ImGui::Text("Id: %u (0x%02x), address: 0x%04x", id, id, tile.gbAddr);
+                ImGui::Image((void*)(intptr_t)mTileTextures[id], ImVec2(128, 128));
+
+                ImGui::EndTooltip();
+            }
+
+            if (id % 16 != 15)
+                ImGui::SameLine();
+        }
+    
+        ImGui::PopStyleVar();
+    }
+
+    if (ImGui::CollapsingHeader("OAM Data")) {
+        ImGui::Text("Todo...");
+    }
+
     ImGui::End();
 }
 

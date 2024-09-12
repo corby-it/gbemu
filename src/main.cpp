@@ -9,7 +9,7 @@
 #define DOCTEST_CONFIG_IMPLEMENT
 #include "doctest/doctest.h"
 
-#include "ui/App.h"
+#include "app/App.h"
 
 
 int commonMain(int /*argc*/, char** /*argv*/)

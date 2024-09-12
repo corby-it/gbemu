@@ -5,6 +5,7 @@
 
 #include "Ram.h"
 #include "GbCommons.h"
+#include "Matrix.h"
 #include <cereal/cereal.hpp>
 
 
@@ -88,7 +89,7 @@ struct TileMap : public MemoryMappedObj, public Matrix {
         , Matrix(w, h)
     {}
 
-    void fillRgbBuffer(RgbBuffer& buf) const override;
+    void fillRgbaBuffer(RgbaBufferIf& buf) const override;
 
 
     static constexpr uint8_t w = 32;
@@ -208,11 +209,14 @@ class VRam : public LockableRam<8 * 1024> {
 public:
     VRam() : LockableRam(mmap::vram::start) {}
 
+    TileData getGenericTile(uint32_t id) const;
 
     ObjTileData getObjTile(uint8_t id, bool doubleHeight) const;
     TileData getBgTile(uint8_t id, bool addressingMode) const;
 
     TileMap getTileMap(bool hi) const;
+
+    static constexpr size_t maxTiles = 384;
 
 private:
 

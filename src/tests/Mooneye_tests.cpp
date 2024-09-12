@@ -64,10 +64,10 @@ void saveDisplayToFile(const GameBoyClassic& gb, fs::path romRelPath)
     static const auto w = Display::w;
     static const auto h = Display::h;
 
-    RgbBuffer buf(w, h);
-    gb.ppu.display.getFrontBuf().fillRgbBuffer(buf);
+    RgbaBuffer buf(w, h);
+    gb.ppu.display.getFrontBuf().fillRgbaBuffer(buf);
 
-    stbi_write_png(pngPath.string().c_str(), w, h, 3, static_cast<const void*>(buf.ptr()), w * 3);
+    stbi_write_png(pngPath.string().c_str(), w, h, 4, static_cast<const void*>(buf.ptr()), w * 3);
 }
 
 
