@@ -234,9 +234,9 @@ void App::UIDrawMenu()
                     ImGui::MenuItem("Recent rom files will\nbe displayed here...", nullptr, nullptr, false);
                 }
                 else {
-                    for (auto it = mConfig.recentRomsPath.rbegin(); it != mConfig.recentRomsPath.rend(); ++it) {
-                        if (ImGui::MenuItem(it->string().c_str())) {
-                            loadRomFile(*it);
+                    for (const auto& p : mConfig.recentRomsPath) {
+                        if (ImGui::MenuItem(p.string().c_str())) {
+                            loadRomFile(p);
                         }
                     }
                 }
@@ -265,7 +265,9 @@ void App::UIDrawMenu()
         if (ImGuiFileDialog::Instance()->IsOk()) {
             // action if OK
             if (loadRomFile(ImGuiFileDialog::Instance()->GetFilePathName())) {
-                mConfig.recentRomsPath.push_back(mConfig.currentRomPath);
+                mConfig.recentRomsPath.push_front(mConfig.currentRomPath);
+                if (mConfig.recentRomsPath.size() > 10)
+                    mConfig.recentRomsPath.pop_back();
             }
         }
         

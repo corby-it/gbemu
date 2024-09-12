@@ -6,6 +6,7 @@
 
 #include "gb/GameBoyCore.h"
 #include <filesystem>
+#include <list>
 
 
 enum class EmulationSpeed {
@@ -26,7 +27,7 @@ public:
     CartridgeLoadingRes loadingRes;
     SaveStateError currentSaveStateErr;
 
-    std::vector<std::filesystem::path> recentRomsPath;
+    std::list<std::filesystem::path> recentRomsPath;
 
     EmulationSpeed emulationSpeed;
 
