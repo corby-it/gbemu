@@ -28,6 +28,7 @@ private:
 
     std::optional<std::chrono::nanoseconds> emulateFor() const;
 
+    void UISetupDocking();
     void UIDrawMenu();
     void UIDrawControlWindow();
     void UIDrawEmulationWindow();
@@ -51,6 +52,9 @@ private:
 
     std::vector<RgbaBufferArray<TileData::w, TileData::h>> mTileBuffers;
     std::vector<GLuint> mTileTextures;
+
+    std::vector<RgbaBufferArray<TileData::w, TileData::h>> mOamBuffers;
+    std::vector<GLuint> mOamTextures;
 
     int mEmulationSpeedComboIdx;
 

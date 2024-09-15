@@ -102,6 +102,7 @@ class RgbaBufferArray : public RgbaBufferIf {
 public:
     RgbaBufferArray()
         : RgbaBufferIf(W, H)
+        , mData()
     {}
 
     uint8_t* ptr() override { return mData.data(); }
@@ -164,8 +165,8 @@ protected:
     virtual void setImpl(uint32_t x, uint32_t y, uint8_t val) = 0;
 
 
-    const uint32_t mWidth;
-    const uint32_t mHeight;
+    uint32_t mWidth;
+    uint32_t mHeight;
 
 };
 

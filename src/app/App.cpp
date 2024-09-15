@@ -1,6 +1,7 @@
 
 
 #include "App.h"
+#include "imgui/imgui_internal.h"
 #include "ImGuiFileDialog/ImGuiFileDialog.h"
 #include "imgui_memory_editor.h"
 #include <tracy/Tracy.hpp>
@@ -26,6 +27,12 @@ App::App()
 
     // create buffers for single tiles
     mTileBuffers.resize(VRam::maxTiles);
+
+    // do the  same for OAMs
+    mOamTextures.resize(OAMRam::oamCount);
+    glGenTextures(OAMRam::oamCount, mOamTextures.data());
+
+    mOamBuffers.resize(OAMRam::oamCount);
 }
 
 
@@ -51,6 +58,18 @@ static bool LoadTextureFromMatrix(const Matrix& mat, GLuint& outTexture, RgbaBuf
 
     return true;
 }
+
+static ImVec4 rgbaPixelToImVec4(RgbaPixel pix)
+{
+    // colors in ImVec4 are expressed as values between 0 and 1
+    return ImVec4{ 
+        (float)pix.R / 255.f,
+        (float)pix.G / 255.f,
+        (float)pix.B / 255.f,
+        (float)pix.A / 255.f
+    };
+}
+
 
 static Joypad::PressedButton getPressedButtons()
 {
@@ -213,12 +232,21 @@ bool App::emulateOtherSpeeds(std::chrono::nanoseconds /*currTime*/)
 
 void App::updateUI()
 {
+    UISetupDocking();
+
     UIDrawMenu();
     UIDrawControlWindow();
     UIDrawEmulationWindow();
     UIDrawRegsTables();
     UIDrawMemoryEditorWindow();
     UIDrawTileViewerWindow();
+}
+
+void App::UISetupDocking()
+{    
+    if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DockingEnable) {
+        ImGui::DockSpaceOverViewport(ImGui::GetMainViewport());
+    }
 }
 
 void App::UIDrawMenu()
@@ -316,6 +344,9 @@ void App::UIDrawControlWindow()
 
     // --------------------------------------------------------------------------------------------
     ImGui::SeparatorText("Controls");
+
+    ImGui::Text("Status: %s", GameBoyClassic::statusToStr(mGameboy.status));
+
 
     auto btnSize = ImVec2(60, 0);
     
@@ -510,7 +541,6 @@ void App::UIDrawEmulationWindow()
     FrameImage(mDisplayBuffer.ptr(), mGameboy.ppu.display.w, mGameboy.ppu.display.h, 0, false);
 
     ImGui::Begin("GB Display");
-    ImGui::Text("Status: %s", GameBoyClassic::statusToStr(mGameboy.status));
     ImGui::Image((void*)(intptr_t)mGLDisplayTexture, ImVec2(320, 288));
     ImGui::End();
 }
@@ -565,6 +595,56 @@ void App::UIDrawMemoryEditorWindow()
     ImGui::End();
 }
 
+//static void drawPaletteTable(const char* tableName, uint8_t paletteId, const PaletteReg& palette)
+static void drawPaletteTable(const char* tableName, PaletteReg** palettes, size_t count)
+{
+    auto colorBtnSize = ImVec2(32, 32);
+    auto colorBtnFlags = ImGuiColorEditFlags_NoBorder;
+
+    static ImGuiTableFlags tablePaletteFlags = ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_RowBg 
+            | ImGuiTableFlags_Borders | ImGuiTableFlags_NoHostExtendX;
+
+    auto paletteToImvec4 = [](uint8_t val) {
+        switch (val) {
+        default:
+        case 0: return rgbaPixelToImVec4(whiteA);
+        case 1: return rgbaPixelToImVec4(lightGreyA);
+        case 2: return rgbaPixelToImVec4(darkGreyA);
+        case 3: return rgbaPixelToImVec4(blackA);
+        }
+    };
+
+
+    if (ImGui::BeginTable(tableName, 6, tablePaletteFlags)) {
+        ImGui::TableSetupColumn("Id", ImGuiTableColumnFlags_WidthFixed);
+        ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthFixed);
+        ImGui::TableSetupColumn("0", ImGuiTableColumnFlags_WidthFixed);
+        ImGui::TableSetupColumn("1", ImGuiTableColumnFlags_WidthFixed);
+        ImGui::TableSetupColumn("2", ImGuiTableColumnFlags_WidthFixed);
+        ImGui::TableSetupColumn("3", ImGuiTableColumnFlags_WidthFixed);
+
+        ImGui::TableHeadersRow();
+
+        for (size_t i = 0; i < count; ++i) {
+            ImGui::TableNextColumn();
+            ImGui::Text("%u", i);
+            ImGui::TableNextColumn();
+            ImGui::Text("0x%02x", palettes[i]->asU8());
+            ImGui::TableNextColumn();
+            ImGui::ColorButton("bgp0", paletteToImvec4(palettes[i]->valForId0), colorBtnFlags, colorBtnSize);
+            ImGui::TableNextColumn();
+            ImGui::ColorButton("bgp1", paletteToImvec4(palettes[i]->valForId1), colorBtnFlags, colorBtnSize);
+            ImGui::TableNextColumn();
+            ImGui::ColorButton("bgp2", paletteToImvec4(palettes[i]->valForId2), colorBtnFlags, colorBtnSize);
+            ImGui::TableNextColumn();
+            ImGui::ColorButton("bgp3", paletteToImvec4(palettes[i]->valForId3), colorBtnFlags, colorBtnSize);
+        }
+
+        ImGui::EndTable();
+    }
+}
+
+
 void App::UIDrawTileViewerWindow()
 {
     if (!mConfig.showTileViewer)
@@ -572,33 +652,157 @@ void App::UIDrawTileViewerWindow()
 
     ImGui::Begin("Tile Viewer", &mConfig.showTileViewer);
 
+    float childWindowWidth = std::max(ImGui::GetContentRegionAvail().x * 0.5f, 300.f);
+
     if (ImGui::CollapsingHeader("VRAM Tiles")) {
 
-        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(1, 1));
-    
-        for (uint32_t id = 0; id < VRam::maxTiles; ++id) {
+        uint32_t hoveredTileId = 0;
+        auto hoveredTile = mGameboy.ppu.vram.getGenericTile(0);
+        float childWindowHeight = 430;
 
+        ImGui::BeginChild("TileMap", ImVec2(childWindowWidth, childWindowHeight));
+
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(1, 1));
+
+        for (uint32_t id = 0; id < VRam::maxTiles; ++id) {
             auto tile = mGameboy.ppu.vram.getGenericTile(id);
             LoadTextureFromMatrix(tile, mTileTextures[id], mTileBuffers[id]);
 
             ImGui::Image((void*)(intptr_t)mTileTextures[id], ImVec2(16, 16));
-            if (ImGui::BeginItemTooltip()) {
-
-                ImGui::Text("Id: %u (0x%02x), address: 0x%04x", id, id, tile.gbAddr);
-                ImGui::Image((void*)(intptr_t)mTileTextures[id], ImVec2(128, 128));
-
-                ImGui::EndTooltip();
+            if (ImGui::IsItemHovered()) {
+                hoveredTileId = id;
+                hoveredTile = tile;
             }
 
             if (id % 16 != 15)
                 ImGui::SameLine();
         }
-    
+
         ImGui::PopStyleVar();
+        ImGui::EndChild();
+        
+        ImGui::SameLine();
+        
+        ImGui::BeginChild("TileZoom", ImVec2(0, childWindowHeight));
+        
+        ImGui::Image((void*)(intptr_t)mTileTextures[hoveredTileId], ImVec2(128, 128));
+
+        static ImGuiTableFlags tableTileDetailsFlags = ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders | ImGuiTableFlags_Resizable;
+
+        if (ImGui::BeginTable("tableTileDetails", 2, tableTileDetailsFlags)) {
+            ImGui::TableSetupColumn("Attr", ImGuiTableColumnFlags_WidthFixed);
+            ImGui::TableSetupColumn("Val", ImGuiTableColumnFlags_WidthStretch);
+
+            ImGui::TableNextColumn();
+            ImGui::Text("Tile Id");
+            ImGui::TableNextColumn();
+            ImGui::Text("%u (0x%04x)", hoveredTileId, hoveredTileId);
+
+            ImGui::TableNextColumn();
+            ImGui::Text("Tile Address");
+            ImGui::TableNextColumn();
+            ImGui::Text("0x%04x", hoveredTile.gbAddr);
+
+            ImGui::EndTable();
+        }
+
+        ImGui::EndChild();
     }
 
     if (ImGui::CollapsingHeader("OAM Data")) {
-        ImGui::Text("Todo...");
+        
+        uint8_t hoveredOamId = 0;
+        auto hoveredOam = mGameboy.ppu.oamRam.getOAMData(0);
+        auto hoveredTile = mGameboy.ppu.vram.getGenericTile(hoveredOam.tileId());
+        auto hoveredAttr = hoveredOam.attr();
+
+        float childWindowHeight = 265;
+
+        ImGui::BeginChild("OAMMap", ImVec2(childWindowWidth, childWindowHeight));
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(1, 1));
+
+        for (uint8_t id = 0; id < OAMRam::oamCount; ++id) {
+            auto oam = mGameboy.ppu.oamRam.getOAMData(id);
+            auto tile = mGameboy.ppu.vram.getGenericTile(oam.tileId());
+
+            LoadTextureFromMatrix(tile, mOamTextures[id], mOamBuffers[id]);
+
+            ImGui::Image((void*)(intptr_t)mOamTextures[id], ImVec2(24, 24));
+            if (ImGui::IsItemHovered()) {
+                hoveredOamId = id;
+                hoveredOam = oam;
+                hoveredTile = tile;
+                hoveredAttr = oam.attr();
+            }
+
+            if (id % 10 != 9)
+                ImGui::SameLine();
+        }
+
+        ImGui::PopStyleVar();
+        ImGui::EndChild();
+
+        ImGui::SameLine();
+
+        ImGui::BeginChild("OAMZoom", ImVec2(0, childWindowHeight));
+
+        ImGui::Image((void*)(intptr_t)mOamTextures[hoveredOamId], ImVec2(128, 128));
+
+        static ImGuiTableFlags flags = ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders | ImGuiTableFlags_Resizable;
+
+        if (ImGui::BeginTable("tableOamData", 2, flags)) {
+            ImGui::TableSetupColumn("Attr", ImGuiTableColumnFlags_WidthFixed);
+            ImGui::TableSetupColumn("Val", ImGuiTableColumnFlags_WidthStretch);
+
+            ImGui::TableNextColumn();
+            ImGui::Text("OAM Id");
+            ImGui::TableNextColumn();
+            ImGui::Text("%u (0x%02x)", hoveredOamId, hoveredOamId);
+
+            ImGui::TableNextColumn();
+            ImGui::Text("OAM Address");
+            ImGui::TableNextColumn();
+            ImGui::Text("0x%04x", hoveredOam.gbAddr);
+
+            ImGui::TableNextColumn();
+            ImGui::Text("X, Y");
+            ImGui::TableNextColumn();
+            ImGui::Text("%u, %u", hoveredOam.x(), hoveredOam.y());
+
+            ImGui::TableNextColumn();
+            ImGui::Text("Tile Id");
+            ImGui::TableNextColumn();
+            ImGui::Text("%u (0x%04x)", hoveredOam.tileId(), hoveredOam.tileId());
+
+            ImGui::TableNextColumn();
+            ImGui::Text("Attributes");
+            ImGui::TableNextColumn();
+            ImGui::Text("VFlip: %u\nHFlip: %u\nPriority: %u\nPalette: %s", hoveredAttr.vFlip(), hoveredAttr.hFlip(), 
+                    hoveredAttr.priority(), hoveredAttr.dmgPalette() ? "OBP1" : "OBP0");
+
+            ImGui::EndTable();
+        }
+
+        ImGui::EndChild();
+    }
+
+    if (ImGui::CollapsingHeader("Palettes")) {
+
+        ImGui::SeparatorText("BGP");
+        
+        PaletteReg* bgps[] = {
+            &mGameboy.ppu.regs.BGP,
+        };
+        drawPaletteTable("tableBGPData", (PaletteReg**)bgps, 1);
+        
+        ImGui::SeparatorText("OBP");
+        
+        PaletteReg* obps[] = {
+            &mGameboy.ppu.regs.OBP0,
+            &mGameboy.ppu.regs.OBP1,
+        };
+        drawPaletteTable("tableOBPData", (PaletteReg**)obps, 2);
+        
     }
 
     ImGui::End();
