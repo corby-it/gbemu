@@ -31,9 +31,10 @@ private:
     void UISetupDocking();
     void UIDrawMenu();
     void UIDrawControlWindow();
-    void UIDrawEmulationWindow();
+    void UIDrawGBDisplayWindow();
     void UIDrawMemoryEditorWindow();
     void UIDrawTileViewerWindow();
+    void UIDrawBackgroundViewerWindow();
     
     void UIDrawRegsTables();
     void UIDrawCpuRegTable();
@@ -50,13 +51,14 @@ private:
     RgbaBuffer mDisplayBuffer;
     GLuint mGLDisplayTexture;
 
+    RgbaBuffer mBackgroundBuffer;
+    GLuint mGLBackgroundTexture;
+
     std::vector<RgbaBufferArray<TileData::w, TileData::h>> mTileBuffers;
     std::vector<GLuint> mTileTextures;
 
     std::vector<RgbaBufferArray<TileData::w, TileData::h>> mOamBuffers;
     std::vector<GLuint> mOamTextures;
-
-    int mEmulationSpeedComboIdx;
 
     std::chrono::nanoseconds mLastEmulateCall;
 

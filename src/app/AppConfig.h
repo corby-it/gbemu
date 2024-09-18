@@ -33,6 +33,7 @@ public:
 
     bool showMemoryEditor;
     bool showTileViewer;
+    bool showBackgroundViewer;
 
 };
 

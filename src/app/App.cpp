@@ -15,11 +15,12 @@ using hr_clock = std::chrono::high_resolution_clock;
 
 App::App()
     : mDisplayBuffer(Display::w, Display::h)
-    , mEmulationSpeedComboIdx(static_cast<int>(EmulationSpeed::Full))
+    , mBackgroundBuffer(BgHelper::w, BgHelper::h)
     , mLastEmulateCall(-1ns)
 {
-    // create an OpenGL texture identifier for the display image
+    // create an OpenGL texture identifier for the display image and the background
     glGenTextures(1, &mGLDisplayTexture);
+    glGenTextures(1, &mGLBackgroundTexture);
 
     // create OpenGL textures to display tiles
     mTileTextures.resize(VRam::maxTiles);
@@ -28,7 +29,7 @@ App::App()
     // create buffers for single tiles
     mTileBuffers.resize(VRam::maxTiles);
 
-    // do the  same for OAMs
+    // do the same for OAMs
     mOamTextures.resize(OAMRam::oamCount);
     glGenTextures(OAMRam::oamCount, mOamTextures.data());
 
@@ -236,10 +237,11 @@ void App::updateUI()
 
     UIDrawMenu();
     UIDrawControlWindow();
-    UIDrawEmulationWindow();
+    UIDrawGBDisplayWindow();
     UIDrawRegsTables();
     UIDrawMemoryEditorWindow();
     UIDrawTileViewerWindow();
+    UIDrawBackgroundViewerWindow();
 }
 
 void App::UISetupDocking()
@@ -288,6 +290,7 @@ void App::UIDrawMenu()
         if (ImGui::BeginMenu("Tools")) {
             ImGui::MenuItem("Memory editor", nullptr, &mConfig.showMemoryEditor);
             ImGui::MenuItem("Tile viewer", nullptr, &mConfig.showTileViewer);
+            ImGui::MenuItem("Background viewer", nullptr, &mConfig.showBackgroundViewer);
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("About")) {
@@ -396,23 +399,23 @@ void App::UIDrawControlWindow()
         ImGui::EndDisabled();
 
     
-    static const ImGuiComboFlags comboFlags = ImGuiComboFlags_None;
+    static int emulationSpeedComboIdx = static_cast<int>(EmulationSpeed::Full);
     static const char* speedItems[] = {
         emulationSpeedToStr(EmulationSpeed::Quarter),
         emulationSpeedToStr(EmulationSpeed::Half),
         emulationSpeedToStr(EmulationSpeed::Full),
         emulationSpeedToStr(EmulationSpeed::Unbound)
     };
-    auto preview = speedItems[mEmulationSpeedComboIdx];
+    auto preview = speedItems[emulationSpeedComboIdx];
 
     ImGui::PushItemWidth(100);
-    if (ImGui::BeginCombo("Emulation speed", preview, comboFlags)) {
+    if (ImGui::BeginCombo("Emulation speed", preview)) {
 
         for (int n = 0; n < IM_ARRAYSIZE(speedItems); n++)
         {
-            const bool isSelected = (mEmulationSpeedComboIdx == n);
+            const bool isSelected = (emulationSpeedComboIdx == n);
             if (ImGui::Selectable(speedItems[n], isSelected)) {
-                mEmulationSpeedComboIdx = n;
+                emulationSpeedComboIdx = n;
                 mConfig.emulationSpeed = static_cast<EmulationSpeed>(n);
             }
 
@@ -534,7 +537,7 @@ void App::UIDrawControlWindow()
     ImGui::End();
 }
 
-void App::UIDrawEmulationWindow()
+void App::UIDrawGBDisplayWindow()
 {
     LoadTextureFromMatrix(mGameboy.ppu.display.getFrontBuf(), mGLDisplayTexture, mDisplayBuffer);
 
@@ -595,25 +598,11 @@ void App::UIDrawMemoryEditorWindow()
     ImGui::End();
 }
 
-//static void drawPaletteTable(const char* tableName, uint8_t paletteId, const PaletteReg& palette)
+
 static void drawPaletteTable(const char* tableName, PaletteReg** palettes, size_t count)
 {
-    auto colorBtnSize = ImVec2(32, 32);
-    auto colorBtnFlags = ImGuiColorEditFlags_NoBorder;
-
     static ImGuiTableFlags tablePaletteFlags = ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_RowBg 
             | ImGuiTableFlags_Borders | ImGuiTableFlags_NoHostExtendX;
-
-    auto paletteToImvec4 = [](uint8_t val) {
-        switch (val) {
-        default:
-        case 0: return rgbaPixelToImVec4(whiteA);
-        case 1: return rgbaPixelToImVec4(lightGreyA);
-        case 2: return rgbaPixelToImVec4(darkGreyA);
-        case 3: return rgbaPixelToImVec4(blackA);
-        }
-    };
-
 
     if (ImGui::BeginTable(tableName, 6, tablePaletteFlags)) {
         ImGui::TableSetupColumn("Id", ImGuiTableColumnFlags_WidthFixed);
@@ -630,14 +619,30 @@ static void drawPaletteTable(const char* tableName, PaletteReg** palettes, size_
             ImGui::Text("%u", i);
             ImGui::TableNextColumn();
             ImGui::Text("0x%02x", palettes[i]->asU8());
-            ImGui::TableNextColumn();
-            ImGui::ColorButton("bgp0", paletteToImvec4(palettes[i]->valForId0), colorBtnFlags, colorBtnSize);
-            ImGui::TableNextColumn();
-            ImGui::ColorButton("bgp1", paletteToImvec4(palettes[i]->valForId1), colorBtnFlags, colorBtnSize);
-            ImGui::TableNextColumn();
-            ImGui::ColorButton("bgp2", paletteToImvec4(palettes[i]->valForId2), colorBtnFlags, colorBtnSize);
-            ImGui::TableNextColumn();
-            ImGui::ColorButton("bgp3", paletteToImvec4(palettes[i]->valForId3), colorBtnFlags, colorBtnSize);
+            
+            for (uint8_t colId = 0; colId < PaletteReg::maxIds; ++colId) {
+                float sz = 32;
+
+                auto colVal = palettes[i]->id2val(colId);
+                ImColor sqColor;
+
+                switch (colVal) {
+                default:
+                case 0: sqColor = ImColor(rgbaPixelToImVec4(whiteA)); break;
+                case 1: sqColor = ImColor(rgbaPixelToImVec4(lightGreyA)); break;
+                case 2: sqColor = ImColor(rgbaPixelToImVec4(darkGreyA)); break;
+                case 3: sqColor = ImColor(rgbaPixelToImVec4(blackA)); break;
+                }
+
+                ImGui::TableNextColumn();
+                ImVec2 p = ImGui::GetCursorScreenPos();
+                ImGui::GetWindowDrawList()->AddRectFilled(p, ImVec2(p.x + sz, p.y + sz), sqColor);
+                ImGui::Dummy(ImVec2(sz, sz));
+                if (ImGui::BeginItemTooltip()) {
+                    ImGui::Text("Color: 0x%02x", colVal);
+                    ImGui::EndTooltip();
+                }
+            }
         }
 
         ImGui::EndTable();
@@ -668,10 +673,13 @@ void App::UIDrawTileViewerWindow()
             auto tile = mGameboy.ppu.vram.getGenericTile(id);
             LoadTextureFromMatrix(tile, mTileTextures[id], mTileBuffers[id]);
 
+            ImVec2 imgPos = ImGui::GetCursorScreenPos();
+
             ImGui::Image((void*)(intptr_t)mTileTextures[id], ImVec2(16, 16));
             if (ImGui::IsItemHovered()) {
                 hoveredTileId = id;
                 hoveredTile = tile;
+                ImGui::GetWindowDrawList()->AddRect(imgPos, ImVec2(imgPos.x + 16, imgPos.y + 16), ImColor(255, 0, 0), 0, 0, 1.5);
             }
 
             if (id % 16 != 15)
@@ -727,12 +735,15 @@ void App::UIDrawTileViewerWindow()
 
             LoadTextureFromMatrix(tile, mOamTextures[id], mOamBuffers[id]);
 
+            ImVec2 imgPos = ImGui::GetCursorScreenPos();
+
             ImGui::Image((void*)(intptr_t)mOamTextures[id], ImVec2(24, 24));
             if (ImGui::IsItemHovered()) {
                 hoveredOamId = id;
                 hoveredOam = oam;
                 hoveredTile = tile;
                 hoveredAttr = oam.attr();
+                ImGui::GetWindowDrawList()->AddRect(imgPos, ImVec2(imgPos.x + 24, imgPos.y + 24), ImColor(255, 0, 0), 0, 0, 1.5);
             }
 
             if (id % 10 != 9)
@@ -804,6 +815,124 @@ void App::UIDrawTileViewerWindow()
         drawPaletteTable("tableOBPData", (PaletteReg**)obps, 2);
         
     }
+
+    ImGui::End();
+}
+
+void App::UIDrawBackgroundViewerWindow()
+{
+    if (!mConfig.showBackgroundViewer)
+        return;
+
+    ImGui::Begin("Background Viewer", &mConfig.showBackgroundViewer);
+    
+
+    static const char* tileMapChoices[] = {
+        bgHelperTileMapToStr(BgHelperTileMap::Active),
+        bgHelperTileMapToStr(BgHelperTileMap::At9800),
+        bgHelperTileMapToStr(BgHelperTileMap::At9C00),
+    };
+    static int tileMapSelected = 0;
+
+    ImGui::PushItemWidth(100);
+    if (ImGui::BeginCombo("Tile Map", tileMapChoices[tileMapSelected])) {
+
+        for (int n = 0; n < IM_ARRAYSIZE(tileMapChoices); n++)
+        {
+            const bool isSelected = (tileMapSelected == n);
+            if (ImGui::Selectable(tileMapChoices[n], isSelected)) {
+                tileMapSelected = n;
+            }
+
+            if (isSelected)
+                ImGui::SetItemDefaultFocus();
+        }
+        ImGui::EndCombo();
+    }
+
+
+    static const char* tileAddressingChoices[] = {
+        bgHelperTileAddressingToStr(BgHelperTileAddressing::Active),
+        bgHelperTileAddressingToStr(BgHelperTileAddressing::At8000),
+        bgHelperTileAddressingToStr(BgHelperTileAddressing::At8800),
+    };
+    static int tileAddressingSelected = 0;
+
+    ImGui::PushItemWidth(100);
+    if (ImGui::BeginCombo("Tile Addressing", tileAddressingChoices[tileAddressingSelected])) {
+
+        for (int n = 0; n < IM_ARRAYSIZE(tileAddressingChoices); n++)
+        {
+            const bool isSelected = (tileAddressingSelected == n);
+            if (ImGui::Selectable(tileAddressingChoices[n], isSelected)) {
+                tileAddressingSelected = n;
+            }
+
+            if (isSelected)
+                ImGui::SetItemDefaultFocus();
+        }
+        ImGui::EndCombo();
+    }
+
+    auto bg = mGameboy.ppu.getBgHelper(
+        static_cast<BgHelperTileMap>(tileMapSelected),
+        static_cast<BgHelperTileAddressing>(tileAddressingSelected)
+    );
+
+
+    float scaling = 2;
+    auto drawList = ImGui::GetWindowDrawList();
+    ImVec2 cur = ImGui::GetCursorScreenPos();
+
+    // draw background
+    LoadTextureFromMatrix(bg, mGLBackgroundTexture, mBackgroundBuffer);
+    drawList->AddImage((void*)(intptr_t)mGLBackgroundTexture, cur, ImVec2(cur.x + 256 * scaling, cur.y + 256 * scaling));
+
+    // draw scroll area
+    {
+        auto color = ImColor(255, 0, 0);
+        float thickness = 1.5;
+
+        uint8_t scx = mGameboy.ppu.regs.SCX;
+        uint8_t scy = mGameboy.ppu.regs.SCY;
+        uint8_t endx = (scx + 159) % 256;
+        uint8_t endy = (scy + 143) % 256;
+
+        ImVec2 tl(cur.x + scx * scaling, cur.y + scy * scaling);
+        ImVec2 tr(cur.x + endx * scaling, cur.y + scy * scaling);
+        ImVec2 bl(cur.x + scx * scaling, cur.y + endy * scaling);
+        ImVec2 br(cur.x + endx * scaling, cur.y + endy * scaling);
+
+        ImVec2 limtl(cur.x, cur.y);
+        ImVec2 limbr(cur.x + 256 * scaling, cur.y + 256 * scaling);
+
+        // draw horizontal lines
+        if (tr.x < tl.x) { // wrapping
+            drawList->AddLine(tl, ImVec2(limbr.x, tl.y), color, thickness);
+            drawList->AddLine(ImVec2(limtl.x, tr.y), tr, color, thickness);
+
+            drawList->AddLine(bl, ImVec2(limbr.x, bl.y), color, thickness);
+            drawList->AddLine(ImVec2(limtl.x, br.y), br, color, thickness);
+        }
+        else { // no wrapping
+            drawList->AddLine(tl, tr, color, thickness);
+            drawList->AddLine(bl, br, color, thickness);
+        }
+        // draw vertical lines
+        if (bl.y < tl.y) { // wrapping
+            drawList->AddLine(tl, ImVec2(tl.x, limbr.y), color, thickness);
+            drawList->AddLine(ImVec2(tl.x, limtl.y), bl, color, thickness);
+
+            drawList->AddLine(tr, ImVec2(tr.x, limbr.y), color, thickness);
+            drawList->AddLine(ImVec2(tr.x, limtl.y), br, color, thickness);
+        }
+        else { // no wrapping
+            drawList->AddLine(tl, bl, color, thickness);
+            drawList->AddLine(tr, br, color, thickness);
+        }
+    }
+
+    ImGui::Dummy(ImVec2(512, 512));
 
     ImGui::End();
 }

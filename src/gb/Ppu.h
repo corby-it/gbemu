@@ -130,6 +130,9 @@ struct PaletteReg : public RegU8 {
     // 6..7 Color value for color ID 3
     uint8_t valForId3 : 2;
 
+    static constexpr uint8_t maxIds = 4;
+
+
     uint8_t asU8() const override;
     void fromU8(uint8_t b) override;
 
@@ -245,6 +248,96 @@ CEREAL_CLASS_VERSION(PPURegs, 1);
 
 
 
+
+// ------------------------------------------------------------------------------------------------
+// BgHelper
+// ------------------------------------------------------------------------------------------------
+
+enum class BgHelperTileMap {
+    Active,
+    At9800,
+    At9C00,
+};
+
+const char* bgHelperTileMapToStr(BgHelperTileMap bghtm);
+
+enum class BgHelperTileAddressing {
+    Active,
+    At8000,
+    At8800
+};
+
+const char* bgHelperTileAddressingToStr(BgHelperTileAddressing bghta);
+
+
+struct BgHelperConfig {
+    BgHelperConfig()
+        : tileMapSelection(BgHelperTileMap::Active)
+        , tileAddressing(BgHelperTileAddressing::Active)
+        , lcdcTileMapBit(false)
+        , lcdcTileAddressingBit(false)
+    {}
+
+    BgHelperTileMap tileMapSelection;
+    BgHelperTileAddressing tileAddressing;
+
+    bool lcdcTileMapBit;
+    bool lcdcTileAddressingBit;
+};
+
+class BgHelper : public Matrix {
+public:
+    BgHelper(VRam& vram, BgHelperConfig config)
+        : Matrix(w, h)
+        , mVram(vram)
+        , mConfig(config)
+        , mTileMap(0, nullptr)
+    {
+        switch (mConfig.tileMapSelection) {
+        default:
+        case BgHelperTileMap::Active: mTileMap = mVram.getTileMap(mConfig.lcdcTileMapBit); break;
+        case BgHelperTileMap::At9800: mTileMap = mVram.getTileMap(false); break;
+        case BgHelperTileMap::At9C00: mTileMap = mVram.getTileMap(true); break;
+        }
+    }
+
+    uint8_t getImpl(uint32_t x, uint32_t y) const override
+    {
+        // get the tile id
+        auto tileId = mTileMap.get(x / 8, y / 8);
+
+        bool getTileParam = true;
+
+        switch (mConfig.tileAddressing) {
+        default:
+        case BgHelperTileAddressing::Active: getTileParam = mConfig.lcdcTileAddressingBit; break;
+        case BgHelperTileAddressing::At8000: getTileParam = true; break;
+        case BgHelperTileAddressing::At8800: getTileParam = false; break;
+        }
+
+        auto tile = mVram.getBgTile(tileId, getTileParam);
+        return tile.get(x % 8, y % 8);
+    }
+    
+    void setImpl(uint32_t /*x*/, uint32_t /*y*/, uint8_t /*val*/) override
+    {
+        // don't set anything, this helper class is meant to be used 
+        // for reading the background data
+    }
+
+    static constexpr uint32_t w = 256;
+    static constexpr uint32_t h = 256;
+
+
+private:
+    VRam& mVram;
+    BgHelperConfig mConfig;
+    TileMap mTileMap;
+
+};
+
+
+
 // ------------------------------------------------------------------------------------------------
 // PPU
 // ------------------------------------------------------------------------------------------------
@@ -344,6 +437,9 @@ public:
     VRam vram;
     OAMRam oamRam;
     Display display;
+
+
+    BgHelper getBgHelper(BgHelperTileMap mapSelection, BgHelperTileAddressing tileAddressing);
 
 
 private:

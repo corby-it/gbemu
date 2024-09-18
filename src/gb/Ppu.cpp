@@ -141,6 +141,33 @@ void PPURegs::reset()
 
 
 
+// ------------------------------------------------------------------------------------------------
+// BgHelper
+// ------------------------------------------------------------------------------------------------
+
+const char* bgHelperTileMapToStr(BgHelperTileMap bghtm)
+{
+    switch (bghtm) {
+    case BgHelperTileMap::Active: return "Active";
+    case BgHelperTileMap::At9800: return "At 0x9800";
+    case BgHelperTileMap::At9C00: return "At 0x9C00";
+    default:
+        return "unknown";
+    }
+}
+
+const char* bgHelperTileAddressingToStr(BgHelperTileAddressing bghta)
+{
+    switch (bghta) {
+    case BgHelperTileAddressing::Active: return "Active";
+    case BgHelperTileAddressing::At8000: return "At 0x8000";
+    case BgHelperTileAddressing::At8800: return "At 0x8800";
+    default:
+        return "unknown";
+    }
+}
+
+
 
 
 // ------------------------------------------------------------------------------------------------
@@ -328,6 +355,7 @@ void PPU::writeLCDC(uint8_t val)
     if (old.lcdEnable && !regs.LCDC.lcdEnable)
         onDisabled();
 }
+
 
 void PPU::lockRamAreas(bool lock)
 {
@@ -609,3 +637,17 @@ PPU::OAMPixelInfoList PPU::renderPixelGetObjsValues(uint32_t currX)
 
     return pixInfo;
 }
+
+
+
+BgHelper PPU::getBgHelper(BgHelperTileMap mapSelection, BgHelperTileAddressing tileAddressing)
+{
+    BgHelperConfig config;
+    config.tileMapSelection = mapSelection;
+    config.tileAddressing = tileAddressing;
+    config.lcdcTileMapBit = regs.LCDC.bgTileMapArea;
+    config.lcdcTileAddressingBit = regs.LCDC.bgWinTileDataArea;
+
+    return BgHelper(vram, config);
+}
+

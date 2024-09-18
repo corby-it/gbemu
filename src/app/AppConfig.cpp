@@ -24,5 +24,6 @@ AppConfig::AppConfig()
     , emulationSpeed(EmulationSpeed::Full)
     , showMemoryEditor(false)
     , showTileViewer(false)
+    , showBackgroundViewer(false)
 {}
 
