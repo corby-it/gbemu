@@ -66,6 +66,8 @@ public:
     virtual uint8_t* ptr() = 0;
 
     size_t size() const { return mSize; }
+    uint32_t w() const { return mWidth; }
+    uint32_t h() const { return mHeight; }
 
     RgbaPixelRef operator()(uint32_t x, uint32_t y)
     {
@@ -74,10 +76,19 @@ public:
         return RgbaPixelRef(ptr() + (y * mWidth * 4) + (x * 4));
     }
 
+    void fill(RgbaPixel pix)
+    {
+        for (uint32_t r = 0; r < mHeight; ++r) {
+            for (uint32_t c = 0; c < mWidth; ++c) {
+                (*this)(r, c) = pix;
+            }
+        }
+    }
+
 protected:
-    const uint32_t mWidth;
-    const uint32_t mHeight;
-    const size_t mSize;
+    uint32_t mWidth;
+    uint32_t mHeight;
+    size_t mSize;
 };
 
 

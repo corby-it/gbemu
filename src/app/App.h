@@ -14,7 +14,7 @@
 class App : public AppBase {
 public:
     App();
-    virtual ~App() {}
+    virtual ~App();
 
     void startup() override;
     bool emulate() override;
@@ -51,14 +51,14 @@ private:
     RgbaBuffer mDisplayBuffer;
     GLuint mGLDisplayTexture;
 
-    RgbaBuffer mBackgroundBuffer;
-    GLuint mGLBackgroundTexture;
-
     std::vector<RgbaBufferArray<TileData::w, TileData::h>> mTileBuffers;
     std::vector<GLuint> mTileTextures;
 
     std::vector<RgbaBufferArray<TileData::w, TileData::h>> mOamBuffers;
     std::vector<GLuint> mOamTextures;
+
+    std::vector<RgbaBufferArray<TileData::w, TileData::h>> mBgBuffers;
+    std::vector<GLuint> mBgTextures;
 
     std::chrono::nanoseconds mLastEmulateCall;
 

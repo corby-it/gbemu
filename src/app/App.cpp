@@ -15,35 +15,40 @@ using hr_clock = std::chrono::high_resolution_clock;
 
 App::App()
     : mDisplayBuffer(Display::w, Display::h)
-    , mBackgroundBuffer(BgHelper::w, BgHelper::h)
     , mLastEmulateCall(-1ns)
 {
-    // create an OpenGL texture identifier for the display image and the background
+    // create an OpenGL texture identifier for the display image
     glGenTextures(1, &mGLDisplayTexture);
-    glGenTextures(1, &mGLBackgroundTexture);
 
-    // create OpenGL textures to display tiles
+    // create OpenGL textures to display tiles and the relative buffers
     mTileTextures.resize(VRam::maxTiles);
     glGenTextures(VRam::maxTiles, mTileTextures.data());
-
-    // create buffers for single tiles
     mTileBuffers.resize(VRam::maxTiles);
 
     // do the same for OAMs
-    mOamTextures.resize(OAMRam::oamCount);
-    glGenTextures(OAMRam::oamCount, mOamTextures.data());
+    // allocate 2x textures and buffers to account for double height oams
+    mOamTextures.resize(OAMRam::oamCount * 2);
+    glGenTextures(OAMRam::oamCount * 2, mOamTextures.data());
+    mOamBuffers.resize(OAMRam::oamCount * 2);
 
-    mOamBuffers.resize(OAMRam::oamCount);
+    // background
+    mBgTextures.resize(BgHelper::rows * BgHelper::cols);
+    glGenTextures(BgHelper::rows * BgHelper::cols, mBgTextures.data());
+    mBgBuffers.resize(BgHelper::rows * BgHelper::cols);
+}
+
+App::~App()
+{
+    glDeleteTextures(1, &mGLDisplayTexture);
+    glDeleteTextures(VRam::maxTiles, mTileTextures.data());
+    glDeleteTextures(OAMRam::oamCount * 2, mOamTextures.data());
+    glDeleteTextures(BgHelper::rows * BgHelper::cols, mBgTextures.data());
 }
 
 
-// Simple helper function to load an image into a OpenGL texture with common settings
-static bool LoadTextureFromMatrix(const Matrix& mat, GLuint& outTexture, RgbaBufferIf& buffer)
+static void loadTextureFromRgbaBuffer(GLuint& outTexture, RgbaBufferIf& buffer)
 {
     glBindTexture(GL_TEXTURE_2D, outTexture);
-
-    // turn the tile data into an RGB buffer
-    mat.fillRgbaBuffer(buffer);
 
     // Setup filtering parameters for display
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -55,9 +60,15 @@ static bool LoadTextureFromMatrix(const Matrix& mat, GLuint& outTexture, RgbaBuf
 #if defined(GL_UNPACK_ROW_LENGTH) && !defined(__EMSCRIPTEN__)
     glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
 #endif
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, mat.width(), mat.height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, buffer.ptr());
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, buffer.w(), buffer.h(), 0, GL_RGBA, GL_UNSIGNED_BYTE, buffer.ptr());
+}
 
-    return true;
+// Simple helper function to load an image into a OpenGL texture with common settings
+static void LoadTextureFromMatrix(const Matrix& mat, GLuint& outTexture, RgbaBufferIf& buffer)
+{
+    // turn the matrix data into an RGB buffer
+    mat.fillRgbaBuffer(buffer);
+    loadTextureFromRgbaBuffer(outTexture, buffer);
 }
 
 static ImVec4 rgbaPixelToImVec4(RgbaPixel pix)
@@ -133,6 +144,14 @@ bool App::emulate()
     ZoneScoped;
 
     auto currTime = getCurrTime();
+
+    // if 'P' is pressed on the keyboard pause/restart the emulation
+    if (ImGui::IsKeyReleased(ImGuiKey_P)) {
+        if (mGameboy.status == GameBoyClassic::Status::Paused)
+            mGameboy.play();
+        else if(mGameboy.status == GameBoyClassic::Status::Running)
+            mGameboy.pause();
+    }
 
     // check which buttons are pressed once here (input state won't be 
     // updated until the next call to the app loop)
@@ -655,6 +674,9 @@ void App::UIDrawTileViewerWindow()
     if (!mConfig.showTileViewer)
         return;
 
+    ImU32 highlightCol = ImColor(255, 0, 0);
+
+
     ImGui::Begin("Tile Viewer", &mConfig.showTileViewer);
 
     float childWindowWidth = std::max(ImGui::GetContentRegionAvail().x * 0.5f, 300.f);
@@ -679,7 +701,7 @@ void App::UIDrawTileViewerWindow()
             if (ImGui::IsItemHovered()) {
                 hoveredTileId = id;
                 hoveredTile = tile;
-                ImGui::GetWindowDrawList()->AddRect(imgPos, ImVec2(imgPos.x + 16, imgPos.y + 16), ImColor(255, 0, 0), 0, 0, 1.5);
+                ImGui::GetWindowDrawList()->AddRect(imgPos, ImVec2(imgPos.x + 16, imgPos.y + 16), highlightCol, 0, 0, 1.5);
             }
 
             if (id % 16 != 15)
@@ -721,7 +743,6 @@ void App::UIDrawTileViewerWindow()
         
         uint8_t hoveredOamId = 0;
         auto hoveredOam = mGameboy.ppu.oamRam.getOAMData(0);
-        auto hoveredTile = mGameboy.ppu.vram.getGenericTile(hoveredOam.tileId());
         auto hoveredAttr = hoveredOam.attr();
 
         float childWindowHeight = 265;
@@ -730,20 +751,42 @@ void App::UIDrawTileViewerWindow()
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(1, 1));
 
         for (uint8_t id = 0; id < OAMRam::oamCount; ++id) {
+            bool doubleH = mGameboy.ppu.regs.LCDC.objDoubleH;
+
             auto oam = mGameboy.ppu.oamRam.getOAMData(id);
-            auto tile = mGameboy.ppu.vram.getGenericTile(oam.tileId());
-
-            LoadTextureFromMatrix(tile, mOamTextures[id], mOamBuffers[id]);
-
+            auto objTile = mGameboy.ppu.vram.getObjTile(oam.tileId(), doubleH);
+            
+            // draw the top tile
             ImVec2 imgPos = ImGui::GetCursorScreenPos();
+            auto drawList = ImGui::GetWindowDrawList();
 
-            ImGui::Image((void*)(intptr_t)mOamTextures[id], ImVec2(24, 24));
+            LoadTextureFromMatrix(objTile.td, mOamTextures[id * 2], mOamBuffers[id * 2]);
+            drawList->AddImage((void*)(intptr_t)mOamTextures[id * 2], imgPos, ImVec2(imgPos.x + 24, imgPos.y + 24));
+
+            // draw bottom tile (if any)
+            auto tl = ImVec2(imgPos.x, imgPos.y + 24);
+            if (doubleH) {
+                LoadTextureFromMatrix(objTile.tdh, mOamTextures[id * 2 + 1], mOamBuffers[id * 2 + 1]);
+            }
+            else {
+                // fill the buffer with white
+                mOamBuffers[id * 2 + 1].fill(whiteA);
+                loadTextureFromRgbaBuffer(mOamTextures[id * 2 + 1], mOamBuffers[id * 2 + 1]);
+            }
+            drawList->AddImage((void*)(intptr_t)mOamTextures[id * 2 + 1], tl, ImVec2(tl.x + 24, tl.y + 24));
+
+            // draw a red line across the image if the oam is not visible
+            if (oam.x() == 0 || oam.x() >= 168 || oam.y() == 0 || oam.y() >= 160) {
+                drawList->AddLine(imgPos, ImVec2(imgPos.x + 24, imgPos.y + 48), highlightCol, 1.5);
+            }
+
+            ImGui::Dummy(ImVec2(24, 48));
+
             if (ImGui::IsItemHovered()) {
                 hoveredOamId = id;
                 hoveredOam = oam;
-                hoveredTile = tile;
                 hoveredAttr = oam.attr();
-                ImGui::GetWindowDrawList()->AddRect(imgPos, ImVec2(imgPos.x + 24, imgPos.y + 24), ImColor(255, 0, 0), 0, 0, 1.5);
+                drawList->AddRect(imgPos, ImVec2(imgPos.x + 24, imgPos.y + 48), highlightCol, 0, 0, 1.5);
             }
 
             if (id % 10 != 9)
@@ -757,7 +800,7 @@ void App::UIDrawTileViewerWindow()
 
         ImGui::BeginChild("OAMZoom", ImVec2(0, childWindowHeight));
 
-        ImGui::Image((void*)(intptr_t)mOamTextures[hoveredOamId], ImVec2(128, 128));
+        ImGui::Image((void*)(intptr_t)mOamTextures[hoveredOamId * 2], ImVec2(128, 128));
 
         static ImGuiTableFlags flags = ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders | ImGuiTableFlags_Resizable;
 
@@ -881,30 +924,65 @@ void App::UIDrawBackgroundViewerWindow()
 
 
     float scaling = 2;
+    auto color = ImColor(255, 0, 0);
+    float thickness = 1.5;
+
     auto drawList = ImGui::GetWindowDrawList();
-    ImVec2 cur = ImGui::GetCursorScreenPos();
+    ImVec2 imgPos = ImGui::GetCursorScreenPos();
 
     // draw background
-    LoadTextureFromMatrix(bg, mGLBackgroundTexture, mBackgroundBuffer);
-    drawList->AddImage((void*)(intptr_t)mGLBackgroundTexture, cur, ImVec2(cur.x + 256 * scaling, cur.y + 256 * scaling));
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0,0));
 
-    // draw scroll area
+    uint8_t hoveredTileId = 0;
+    uint32_t hoveredRow = 0;
+    uint32_t hoveredCol = 0;
+    uint32_t hoveredIndex = 0;
+    uint32_t hoveredBgAddr = 0;
+    TileData hoveredTile = bg.getTile(0, 0);
+
+    for (uint32_t r = 0; r < BgHelper::rows; ++r) {
+        for (uint32_t c = 0; c < BgHelper::cols; ++c) {
+            auto tileId = bg.getTileId(r, c);
+            auto tile = bg.getTile(r, c);
+
+            auto currPos = ImGui::GetCursorScreenPos();
+
+            LoadTextureFromMatrix(tile, mBgTextures[r * BgHelper::cols + c], mBgBuffers[r * BgHelper::cols + c]);
+            ImGui::Image((void*)(intptr_t)mBgTextures[r * BgHelper::cols + c], ImVec2(TileData::w * scaling, TileData::h * scaling));
+
+            if (ImGui::IsItemHovered()) {
+                hoveredTileId = tileId;
+                hoveredRow = r;
+                hoveredCol = c;
+                hoveredIndex = hoveredRow * BgHelper::cols + hoveredCol;
+                hoveredBgAddr = bg.tileMap().gbAddr + hoveredIndex;
+                hoveredTile = tile;
+                drawList->AddRect(currPos, ImVec2(currPos.x + TileData::w * scaling, currPos.y + TileData::h * scaling), color, 0, 0, thickness);
+            }
+
+            if(c != BgHelper::cols - 1)
+                ImGui::SameLine();
+        }
+    }
+
+    ImGui::PopStyleVar();
+
+    
+    uint8_t scx = mGameboy.ppu.regs.SCX;
+    uint8_t scy = mGameboy.ppu.regs.SCY;
+    
     {
-        auto color = ImColor(255, 0, 0);
-        float thickness = 1.5;
-
-        uint8_t scx = mGameboy.ppu.regs.SCX;
-        uint8_t scy = mGameboy.ppu.regs.SCY;
+        // draw scroll area
         uint8_t endx = (scx + 159) % 256;
         uint8_t endy = (scy + 143) % 256;
 
-        ImVec2 tl(cur.x + scx * scaling, cur.y + scy * scaling);
-        ImVec2 tr(cur.x + endx * scaling, cur.y + scy * scaling);
-        ImVec2 bl(cur.x + scx * scaling, cur.y + endy * scaling);
-        ImVec2 br(cur.x + endx * scaling, cur.y + endy * scaling);
+        ImVec2 tl(imgPos.x + scx * scaling, imgPos.y + scy * scaling);
+        ImVec2 tr(imgPos.x + endx * scaling, imgPos.y + scy * scaling);
+        ImVec2 bl(imgPos.x + scx * scaling, imgPos.y + endy * scaling);
+        ImVec2 br(imgPos.x + endx * scaling, imgPos.y + endy * scaling);
 
-        ImVec2 limtl(cur.x, cur.y);
-        ImVec2 limbr(cur.x + 256 * scaling, cur.y + 256 * scaling);
+        ImVec2 limtl(imgPos.x, imgPos.y);
+        ImVec2 limbr(imgPos.x + 256 * scaling, imgPos.y + 256 * scaling);
 
         // draw horizontal lines
         if (tr.x < tl.x) { // wrapping
@@ -932,7 +1010,31 @@ void App::UIDrawBackgroundViewerWindow()
         }
     }
 
-    ImGui::Dummy(ImVec2(512, 512));
+
+    // table with additional data
+    static ImGuiTableFlags tableBgDetailsFlags = ImGuiTableFlags_RowBg | ImGuiTableFlags_NoBordersInBody;
+
+    if (ImGui::BeginTable("tableBgDetails", 2, tableBgDetailsFlags)) {
+        ImGui::TableSetupColumn("Attr", ImGuiTableColumnFlags_WidthFixed);
+        ImGui::TableSetupColumn("Val", ImGuiTableColumnFlags_WidthStretch);
+
+        ImGui::TableNextColumn();
+        ImGui::Text("Scroll");
+        ImGui::TableNextColumn();
+        ImGui::Text("SCX: %u (0x%02x), SCY: %u (0x%02x)", scx, scx, scy, scy);
+
+        ImGui::TableNextColumn();
+        ImGui::Text("BG index");
+        ImGui::TableNextColumn();
+        ImGui::Text("%u (r: %u, c: %u), addr: 0x%04x", hoveredIndex, hoveredRow, hoveredCol, hoveredBgAddr);
+
+        ImGui::TableNextColumn();
+        ImGui::Text("Tile index");
+        ImGui::TableNextColumn();
+        ImGui::Text("%u, addr: 0x%04x", hoveredTileId, hoveredTile.gbAddr);
+
+        ImGui::EndTable();
+    }
 
     ImGui::End();
 }

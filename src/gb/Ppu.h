@@ -303,8 +303,24 @@ public:
 
     uint8_t getImpl(uint32_t x, uint32_t y) const override
     {
+        return getTile(x / 8, y / 8).get(x % 8, y % 8);
+    }
+    
+    void setImpl(uint32_t /*x*/, uint32_t /*y*/, uint8_t /*val*/) override
+    {
+        // don't set anything, this helper class is meant to be used 
+        // for reading the background data
+    }
+
+    uint8_t getTileId(uint32_t r, uint32_t c) const
+    {
+        return mTileMap.get(c, r);
+    }
+
+    TileData getTile(uint32_t r, uint32_t c) const
+    {
         // get the tile id
-        auto tileId = mTileMap.get(x / 8, y / 8);
+        auto tileId = getTileId(r, c);
 
         bool getTileParam = true;
 
@@ -315,18 +331,16 @@ public:
         case BgHelperTileAddressing::At8800: getTileParam = false; break;
         }
 
-        auto tile = mVram.getBgTile(tileId, getTileParam);
-        return tile.get(x % 8, y % 8);
+        return mVram.getBgTile(tileId, getTileParam);
     }
-    
-    void setImpl(uint32_t /*x*/, uint32_t /*y*/, uint8_t /*val*/) override
-    {
-        // don't set anything, this helper class is meant to be used 
-        // for reading the background data
-    }
+
+    TileMap tileMap() const { return mTileMap; }
 
     static constexpr uint32_t w = 256;
     static constexpr uint32_t h = 256;
+
+    static constexpr uint32_t rows = 32;
+    static constexpr uint32_t cols = 32;
 
 
 private:
