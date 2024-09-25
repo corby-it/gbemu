@@ -20,7 +20,7 @@ static const fs::path mooneyeFilesRoot = testFilesRoot / "mts-20240127";
 static const fs::path mooneyeResFilesRoot = testFilesRoot / "mts-results";
 
 
-static constexpr uint32_t stepLimit = 1000000; // 1 million
+static constexpr uint32_t stepLimit = 10000000; // 10 million
 
 
 enum class MooneyeRes : int32_t {
@@ -136,5 +136,20 @@ CREATE_MOONEYE_TEST("acceptance/div_timing.gb")
 //CREATE_MOONEYE_TEST("acceptance/reti_intr_timing.gb")
 //CREATE_MOONEYE_TEST("acceptance/reti_timing.gb")
 //CREATE_MOONEYE_TEST("acceptance/rst_timing.gb")
+
+
+// Mooneye tests for MBC1
+CREATE_MOONEYE_TEST("emulator-only/mbc1/bits_bank1.gb")
+CREATE_MOONEYE_TEST("emulator-only/mbc1/bits_bank2.gb")
+CREATE_MOONEYE_TEST("emulator-only/mbc1/bits_mode.gb")
+CREATE_MOONEYE_TEST("emulator-only/mbc1/bits_ramg.gb")
+CREATE_MOONEYE_TEST("emulator-only/mbc1/ram_64kb.gb")
+CREATE_MOONEYE_TEST("emulator-only/mbc1/ram_256kb.gb")
+CREATE_MOONEYE_TEST("emulator-only/mbc1/rom_512kb.gb")
+CREATE_MOONEYE_TEST("emulator-only/mbc1/rom_1Mb.gb")
+CREATE_MOONEYE_TEST("emulator-only/mbc1/rom_2Mb.gb")
+CREATE_MOONEYE_TEST("emulator-only/mbc1/rom_4Mb.gb")
+CREATE_MOONEYE_TEST("emulator-only/mbc1/rom_8Mb.gb")
+CREATE_MOONEYE_TEST("emulator-only/mbc1/rom_16Mb.gb")
 
 

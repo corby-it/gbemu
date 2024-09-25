@@ -126,7 +126,8 @@ private:
     bool mRamEnabled;
     bool mAddrMode1;
 
-    uint8_t mRomBankLowMask;
+    uint8_t mRomMask;
+    uint8_t mRamMask;
 
     uint8_t mRomBankLow;
     uint8_t mRomBankHigh;
