@@ -35,7 +35,7 @@ TEST_CASE("Cartridge header parsing - Tetris")
     CHECK(header.newLicenseeCode() == "");
     CHECK(header.sgbFlag() == SGBFlag::GB);
     CHECK(header.cartType() == CartridgeType::NoMBC);
-    CHECK(header.romSize() == 32 * 1024);
+    CHECK(header.romSize() == 32_KB);
     CHECK(header.ramSize() == 0);
     CHECK(header.destCode() == DestCode::Japan);
     CHECK(header.oldLicenseeCode() == "Nintendo");
@@ -60,8 +60,8 @@ TEST_CASE("Cartridge header parsing - Pokemon Red")
     CHECK(header.newLicenseeCode() == "Nintendo R&D1");
     CHECK(header.sgbFlag() == SGBFlag::SGB);
     CHECK(header.cartType() == CartridgeType::MBC3RamBattery);
-    CHECK(header.romSize() == 1 * 1024 * 1024);
-    CHECK(header.ramSize() == 32 * 1024);
+    CHECK(header.romSize() == 1_MB);
+    CHECK(header.ramSize() == 32_KB);
     CHECK(header.destCode() == DestCode::World);
     CHECK(header.oldLicenseeCode() == "Refer to the \"New licensee code\"");
     CHECK(header.maskRomVersionNum() == 0x00);
@@ -85,7 +85,7 @@ TEST_CASE("Cartridge header parsing - Super Mario Land")
     CHECK(header.newLicenseeCode() == "");
     CHECK(header.sgbFlag() == SGBFlag::GB);
     CHECK(header.cartType() == CartridgeType::MBC1);
-    CHECK(header.romSize() == 64 * 1024);
+    CHECK(header.romSize() == 64_KB);
     CHECK(header.ramSize() == 0);
     CHECK(header.destCode() == DestCode::Japan);
     CHECK(header.oldLicenseeCode() == "Nintendo");
@@ -110,8 +110,8 @@ TEST_CASE("Cartridge header parsing - Zelda Link's Awakening")
     CHECK(header.newLicenseeCode() == "");
     CHECK(header.sgbFlag() == SGBFlag::GB);
     CHECK(header.cartType() == CartridgeType::MBC1RamBattery);
-    CHECK(header.romSize() == 512 * 1024);
-    CHECK(header.ramSize() == 8 * 1024);
+    CHECK(header.romSize() == 512_KB);
+    CHECK(header.ramSize() == 8_KB);
     CHECK(header.destCode() == DestCode::World);
     CHECK(header.oldLicenseeCode() == "Nintendo");
     CHECK(header.maskRomVersionNum() == 0x02);
@@ -179,7 +179,7 @@ TEST_CASE("Test Cartridge")
 
         REQUIRE(parsing == CartridgeLoadingRes::Ok);
 
-        CHECK(c.header.romSize() == 32 * 1024);
+        CHECK(c.header.romSize() == 32_KB);
         CHECK(c.mbc->rom.size() == c.header.romSize());
 
         CHECK(c.header.ramSize() == 0);

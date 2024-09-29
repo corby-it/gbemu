@@ -67,7 +67,7 @@ void saveDisplayToFile(const GameBoyClassic& gb, fs::path romRelPath)
     RgbaBuffer buf(w, h);
     gb.ppu.display.getFrontBuf().fillRgbaBuffer(buf);
 
-    stbi_write_png(pngPath.string().c_str(), w, h, 4, static_cast<const void*>(buf.ptr()), w * 3);
+    stbi_write_png(pngPath.string().c_str(), w, h, 4, static_cast<const void*>(buf.ptr()), w * 4);
 }
 
 
@@ -152,4 +152,22 @@ CREATE_MOONEYE_TEST("emulator-only/mbc1/rom_4Mb.gb")
 CREATE_MOONEYE_TEST("emulator-only/mbc1/rom_8Mb.gb")
 CREATE_MOONEYE_TEST("emulator-only/mbc1/rom_16Mb.gb")
 
+// Mooneye tests for MBC2
+CREATE_MOONEYE_TEST("emulator-only/mbc2/bits_ramg.gb")
+CREATE_MOONEYE_TEST("emulator-only/mbc2/bits_romb.gb")
+CREATE_MOONEYE_TEST("emulator-only/mbc2/bits_unused.gb")
+CREATE_MOONEYE_TEST("emulator-only/mbc2/ram.gb")
+CREATE_MOONEYE_TEST("emulator-only/mbc2/rom_512kb.gb")
+CREATE_MOONEYE_TEST("emulator-only/mbc2/rom_1Mb.gb")
+CREATE_MOONEYE_TEST("emulator-only/mbc2/rom_2Mb.gb")
+
+// Mooneye tests for MBC5
+CREATE_MOONEYE_TEST("emulator-only/mbc5/rom_512kb.gb")
+CREATE_MOONEYE_TEST("emulator-only/mbc5/rom_1Mb.gb")
+CREATE_MOONEYE_TEST("emulator-only/mbc5/rom_2Mb.gb")
+CREATE_MOONEYE_TEST("emulator-only/mbc5/rom_4Mb.gb")
+CREATE_MOONEYE_TEST("emulator-only/mbc5/rom_8Mb.gb")
+CREATE_MOONEYE_TEST("emulator-only/mbc5/rom_16Mb.gb")
+CREATE_MOONEYE_TEST("emulator-only/mbc5/rom_32Mb.gb")
+CREATE_MOONEYE_TEST("emulator-only/mbc5/rom_64Mb.gb")
 

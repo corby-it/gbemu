@@ -3,12 +3,12 @@
 #include "GbCommons.h"
 
 
-static constexpr uint8_t bitmask(uint8_t nbits)
+static constexpr uint16_t bitmask(uint8_t nbits)
 {
     return (1 << nbits) - 1;
 }
 
-static constexpr uint8_t bankMask(uint8_t maxbits, uint8_t nbanks)
+static constexpr uint16_t bankMask(uint8_t maxbits, uint16_t nbanks)
 {
     if (nbanks == 0)
         return 0;
@@ -29,8 +29,8 @@ MbcInterface::MbcInterface(MbcType type, size_t romSize, size_t ramSize)
     : rom(romSize, 0)
     , ram(ramSize, 0)
     , mType(type)
-    , mRomBanksCount(uint8_t(rom.size() / romBankSize))
-    , mRamBanksCount(uint8_t(ram.size() / ramBankSize))
+    , mRomBanksCount(uint16_t(rom.size() / romBankSize))
+    , mRamBanksCount(uint16_t(ram.size() / ramBankSize))
     , mRomCurrBank(0)
     , mRamCurrBank(0)
 {}
@@ -241,13 +241,107 @@ void Mbc1::updateBankConfiguration()
 
 
 // ------------------------------------------------------------------------------------------------
+// Mbc2
+// ------------------------------------------------------------------------------------------------
+
+Mbc2::Mbc2(size_t romSize, size_t ramSize)
+    : MbcInterface(MbcType::Mbc2, romSize, ramSize)
+    , mRamEnabled(false)
+    , mRomMask(bankMask(4, mRomBanksCount))
+{
+    // mbc2 always has 512 half-bytes of ram
+    ram.resize(512);
+
+    onReset();
+}
+
+void Mbc2::onReset()
+{
+    mRamEnabled = false;
+    mRomCurrBank = 1;
+}
+
+uint8_t Mbc2::read8(uint16_t addr) const
+{
+    if (addr <= mmap::rom::bank0::end) {
+        // always read from bank 0
+        return rom[addr];
+    }
+    else if (addr >= mmap::rom::bankN::start && addr <= mmap::rom::bankN::end) {
+        // read from the selected rom bank
+        // discard top 2 bits from the address
+
+        uint32_t romAddr = mRomCurrBank * romBankSize + (addr & 0x3FFF);
+        return rom[romAddr];
+    }
+    else if (addr >= mmap::external_ram::start && addr <= mmap::external_ram::end) {
+        // read from ram 
+        if (!mRamEnabled)
+            return 0xFF;
+
+        // only the bottom 9 bits of the address are used to index into the internal ram,
+        // so ram access repeats after the first 512 half bytes
+        // the upper 4 bits are undefined, in this case we set them to F.
+
+        uint8_t val = ram[addr & 0x1FF];
+        return val | 0xF0;
+    }
+
+    // should never get to this point
+    assert(false);
+    return 0xFF;
+}
+
+void Mbc2::write8(uint16_t addr, uint8_t val)
+{
+    if (addr <= mmap::rom::bank0::end) {
+        // both mbc2 registers are accessible through the same address range
+        // as the first rom bank, it's possible to choose between them using bit 8 of the address
+
+        if (addr & 0x0100) {
+            // bit 8 is set, set rom bank register value for address range 0x4000 - 0x7FFF
+            // only lower 4 bits are used to determine the rom bank (if the value is 0 it becomes 1)
+
+            // it's not possible to write the value 0 directly to this register, if it happens, 
+            // the value turns into a 1. 
+            // Anyway, it's possible to access bank 0 from the 0x4000 - 0x7FFF range, it's possible when 
+            // the value written is not exactly 0 but the upper bits are ignored
+            // for example, if the chip has only 8 banks of rom, bit 3 is ignored 
+            val &= 0x0F;
+            if (val == 0)
+                ++val;
+                
+            mRomCurrBank = val & mRomMask;
+        }
+        else {
+            // bit 8 is not set, enable or disable ram
+            // ram is enabled by writing a value with 0xA in the lower nibble, any other value disables ram
+            mRamEnabled = (val & 0x0F) == 0x0A;
+        }
+    }
+    else if (addr >= mmap::external_ram::start && addr <= mmap::external_ram::end) {
+        if (!mRamEnabled)
+            return;
+
+        // as with reads, only the bottom 9 bits of the address are used to index into the internal ram,
+        // so ram access repeats after the first 512 half bytes
+        
+        ram[addr & 0x1FF] = val;
+    }
+}
+
+
+
+
+
+// ------------------------------------------------------------------------------------------------
 // Mbc3
 // ------------------------------------------------------------------------------------------------
 
 Mbc3::Mbc3(size_t romSize, size_t ramSize)
     : MbcInterface(MbcType::Mbc3, romSize, ramSize)
-    , mRomBankMask(bankMask(7, mRomBanksCount))
-    , mRamBankMask(bankMask(2, mRamBanksCount))
+    , mRomMask(bankMask(7, mRomBanksCount))
+    , mRamMask(bankMask(2, mRamBanksCount))
 {
     onReset();
 }
@@ -338,7 +432,7 @@ void Mbc3::write8(uint16_t addr, uint8_t val)
         
         // a value of 0 is not allowed in this register and writing a 0 will cause the mbc to increment it by 1
         
-        mRomCurrBank = val & mRomBankMask;
+        mRomCurrBank = val & mRomMask;
         if (mRomCurrBank == 0)
             mRomCurrBank++;
     }
@@ -350,7 +444,7 @@ void Mbc3::write8(uint16_t addr, uint8_t val)
 
         // top bits are discarded
         if(val < 0x04)
-            val &= mRamBankMask;
+            val &= mRamMask;
 
         mRamCurrBank = val & 0x0F;
     }
@@ -395,3 +489,91 @@ void Mbc3::write8(uint16_t addr, uint8_t val)
         }
     }
 }
+
+
+// ------------------------------------------------------------------------------------------------
+// Mbc5
+// ------------------------------------------------------------------------------------------------
+
+Mbc5::Mbc5(size_t romSize, size_t ramSize)
+    : MbcInterface(MbcType::Mbc5, romSize, ramSize)
+    , mRamEnabled(false)
+    , mRomMask(bankMask(9, mRomBanksCount))
+    , mRamMask(bankMask(4, mRamBanksCount))
+    , mRomB0(1)
+    , mRomB1(0)
+{
+    onReset();
+}
+
+void Mbc5::onReset()
+{
+    mRamEnabled = false;
+
+    mRomCurrBank = 1;
+}
+
+uint8_t Mbc5::read8(uint16_t addr) const
+{
+    if (addr <= mmap::rom::bank0::end) {
+        // always read from bank 0
+        return rom[addr];
+    }
+    else if (addr >= mmap::rom::bankN::start && addr <= mmap::rom::bankN::end) {
+        // read from the selected rom bank
+        // discard top 2 bits from the address
+
+        uint32_t romAddr = mRomCurrBank * romBankSize + (addr & 0x3FFF);
+        return rom[romAddr];
+    }
+    else if (addr >= mmap::external_ram::start && addr <= mmap::external_ram::end) {
+        // read from ram 
+        if (!mRamEnabled || ram.size() == 0)
+            return 0xFF;
+
+        // ram banks are 8KB in size so from the received address we discard the upper 3 bits
+        addr &= 0x1FFF;
+        uint32_t ramAddr = mRamCurrBank * ramBankSize + addr;
+
+        return ram[ramAddr];
+    }
+
+    // should never get to this point
+    assert(false);
+    return 0xFF;
+}
+
+void Mbc5::write8(uint16_t addr, uint8_t val)
+{
+    if (addr <= 0x1FFF) {
+        // ram enable
+        // writing 0x0A enables ram, all other values disable it
+        mRamEnabled = val == 0x0A;
+    }
+    else if (addr >= 0x2000 && addr <= 0x2FFF) {
+        // bits 0 to 7 for rom bank number
+        mRomB0 = val;
+        mRomCurrBank = (mRomB0 | (mRomB1 << 8)) & mRomMask;
+    }
+    else if (addr >= 0x3000 && addr <= 0x3FFF) {
+        // bit 8 for rom bank number
+        mRomB1 = val & 0x01;
+        mRomCurrBank = (mRomB0 | (mRomB1 << 8)) & mRomMask;
+    }
+    else if (addr >= 0x4000 && addr <= 0x5FFF) {
+        // bits 0 to 3 for ram bank number
+        mRamCurrBank = val & mRamMask;
+    }
+    else if (addr >= mmap::external_ram::start && addr <= mmap::external_ram::end) {
+        // write to ram
+        if (!mRamEnabled || ram.size() == 0)
+            return;
+
+        // ram banks are 8KB in size so from the received address we discard the upper 3 bits
+        addr &= 0x1FFF;
+        uint32_t ramAddr = mRamCurrBank * ramBankSize + addr;
+
+        ram[ramAddr] = val;
+    }
+}
+

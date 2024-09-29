@@ -128,4 +128,16 @@ public:
 
 
 
+inline constexpr uint32_t operator"" _KB(unsigned long long int val) 
+{
+    return uint32_t(val * 1024);
+}
+
+inline constexpr uint32_t operator"" _MB(unsigned long long int val)
+{
+    return uint32_t(val * 1024 * 1024);
+}
+
+
+
 #endif // GBEMU_SRC_GB_GBCOMMONS_H_

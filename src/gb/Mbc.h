@@ -4,6 +4,7 @@
 #define GBEMU_SRC_GB_MBC_H_
 
 #include "Utils.h"
+#include "GbCommons.h"
 #include <cstdint>
 #include <vector>
 #include <cereal/types/vector.hpp>
@@ -39,16 +40,16 @@ public:
 
     MbcType type() const { return mType; }
 
-    uint8_t getRomBankId() const { return mRomCurrBank; }
-    uint8_t getRamBankId() const { return mRamCurrBank; }
+    uint16_t getRomBankId() const { return mRomCurrBank; }
+    uint16_t getRamBankId() const { return mRamCurrBank; }
 
 
 
     std::vector<uint8_t> rom;
     std::vector<uint8_t> ram;
 
-    static constexpr uint16_t ramBankSize = 8 * 1024;
-    static constexpr uint16_t romBankSize = 16 * 1024;
+    static constexpr uint16_t ramBankSize = uint16_t(8_KB);
+    static constexpr uint16_t romBankSize = uint16_t(16_KB);
 
 
 
@@ -64,11 +65,12 @@ protected:
 
     MbcType mType;
 
-    uint8_t mRomBanksCount;
-    uint8_t mRamBanksCount;
+    uint16_t mRomBanksCount;
+    uint16_t mRamBanksCount;
 
-    uint8_t mRomCurrBank;
-    uint8_t mRamCurrBank;
+    // MBC5 can have up to 512 banks of rom (8MB) so uint8_t is not enough
+    uint16_t mRomCurrBank;
+    uint16_t mRamCurrBank;
 };
 
 CEREAL_CLASS_VERSION(MbcInterface, 1);
@@ -81,7 +83,7 @@ CEREAL_CLASS_VERSION(MbcInterface, 1);
 
 class MbcNone : public MbcInterface {
 public:
-    MbcNone(size_t romSize = 32 * 1024, size_t ramSize = 0);
+    MbcNone(size_t romSize = 32_KB, size_t ramSize = 0);
 
     uint8_t read8(uint16_t addr) const override;
     void write8(uint16_t addr, uint8_t val) override;
@@ -106,7 +108,7 @@ CEREAL_CLASS_VERSION(MbcNone, 1);
 
 class Mbc1 : public MbcInterface {
 public:
-    Mbc1(size_t romSize = 32 * 1024, size_t ramSize = 0);
+    Mbc1(size_t romSize = 32_KB, size_t ramSize = 0);
 
     uint8_t read8(uint16_t addr) const override;
     void write8(uint16_t addr, uint8_t val) override;
@@ -114,7 +116,7 @@ public:
     template<class Archive>
     void serialize(Archive& ar, uint32_t const /*version*/) {
         ar(cereal::base_class<MbcInterface>(this));
-        ar(mRamEnabled, mAddrMode1, mRomBankLow, mRomBankHigh, mRomCurrBankLow);
+        ar(mRamEnabled, mAddrMode1, mRomMask, mRamMask, mRomBankLow, mRomBankHigh, mRomCurrBankLow);
     }
 
 private:
@@ -126,8 +128,8 @@ private:
     bool mRamEnabled;
     bool mAddrMode1;
 
-    uint8_t mRomMask;
-    uint8_t mRamMask;
+    uint16_t mRomMask;
+    uint16_t mRamMask;
 
     uint8_t mRomBankLow;
     uint8_t mRomBankHigh;
@@ -138,14 +140,13 @@ private:
 CEREAL_CLASS_VERSION(Mbc1, 1);
 
 
-
 // ------------------------------------------------------------------------------------------------
-// Mbc3
+// Mbc2
 // ------------------------------------------------------------------------------------------------
 
-class Mbc3 : public MbcInterface {
+class Mbc2 : public MbcInterface {
 public:
-    Mbc3(size_t romSize = 32 * 1024, size_t ramSize = 0);
+    Mbc2(size_t romSize = 32_KB, size_t ramSize = 0);
 
     uint8_t read8(uint16_t addr) const override;
     void write8(uint16_t addr, uint8_t val) override;
@@ -153,15 +154,47 @@ public:
     template<class Archive>
     void serialize(Archive& ar, uint32_t const /*version*/) {
         ar(cereal::base_class<MbcInterface>(this));
-        ar(mRomBankMask, mRamBankMask, mRtc, mRtcLatchReg, mRamRtcEnabled);
+        ar(mRamEnabled, mRomMask);
     }
 
 private:
 
     void onReset() override;
 
-    uint8_t mRomBankMask;
-    uint8_t mRamBankMask;
+    bool mRamEnabled;
+
+    uint16_t mRomMask;
+
+};
+
+CEREAL_CLASS_VERSION(Mbc2, 1);
+
+
+
+
+// ------------------------------------------------------------------------------------------------
+// Mbc3
+// ------------------------------------------------------------------------------------------------
+
+class Mbc3 : public MbcInterface {
+public:
+    Mbc3(size_t romSize = 32_KB, size_t ramSize = 0);
+
+    uint8_t read8(uint16_t addr) const override;
+    void write8(uint16_t addr, uint8_t val) override;
+
+    template<class Archive>
+    void serialize(Archive& ar, uint32_t const /*version*/) {
+        ar(cereal::base_class<MbcInterface>(this));
+        ar(mRomMask, mRamMask, mRtc, mRtcLatchReg, mRamRtcEnabled);
+    }
+
+private:
+
+    void onReset() override;
+
+    uint16_t mRomMask;
+    uint16_t mRamMask;
 
     RTC mRtc;
     uint8_t mRtcLatchReg;
@@ -173,8 +206,44 @@ private:
 CEREAL_CLASS_VERSION(Mbc3, 1);
 
 
+
+// ------------------------------------------------------------------------------------------------
+// Mbc5
+// ------------------------------------------------------------------------------------------------
+
+class Mbc5 : public MbcInterface {
+public:
+    Mbc5(size_t romSize = 32_KB, size_t ramSize = 0);
+
+    uint8_t read8(uint16_t addr) const override;
+    void write8(uint16_t addr, uint8_t val) override;
+
+    template<class Archive>
+    void serialize(Archive& ar, uint32_t const /*version*/) {
+        ar(cereal::base_class<MbcInterface>(this));
+        
+    }
+
+private:
+
+    void onReset() override;
+
+    bool mRamEnabled;
+
+    uint16_t mRomMask;
+    uint16_t mRamMask;
+
+    uint8_t mRomB0;
+    uint8_t mRomB1;
+};
+
+
+
+
+
 CEREAL_REGISTER_TYPE(MbcNone);
 CEREAL_REGISTER_TYPE(Mbc1);
+CEREAL_REGISTER_TYPE(Mbc2);
 CEREAL_REGISTER_TYPE(Mbc3);
 
 

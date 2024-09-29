@@ -75,6 +75,9 @@ workspace(project_name)
     filter "configurations:debug"
         symbols "On"
         optimize "debug"
+        debugargs {
+            "--test-case-exclude=\"Mooneye tests*\"",
+        }
 
     filter "configurations:release"
         symbols "Off"

@@ -6,6 +6,7 @@
 #include <thread>
 #include <chrono>
 #include <doctest/doctest.h>
+#include <iostream>
 
 using namespace std::chrono;
 using namespace std::chrono_literals;
@@ -25,7 +26,7 @@ static constexpr uint32_t ramBankAddr(uint32_t num)
 
 TEST_CASE("MbcNone test")
 {
-    MbcNone mbc(32 * 1024, 0);
+    MbcNone mbc(32_KB, 0);
 
     // write some values in specific locations
     mbc.rom[0x0000] = 1;
@@ -65,7 +66,7 @@ TEST_CASE("MbcNone test")
 
 TEST_CASE("Mbc1 test - 64K rom (4 banks) no ram")
 {
-    Mbc1 mbc(64 * 1024, 0);
+    Mbc1 mbc(64_KB, 0);
 
     // write some values in specific locations
     mbc.rom[romBankAddr(0) + 0x0000] = 1;   // 0x0000
@@ -130,7 +131,7 @@ TEST_CASE("Mbc1 test - 64K rom (4 banks) no ram")
 
 TEST_CASE("Mbc1 test - 512K rom (32 banks), 8K ram (1 bank)")
 {
-    Mbc1 mbc(512 * 1024, 8 * 1024);
+    Mbc1 mbc(512_KB, 8_KB);
     
     // fill each bank with the bank number
     for(uint32_t i = 0; i < mbc.rom.size() / MbcInterface::romBankSize; ++i) {
@@ -237,7 +238,7 @@ TEST_CASE("Mbc1 test - 512K rom (32 banks), 8K ram (1 bank)")
 
 TEST_CASE("Mbc1 test - 2M rom (128 banks), 32K ram (4 banks)")
 {
-    Mbc1 mbc(2 * 1024 * 1024, 32 * 1024);
+    Mbc1 mbc(2_MB, 32_KB);
     
     // fill each bank with the bank number
     for(uint32_t i = 0; i < mbc.rom.size() / MbcInterface::romBankSize; ++i) {
@@ -368,6 +369,181 @@ TEST_CASE("Mbc1 test - 2M rom (128 banks), 32K ram (4 banks)")
         CHECK(mbc.read8(0x544F) == 0x41);
     }
 }
+
+
+
+TEST_CASE("MBC2") {
+
+    SUBCASE("Test different rom sizes") {
+
+        Mbc2 mbc;
+
+        SUBCASE("64KB rom") { mbc = Mbc2(64_KB, 0); }
+        SUBCASE("128KB rom") { mbc = Mbc2(128_KB, 0); }
+        SUBCASE("256KB rom") { mbc = Mbc2(256_KB, 0); }
+        
+        size_t romSize = mbc.rom.size();
+        size_t bankCount = mbc.rom.size() / MbcInterface::romBankSize;
+
+        // write the bank number at the beginning of each bank
+        for (uint32_t bank = 0; bank < bankCount; ++bank) {
+            mbc.rom[romBankAddr(bank)] = uint8_t(bank);
+        }
+
+        CAPTURE(romSize);
+        CAPTURE(bankCount);
+
+        // check reading from bank 0
+        auto val = mbc.read8(mmap::rom::bank0::start);
+
+        CHECK(val == 0);
+
+        // access all rom banks and check the value
+        for (uint32_t bank = 0; bank < bankCount; ++bank) {
+
+            // the bank number must be written using an address in the range 0x0000 - 0x3FFF 
+            // that has bit 8 set
+            mbc.write8(0x0100, uint8_t(bank));
+            
+            // read a value from rom and check it against the expected bank number
+            val = mbc.read8(mmap::rom::bankN::start);
+
+            // bank 0 is not accessible in this address range
+            if(bank == 0)
+                CHECK(val == 1);
+            else 
+                CHECK(val == bank);
+        }
+    }
+
+    SUBCASE("Test ram") {
+
+        Mbc2 mbc;
+
+        // fill the ram with know values (only the lowest bits will be used)
+        for (uint32_t i = 0; i < mbc.ram.size(); ++i) {
+            mbc.ram[i] = uint8_t(i);
+        }
+
+        // check reading with ram disabled
+        auto val = mbc.read8(mmap::external_ram::start);
+        CHECK(val == 0xff);
+
+        // enable ram
+        mbc.write8(0x0000, 0x0A);
+
+        // there are only 512 half-bytes that are accessible
+        for (uint16_t i = 0; i < 512; ++i) {
+            val = mbc.read8(mmap::external_ram::start + i);
+            // the top 4 bits are always 1111
+            CHECK(val == uint8_t(i | 0xF0));
+            // write back a different value
+            mbc.write8(mmap::external_ram::start + i, val + 1);
+            // read the value back
+            auto newVal = mbc.read8(mmap::external_ram::start + i);
+            CHECK(newVal == uint8_t(val + 1 | 0xF0));
+        }
+    }
+}
+
+
+
+
+TEST_CASE("Test MBC5")
+{
+    SUBCASE("Test different rom sizes") {
+
+        Mbc5 mbc;
+
+        SUBCASE("64KB rom") { mbc = Mbc5(64_KB, 0); }
+        SUBCASE("128KB rom") { mbc = Mbc5(128_KB, 0); }
+        SUBCASE("256KB rom") { mbc = Mbc5(256_KB, 0); }
+        SUBCASE("512KB rom") { mbc = Mbc5(512_KB, 0); }
+        SUBCASE("1MB rom") { mbc = Mbc5(1_MB, 0); }
+        SUBCASE("2MB rom") { mbc = Mbc5(2_MB, 0); }
+        SUBCASE("4MB rom") { mbc = Mbc5(4_MB, 0); }
+        SUBCASE("8MB rom") { mbc = Mbc5(8_MB, 0); }
+
+        size_t romSize = mbc.rom.size();
+        size_t bankCount = mbc.rom.size() / MbcInterface::romBankSize;
+
+        // write the bank number at the beginning of each bank
+        // in this case write the bank number as a 16-bit value, as there can bu up to 512 banks
+        for (uint32_t bank = 0; bank < bankCount; ++bank) {
+            mbc.rom[romBankAddr(bank) + 0] = uint8_t(bank);
+            mbc.rom[romBankAddr(bank) + 1] = uint8_t(bank >> 8);
+        }
+
+        CAPTURE(romSize);
+        CAPTURE(bankCount);
+
+        // check reading from bank 0
+        auto lsb = mbc.read8(mmap::rom::bank0::start);
+        auto msb = mbc.read8(mmap::rom::bank0::start + 1);
+
+        CHECK((lsb | (msb << 8)) == 0);
+
+        // access all rom banks and check the value
+        for (uint32_t bank = 0; bank < bankCount; ++bank) {
+
+            // write the bank value in the registers
+            mbc.write8(0x2000, uint8_t(bank));
+            mbc.write8(0x3000, uint8_t(bank >> 8));
+
+            // read a value from rom and check it against the expected bank number
+            lsb = mbc.read8(mmap::rom::bankN::start);
+            msb = mbc.read8(mmap::rom::bankN::start + 1);
+
+            CHECK((lsb | (msb << 8)) == bank);
+        }
+    }
+
+    SUBCASE("Test different ram sizes") {
+        Mbc5 mbc;
+
+        SUBCASE("16KB ram") { mbc = Mbc5(64_KB, 16_KB); }
+        SUBCASE("32KB ram") { mbc = Mbc5(64_KB, 32_KB); }
+        SUBCASE("64KB ram") { mbc = Mbc5(64_KB, 64_KB); }
+        SUBCASE("128KB ram") { mbc = Mbc5(64_KB, 128_KB); }
+
+        size_t ramSize = mbc.ram.size();
+        size_t bankCount = mbc.ram.size() / MbcInterface::ramBankSize;
+
+        // fill teh first byte of each bank with the corresponding number
+        for (uint32_t bank = 0; bank < bankCount; ++bank) {
+            mbc.ram[ramBankAddr(bank)] = uint8_t(bank);
+        }
+
+        CAPTURE(ramSize);
+        CAPTURE(bankCount);
+
+        // check read with ram disabled
+        auto val = mbc.read8(mmap::external_ram::start);
+
+        CHECK(val == 0xff);
+
+        // enable ram
+        mbc.write8(0x0000, 0x0A);
+
+        // for each bank read the first byt, check its value then try to modify it
+        // and read it again to check that writes are working
+        for (uint32_t bank = 0; bank < bankCount; ++bank) {
+            // select the bank
+            mbc.write8(0x4000, uint8_t(bank));
+            // read the value
+            val = mbc.read8(mmap::external_ram::start);
+            CHECK(val == bank);
+
+            // write a new value
+            mbc.write8(mmap::external_ram::start, val | 0x80);
+
+            // read it back and check it
+            auto newVal = mbc.read8(mmap::external_ram::start);
+            CHECK(newVal == (val | 0x80));
+        }
+    }
+}
+
 
 
 

@@ -4,6 +4,7 @@
 #define GBEMU_SRC_GB_BUS_H_
 
 #include "Ram.h"
+#include "GbCommons.h"
 #include <cereal/cereal.hpp>
 
 
@@ -47,7 +48,7 @@ public:
     }
     
 private:
-    Ram<64 * 1024> mWram;
+    Ram<64_KB> mWram;
 
 };
 
@@ -70,7 +71,7 @@ class Joypad;
 class Audio;
 class Serial;
 
-typedef Ram<8 * 1024>   WorkRam;
+typedef Ram<8_KB>   WorkRam;
 typedef Ram<127>        HiRam;
 
 CEREAL_CLASS_VERSION(WorkRam, 1);

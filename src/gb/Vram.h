@@ -205,7 +205,7 @@ struct OAMData : public MemoryMappedObj {
 // VRam
 // ------------------------------------------------------------------------------------------------
 
-class VRam : public LockableRam<8 * 1024> {
+class VRam : public LockableRam<8_KB> {
 public:
     VRam() : LockableRam(mmap::vram::start) {}
 

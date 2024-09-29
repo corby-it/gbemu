@@ -466,7 +466,7 @@ uint32_t CartridgeHeader::romSize() const
         return 0;
 
     auto val = mRomBaseAddr[0x148];
-    return 32 * 1024 * (1 << val);
+    return 32_KB * (1 << val);
 }
 
 uint32_t CartridgeHeader::ramSize() const
@@ -476,10 +476,10 @@ uint32_t CartridgeHeader::ramSize() const
     
     switch (mRomBaseAddr[0x149]) {
     case 0x00: return 0;
-    case 0x02: return 8 * 1024;
-    case 0x03: return 32 * 1024;
-    case 0x04: return 128 * 1024;
-    case 0x05: return 64 * 1024;
+    case 0x02: return 8_KB;
+    case 0x03: return 32_KB;
+    case 0x04: return 128_KB;
+    case 0x05: return 64_KB;
     default:
         return std::numeric_limits<uint32_t>::max();
     }
@@ -585,11 +585,11 @@ bool CartridgeHeader::canLoad() const
         return false;
 
     // rom must be lower or equal than 8MB and cannot be 0
-    if (rom == 0 || rom > 8 * 1024 * 1024)
+    if (rom == 0 || rom > 8_MB)
         return false;
 
     // ram must be lower or equal than 128KB (but can be 0)
-    if (ram > 128 * 1024)
+    if (ram > 128_KB)
         return false;
 
     // also, the MBC type must be known
@@ -624,7 +624,7 @@ const char* cartridgeLoadingResToStr(CartridgeLoadingRes lr)
 
 
 Cartridge::Cartridge()
-    : mbc(std::make_unique<MbcNone>(32 * 1024, 0))
+    : mbc(std::make_unique<MbcNone>(32_KB, 0))
 {}
 
 void Cartridge::reset()
@@ -638,7 +638,7 @@ CartridgeLoadingRes Cartridge::loadRomFile(const fs::path& romPath)
     auto romFileSize = fs::file_size(romPath);
 
     // the smallest possible rom must be at least 32K
-    if(romFileSize < 32 * 1024)
+    if(romFileSize < 32_KB)
         return CartridgeLoadingRes::FileTooSmall;
 
     // read the first 0x150 bytes to parse the cartridge header
@@ -670,11 +670,25 @@ CartridgeLoadingRes Cartridge::loadRomFile(const fs::path& romPath)
         mbc = std::make_unique<Mbc1>(tmpHeader.romSize(), tmpHeader.ramSize());
         break;
 
+    case CartridgeType::MBC2:
+    case CartridgeType::MBC2Battery:
+        mbc = std::make_unique<Mbc2>(tmpHeader.romSize(), tmpHeader.ramSize());
+        break;
+
     case CartridgeType::MBC3:
     case CartridgeType::MBC3Ram:
     case CartridgeType::MBC3RamBattery:
     case CartridgeType::MBC3TimerRamBattery:
         mbc = std::make_unique<Mbc3>(tmpHeader.romSize(), tmpHeader.ramSize());
+        break;
+
+    case CartridgeType::MBC5:
+    case CartridgeType::MBC5Ram:
+    case CartridgeType::MBC5RamBattery:
+    case CartridgeType::MBC5Rumble:
+    case CartridgeType::MBC5RumbleRam:
+    case CartridgeType::MBC5RumbleRamBattery:
+        mbc = std::make_unique<Mbc5>(tmpHeader.romSize(), tmpHeader.ramSize());
         break;
     
     default:
