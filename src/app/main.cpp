@@ -12,7 +12,7 @@
 #include "app/App.h"
 
 
-int commonMain(int /*argc*/, char** /*argv*/)
+static int commonMain(int /*argc*/, char** /*argv*/)
 {
     App app;
     app.run();

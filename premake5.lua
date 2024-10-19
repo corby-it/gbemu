@@ -51,7 +51,7 @@ workspace(project_name)
     externalincludedirs {
         src_base .. "/third-party",
         src_base .. "/third-party/cereal-1.3.2/include",
-        src_base .. "/third-party/tracy/public",
+        src_base .. "/third-party/miniaudio",
     }
 
     defines {

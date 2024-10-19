@@ -1,4 +1,8 @@
 
+// include miniaudio here to avoid the warning C4005: 'APIENTRY': macro redefinition
+// caused by glfw including windows.h as well
+#define MINIAUDIO_IMPLEMENTATION
+#include <miniaudio.h>
 
 #include "App.h"
 #include "imgui/imgui_internal.h"
@@ -8,6 +12,8 @@
 #include <cereal/cereal.hpp>
 #include <cereal/archives/json.hpp>
 #include <cassert>
+
+
 
 using namespace std::chrono;
 using namespace std::chrono_literals;
@@ -20,6 +26,7 @@ App::App()
     : mConfigSavePath(fs::current_path() / "appConfig.json")
     , mDisplayBuffer(Display::w, Display::h)
     , mLastEmulateCall(-1ns)
+    , mAudioDevice(std::make_unique<ma_device>())
 {
     // read configuration from file
     {
@@ -49,6 +56,8 @@ App::App()
 
 App::~App()
 {
+    audioTeardown();
+
     glDeleteTextures(1, &mGLDisplayTexture);
     glDeleteTextures(VRam::maxTiles, mTileTextures.data());
     glDeleteTextures(OAMRam::oamCount * 2, mOamTextures.data());
@@ -64,6 +73,124 @@ App::~App()
     }
 }
 
+
+// Simple helper functions to load an image into a OpenGL texture with common settings
+const char* const plotOvershootPlotName = "EmulateOvershoot";
+const char* const plotTimeSinceLastEmulateCall = "TimeSinceLastEmulateCall";
+const char* const plotRequiredFrames = "RequiredFrames";
+const char* const plotRequestedAudioFrames = "RequestedAudioFrames";
+const char* const plotAvailableAudioFrames = "AvailableAudioFrames";
+
+void App::startup()
+{
+    audioSetup();
+
+    TracyPlotConfig(plotOvershootPlotName, tracy::PlotFormatType::Number, false, false, 0);
+    TracyPlotConfig(plotTimeSinceLastEmulateCall, tracy::PlotFormatType::Number, false, false, 0);
+    TracyPlotConfig(plotRequiredFrames, tracy::PlotFormatType::Number, false, false, 0);
+    TracyPlotConfig(plotRequestedAudioFrames, tracy::PlotFormatType::Number, false, false, 0);
+    TracyPlotConfig(plotAvailableAudioFrames, tracy::PlotFormatType::Number, false, false, 0);
+}
+
+
+
+
+struct paTestData
+{
+    float left_phase;
+    float right_phase;
+};
+
+static paTestData soundData = { 0, 0 };
+static float amplitude = 0.1f;
+
+void App::audioDataCallback(ma_device* pDevice, void* pOutput, const void* /*pInput*/, ma_uint32 frameCount)
+{
+    // In playback mode copy data to pOutput. In capture mode read data from pInput. In full-duplex mode, both
+    // pOutput and pInput will be valid and you can move data from pInput into pOutput. Never process more than
+    // frameCount availableFrames.
+
+    float* pfOut = static_cast<float*>(pOutput);
+    App* app = static_cast<App*>(pDevice->pUserData);
+
+    void* pvBuf;
+    ma_uint32 availableFrames = 48000;
+    ma_uint32 extracted = 0;
+    
+    ma_pcm_rb_acquire_read(&app->mGameboy.audio.audioBuf, &availableFrames, &pvBuf);
+
+    TracyPlot(plotRequestedAudioFrames, (int64_t)frameCount);
+    TracyPlot(plotAvailableAudioFrames, (int64_t)availableFrames);
+    
+    if (availableFrames < frameCount) {
+        // fill the buffer with zeros until we have enough availableFrames
+        for (ma_uint32 i = 0; i < frameCount; ++i) {
+            *pfOut = 0;  /* left */
+            ++pfOut;
+            *pfOut = 0;  /* right */
+            ++pfOut;
+        }
+        
+        extracted = 0;
+    }
+    else {
+        // read sample from the buffer into the output
+        float* pfBuf = static_cast<float*>(pvBuf);
+
+        for (ma_uint32 i = 0; i < frameCount; ++i) {
+            *pfOut = *pfBuf * amplitude;  /* left */
+            ++pfOut; ++pfBuf;
+
+            *pfOut = *pfBuf * amplitude;  /* right */
+            ++pfOut; ++pfBuf;
+        }
+
+        extracted = frameCount;
+    }
+
+    ma_pcm_rb_commit_read(&app->mGameboy.audio.audioBuf, extracted);
+
+
+
+    //for (ma_uint32 i = 0; i < frameCount; ++i) {
+    //    *pfOut = soundData.left_phase * amplitude;  /* left */
+    //    ++pfOut;
+    //    *pfOut = soundData.right_phase * amplitude;  /* right */
+    //    ++pfOut;
+
+    //    /* Generate simple sawtooth phaser that ranges between -1.0 and 1.0. */
+    //    soundData.left_phase += 0.01f;
+    //    /* When signal reaches top, drop back down. */
+    //    if (soundData.left_phase >= 1.0f)
+    //        soundData.left_phase -= 2.0f;
+    //    /* higher pitch so we can distinguish left and right. */
+    //    soundData.right_phase += 0.03f;
+    //    if (soundData.right_phase >= 1.0f)
+    //        soundData.right_phase -= 2.0f;
+    //}
+}
+
+
+void App::audioSetup()
+{
+    ma_device_config config = ma_device_config_init(ma_device_type_playback);
+    config.playback.format = ma_format_f32;   // Set to ma_format_unknown to use the device's native format.
+    config.playback.channels = 2;               // Set to 0 to use the device's native channel count.
+    config.sampleRate = 48000;           // Set to 0 to use the device's native sample rate.
+    config.dataCallback = App::audioDataCallback;   // This function will be called when miniaudio needs more data.
+    config.pUserData = this;   // Can be accessed from the device object (device.pUserData).
+
+    if (ma_device_init(NULL, &config, mAudioDevice.get()) != MA_SUCCESS) {
+        //return -1;  // Failed to initialize the device.
+    }
+
+    ma_device_start(mAudioDevice.get());
+}
+
+void App::audioTeardown()
+{
+    ma_device_uninit(mAudioDevice.get());
+}
 
 // Simple helper functions to load an image into a OpenGL texture with common settings
 static void loadTextureFromRgbaBuffer(GLuint& outTexture, RgbaBufferIf& buffer)
@@ -134,7 +261,7 @@ Joypad::PressedButton App::getPressedButtons()
 
 std::optional<nanoseconds> App::emulateFor() const
 {
-    // when emulating at 100% speed we have to emulate at 60 gameboy frames per second,
+    // when emulating at 100% speed we have to emulate at 60 gameboy availableFrames per second,
     // the app is limited to 60fps so we have to emulate for 1 frame
 
     // the gameboy is actually running slightly slower than 60fps.
@@ -156,18 +283,6 @@ std::optional<nanoseconds> App::emulateFor() const
     default:
     case EmulationSpeed::Unbound: return {};
     }
-}
-
-
-const char* const plotOvershootPlotName = "EmulateOvershoot";
-const char* const plotTimeSinceLastEmulateCall = "TimeSinceLastEmulateCall";
-const char* const plotRequiredFrames = "RequiredFrames";
-
-void App::startup()
-{
-    TracyPlotConfig(plotOvershootPlotName, tracy::PlotFormatType::Number, false, false, 0);
-    TracyPlotConfig(plotTimeSinceLastEmulateCall, tracy::PlotFormatType::Number, false, false, 0);
-    TracyPlotConfig(plotRequiredFrames, tracy::PlotFormatType::Number, false, false, 0);
 }
 
 
@@ -203,11 +318,11 @@ bool App::emulate()
 
 bool App::emulateFullSpeed(std::chrono::nanoseconds currTime)
 {
-    // when emulating at 100% speed we emulate exactly for the required number of frames, taking into 
+    // when emulating at 100% speed we emulate exactly for the required number of availableFrames, taking into 
     // account how much time elapsed between the current call and the last App::emulate() call
     // 
-    // if the requested number of frames is not reached in the corresponding gb tim we return anyway,
-    // if the ppu is disabled frames won't be ready but the emulation must keep going.
+    // if the requested number of availableFrames is not reached in the corresponding gb tim we return anyway,
+    // if the ppu is disabled availableFrames won't be ready but the emulation must keep going.
 
     uint32_t requiredFrames = 1;
 
@@ -587,6 +702,14 @@ void App::UIDrawControlWindow()
         ImGui::EndTable();
     }
 
+    ImGui::SeparatorText("Audio");
+
+    if (ImGui::Button("Mute")) {
+        amplitude = 0;
+    }
+    ImGui::SameLine();
+    ImGui::SliderFloat("Volume", &amplitude, 0, 1, "", ImGuiSliderFlags_Logarithmic);
+
     ImGui::End();
 }
 
@@ -713,7 +836,10 @@ void App::UIDrawTileViewerWindow()
 
     ImGui::Begin("Tile Viewer", &mConfig.showTileViewer);
 
-    float childWindowWidth = std::max(ImGui::GetContentRegionAvail().x * 0.5f, 300.f);
+    float childWindowWidth = ImGui::GetContentRegionAvail().x * 0.5f;
+    if (childWindowWidth < 300.f)
+        childWindowWidth = 300.f;
+
 
     if (ImGui::CollapsingHeader("VRAM Tiles")) {
 

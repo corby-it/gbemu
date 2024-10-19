@@ -7,8 +7,10 @@
 #include "AppConfig.h"
 #include "gb/GameBoyCore.h"
 #include "gb/Matrix.h"
+#include <miniaudio.h>
 #include <optional>
 #include <chrono>
+#include <memory>
 
 
 class App : public AppBase {
@@ -24,6 +26,8 @@ public:
 private:
 
     Joypad::PressedButton getPressedButtons();
+    void audioSetup();
+    void audioTeardown();
 
     bool emulateFullSpeed(std::chrono::nanoseconds currTime);
     bool emulateOtherSpeeds(std::chrono::nanoseconds currTime);
@@ -47,6 +51,9 @@ private:
 
     bool loadRomFile(const std::filesystem::path& path);
 
+
+    static void audioDataCallback(ma_device* pDevice, void* pOutput, const void* pInput, ma_uint32 frameCount);
+
     
     AppConfig mConfig;
     std::filesystem::path mConfigSavePath;
@@ -61,6 +68,8 @@ private:
     std::vector<GLuint> mBgTextures;
 
     std::chrono::nanoseconds mLastEmulateCall;
+
+    std::unique_ptr<ma_device> mAudioDevice;
 
 };
 

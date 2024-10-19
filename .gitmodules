@@ -5,3 +5,6 @@
 [submodule "src/third-party/tracy"]
 	path = src/third-party/tracy
 	url = https://github.com/wolfpld/tracy.git
+[submodule "src/third-party/miniaudio"]
+	path = src/third-party/miniaudio
+	url = https://github.com/mackron/miniaudio.git

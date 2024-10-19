@@ -5,6 +5,8 @@
 
 #include "GbCommons.h"
 #include <cereal/cereal.hpp>
+#include <miniaudio.h>
+#include <chrono>
 
 
 // Just a dummy implementation to have some registers for read/write operations
@@ -12,11 +14,14 @@
 class Audio {
 public:
     Audio();
+    ~Audio();
 
     void reset();
 
     uint8_t read(uint16_t addr);
     void write(uint16_t addr, uint8_t val);
+
+    void step(uint32_t mCycles);
 
     template<class Archive>
     void serialize(Archive& ar, uint32_t const /*version*/) {
@@ -24,7 +29,13 @@ public:
         ar(cereal::binary_data(mData, size));
     }
 
+    ma_pcm_rb audioBuf;
+
 private:
+
+    uint32_t mRdh;
+
+    std::chrono::nanoseconds mTimeCounter;
 
     uint8_t mData[mmap::regs::audio::end - mmap::regs::audio::start + 1];
 
