@@ -5,18 +5,31 @@
 #include "ImGuiFileDialog/ImGuiFileDialog.h"
 #include "imgui_memory_editor.h"
 #include <tracy/Tracy.hpp>
+#include <cereal/cereal.hpp>
+#include <cereal/archives/json.hpp>
 #include <cassert>
 
 using namespace std::chrono;
 using namespace std::chrono_literals;
+namespace fs = std::filesystem;
 
 using hr_clock = std::chrono::high_resolution_clock;
 
 
 App::App()
-    : mDisplayBuffer(Display::w, Display::h)
+    : mConfigSavePath(fs::current_path() / "appConfig.json")
+    , mDisplayBuffer(Display::w, Display::h)
     , mLastEmulateCall(-1ns)
 {
+    // read configuration from file
+    {
+        std::ifstream ifs(mConfigSavePath);
+        if (ifs) {
+            cereal::JSONInputArchive ar(ifs);
+            ar(mConfig);
+        }
+    }
+
     // create an OpenGL texture identifier for the display image
     glGenTextures(1, &mGLDisplayTexture);
 
@@ -43,6 +56,15 @@ App::~App()
     glDeleteTextures(VRam::maxTiles, mTileTextures.data());
     glDeleteTextures(OAMRam::oamCount * 2, mOamTextures.data());
     glDeleteTextures(BgHelper::rows * BgHelper::cols, mBgTextures.data());
+
+    // save configuration to file
+    {
+        std::ofstream ofs(mConfigSavePath);
+        if (ofs) {
+            cereal::JSONOutputArchive ar(ofs);
+            ar(mConfig);
+        }
+    }
 }
 
 
@@ -83,19 +105,19 @@ static ImVec4 rgbaPixelToImVec4(RgbaPixel pix)
 }
 
 
-static Joypad::PressedButton getPressedButtons()
+Joypad::PressedButton App::getPressedButtons()
 {
     Joypad::PressedButton btns;
 
-    if (ImGui::IsKeyDown(ImGuiKey_W)) btns.add(Joypad::Btn::Up);
-    if (ImGui::IsKeyDown(ImGuiKey_A)) btns.add(Joypad::Btn::Left);
-    if (ImGui::IsKeyDown(ImGuiKey_S)) btns.add(Joypad::Btn::Down);
-    if (ImGui::IsKeyDown(ImGuiKey_D)) btns.add(Joypad::Btn::Right);
+    if (ImGui::IsKeyDown(mConfig.inputCfg[InputFn::Up])) btns.add(Joypad::Btn::Up);
+    if (ImGui::IsKeyDown(mConfig.inputCfg[InputFn::Left])) btns.add(Joypad::Btn::Left);
+    if (ImGui::IsKeyDown(mConfig.inputCfg[InputFn::Down])) btns.add(Joypad::Btn::Down);
+    if (ImGui::IsKeyDown(mConfig.inputCfg[InputFn::Right])) btns.add(Joypad::Btn::Right);
 
-    if (ImGui::IsKeyDown(ImGuiKey_N)) btns.add(Joypad::Btn::A);
-    if (ImGui::IsKeyDown(ImGuiKey_M)) btns.add(Joypad::Btn::B);
-    if (ImGui::IsKeyDown(ImGuiKey_Enter)) btns.add(Joypad::Btn::Start);
-    if (ImGui::IsKeyDown(ImGuiKey_0)) btns.add(Joypad::Btn::Select);
+    if (ImGui::IsKeyDown(mConfig.inputCfg[InputFn::A])) btns.add(Joypad::Btn::A);
+    if (ImGui::IsKeyDown(mConfig.inputCfg[InputFn::B])) btns.add(Joypad::Btn::B);
+    if (ImGui::IsKeyDown(mConfig.inputCfg[InputFn::Start])) btns.add(Joypad::Btn::Start);
+    if (ImGui::IsKeyDown(mConfig.inputCfg[InputFn::Select])) btns.add(Joypad::Btn::Select);
 
     return btns;
 }
@@ -139,14 +161,15 @@ void App::startup()
     TracyPlotConfig(plotRequiredFrames, tracy::PlotFormatType::Number, false, false, 0);
 }
 
+
 bool App::emulate()
 {
     ZoneScoped;
 
     auto currTime = getCurrTime();
 
-    // if 'P' is pressed on the keyboard pause/restart the emulation
-    if (ImGui::IsKeyReleased(ImGuiKey_P)) {
+    // if the pause key is pressed on the keyboard pause/restart the emulation
+    if (ImGui::IsKeyReleased(mConfig.inputCfg[InputFn::Pause])) {
         if (mGameboy.status == GameBoyClassic::Status::Paused)
             mGameboy.play();
         else if(mGameboy.status == GameBoyClassic::Status::Running)
@@ -261,7 +284,9 @@ void App::updateUI()
     UIDrawMemoryEditorWindow();
     UIDrawTileViewerWindow();
     UIDrawBackgroundViewerWindow();
+    UIDrawInputConfigWindow();
 }
+
 
 void App::UISetupDocking()
 {    
@@ -278,10 +303,10 @@ void App::UIDrawMenu()
             if (ImGui::MenuItem("Open rom file...", "CTRL+O")) {
                 IGFD::FileDialogConfig config;
 
-                if (mConfig.currentRomPath.empty())
+                if (mConfig.recentRomsFolder.empty())
                     config.path = ".";
                 else
-                    config.path = mConfig.currentRomPath.parent_path().string().c_str();
+                    config.path = mConfig.recentRomsFolder.string().c_str();
 
                 config.flags = ImGuiFileDialogFlags_Modal;
                 ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose Rom File", ".gb", config);
@@ -301,15 +326,14 @@ void App::UIDrawMenu()
                 ImGui::EndMenu();
             }
             ImGui::Separator();
-            if (ImGui::MenuItem("Quit", "Alt+F4")) {
-                closeWindow();
-            }
+            if (ImGui::MenuItem("Quit", "Alt+F4")) { closeWindow(); }
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Tools")) {
             ImGui::MenuItem("Memory editor", nullptr, &mConfig.showMemoryEditor);
             ImGui::MenuItem("Tile viewer", nullptr, &mConfig.showTileViewer);
             ImGui::MenuItem("Background viewer", nullptr, &mConfig.showBackgroundViewer);
+            ImGui::MenuItem("Input configuration", nullptr, &mConfig.showInputConfigWindow);
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("About")) {
@@ -355,6 +379,7 @@ bool App::loadRomFile(const std::filesystem::path& path)
     else {
         // if loaded successfully we store the path
         mConfig.currentRomPath = path;
+        mConfig.recentRomsFolder = path.parent_path();
         return true;
     }
 }
@@ -633,7 +658,7 @@ static void drawPaletteTable(const char* tableName, PaletteReg** palettes, size_
 
         ImGui::TableHeadersRow();
 
-        for (size_t i = 0; i < count; ++i) {
+        for (uint32_t i = 0; i < count; ++i) {
             ImGui::TableNextColumn();
             ImGui::Text("%u", i);
             ImGui::TableNextColumn();
@@ -1032,6 +1057,88 @@ void App::UIDrawBackgroundViewerWindow()
         ImGui::Text("Tile index");
         ImGui::TableNextColumn();
         ImGui::Text("%u, addr: 0x%04x", hoveredTileId, hoveredTile.gbAddr);
+
+        ImGui::EndTable();
+    }
+
+    ImGui::End();
+}
+
+void App::UIDrawInputConfigWindow()
+{
+    if (!mConfig.showInputConfigWindow)
+        return;
+
+    ImVec2 btnSize = ImVec2(65, 20);
+
+    // the isChangingIdx is used to know which function is currently being 
+    // changed by the user, if it's not currently changing anything its value is -1
+    static int isChangingIdx = -1;
+
+    ImGui::Begin("Input configuration", &mConfig.showInputConfigWindow, ImGuiWindowFlags_AlwaysAutoResize);
+    
+    ImGui::Spacing();
+    ImGui::Text("Configure input keys");
+    ImGui::Spacing();
+    ImGui::Text("%s", isChangingIdx == -1 ? "" : "Choose new button...");
+    ImGui::Spacing();
+
+    if (isChangingIdx != -1) {
+        // the user is modifying something, check if a key is pressed
+        int key;
+        for (key = ImGuiKey_NamedKey_BEGIN; key < ImGuiKey_NamedKey_END; ++key) {
+            if (ImGui::IsKeyPressed((ImGuiKey)key))
+                break;
+        }
+
+        if (key != ImGuiKey_NamedKey_END) {
+            // the user pressed the new key for the selected function
+            auto fn = static_cast<InputFn>(isChangingIdx);
+
+            mConfig.inputCfg[fn] = (ImGuiKey)key;
+            isChangingIdx = -1;
+        }
+    }
+
+    // draw the input function table
+    static ImGuiTableFlags tableinputCfgFlags = ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_RowBg | 
+            ImGuiTableFlags_Borders | ImGuiTableFlags_Resizable;
+
+    if (ImGui::BeginTable("tableInputCfg", 3, tableinputCfgFlags)) {
+        ImGui::TableSetupColumn("Function", ImGuiTableColumnFlags_WidthFixed);
+        ImGui::TableSetupColumn("Key", ImGuiTableColumnFlags_WidthFixed);
+        ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed);
+        ImGui::TableHeadersRow(); 
+
+        for (uint32_t i = 0; i < InputFn::InputFnMax; ++i) {
+            auto fn = static_cast<InputFn>(i);
+
+            ImGui::TableNextColumn();
+            ImGui::Text("%s", inputFnToStr(fn));
+            
+            ImGui::TableNextColumn();
+            ImGui::Text("%s", ImGui::GetKeyName(mConfig.inputCfg[fn]));
+            
+            ImGui::TableNextColumn();
+            ImGui::PushID(i);
+            if (isChangingIdx == -1) {
+                if (ImGui::Button("Change", btnSize))
+                    isChangingIdx = (int)i;
+            }
+            else {
+                // if one of the function is changing all the other buttons are disabled
+                // and the currently changing one is empty
+                if (isChangingIdx == (int)i) {
+                    ImGui::Dummy(btnSize);
+                }
+                else {
+                    ImGui::BeginDisabled();
+                    ImGui::Button("Change", btnSize);
+                    ImGui::EndDisabled();
+                }
+            }
+            ImGui::PopID();
+        }
 
         ImGui::EndTable();
     }

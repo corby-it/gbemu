@@ -19,9 +19,11 @@ public:
     void startup() override;
     bool emulate() override;
     void updateUI() override;
-
+    
 
 private:
+
+    Joypad::PressedButton getPressedButtons();
 
     bool emulateFullSpeed(std::chrono::nanoseconds currTime);
     bool emulateOtherSpeeds(std::chrono::nanoseconds currTime);
@@ -35,6 +37,7 @@ private:
     void UIDrawMemoryEditorWindow();
     void UIDrawTileViewerWindow();
     void UIDrawBackgroundViewerWindow();
+    void UIDrawInputConfigWindow();
     
     void UIDrawRegsTables();
     void UIDrawCpuRegTable();
@@ -46,6 +49,8 @@ private:
 
     
     AppConfig mConfig;
+    std::filesystem::path mConfigSavePath;
+
     GameBoyClassic mGameboy;
 
     RgbaBuffer mDisplayBuffer;

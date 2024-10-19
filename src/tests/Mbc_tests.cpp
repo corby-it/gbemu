@@ -441,7 +441,7 @@ TEST_CASE("MBC2") {
             mbc.write8(mmap::external_ram::start + i, val + 1);
             // read the value back
             auto newVal = mbc.read8(mmap::external_ram::start + i);
-            CHECK(newVal == uint8_t(val + 1 | 0xF0));
+            CHECK(newVal == uint8_t((val + 1) | 0xF0));
         }
     }
 }
