@@ -33,21 +33,18 @@ App::App()
     // create an OpenGL texture identifier for the display image
     glGenTextures(1, &mGLDisplayTexture);
 
-    // create OpenGL textures to display tiles and the relative buffers
+    // create OpenGL textures to display tiles
     mTileTextures.resize(VRam::maxTiles);
     glGenTextures(VRam::maxTiles, mTileTextures.data());
-    mTileBuffers.resize(VRam::maxTiles);
 
     // do the same for OAMs
-    // allocate 2x textures and buffers to account for double height oams
+    // allocate 2x textures to account for double height oams
     mOamTextures.resize(OAMRam::oamCount * 2);
     glGenTextures(OAMRam::oamCount * 2, mOamTextures.data());
-    mOamBuffers.resize(OAMRam::oamCount * 2);
 
-    // background
+    // background textures
     mBgTextures.resize(BgHelper::rows * BgHelper::cols);
     glGenTextures(BgHelper::rows * BgHelper::cols, mBgTextures.data());
-    mBgBuffers.resize(BgHelper::rows * BgHelper::cols);
 }
 
 App::~App()
@@ -68,6 +65,7 @@ App::~App()
 }
 
 
+// Simple helper functions to load an image into a OpenGL texture with common settings
 static void loadTextureFromRgbaBuffer(GLuint& outTexture, RgbaBufferIf& buffer)
 {
     glBindTexture(GL_TEXTURE_2D, outTexture);
@@ -85,13 +83,24 @@ static void loadTextureFromRgbaBuffer(GLuint& outTexture, RgbaBufferIf& buffer)
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, buffer.w(), buffer.h(), 0, GL_RGBA, GL_UNSIGNED_BYTE, buffer.ptr());
 }
 
-// Simple helper function to load an image into a OpenGL texture with common settings
+// load from an already existing buffer
 static void LoadTextureFromMatrix(const Matrix& mat, GLuint& outTexture, RgbaBufferIf& buffer)
 {
     // turn the matrix data into an RGB buffer
     mat.fillRgbaBuffer(buffer);
     loadTextureFromRgbaBuffer(outTexture, buffer);
 }
+
+// use a new buffer on the stack
+template<size_t W, size_t H>
+static void LoadTextureFromMatrix(const Matrix& mat, GLuint& outTexture)
+{
+    // turn the matrix data into an RGB buffer
+    RgbaBufferArray<W, H> buffer;
+    mat.fillRgbaBuffer(buffer);
+    loadTextureFromRgbaBuffer(outTexture, buffer);
+}
+
 
 static ImVec4 rgbaPixelToImVec4(RgbaPixel pix)
 {
@@ -718,7 +727,8 @@ void App::UIDrawTileViewerWindow()
 
         for (uint32_t id = 0; id < VRam::maxTiles; ++id) {
             auto tile = mGameboy.ppu.vram.getGenericTile(id);
-            LoadTextureFromMatrix(tile, mTileTextures[id], mTileBuffers[id]);
+
+            LoadTextureFromMatrix<TileData::w, TileData::h>(tile, mTileTextures[id]);
 
             ImVec2 imgPos = ImGui::GetCursorScreenPos();
 
@@ -785,20 +795,22 @@ void App::UIDrawTileViewerWindow()
             ImVec2 imgPos = ImGui::GetCursorScreenPos();
             auto drawList = ImGui::GetWindowDrawList();
 
-            LoadTextureFromMatrix(objTile.td, mOamTextures[id * 2], mOamBuffers[id * 2]);
+            LoadTextureFromMatrix<TileData::w, TileData::h>(objTile.td, mOamTextures[id * 2]);
             drawList->AddImage((void*)(intptr_t)mOamTextures[id * 2], imgPos, ImVec2(imgPos.x + 24, imgPos.y + 24));
 
             // draw bottom tile (if any)
             auto tl = ImVec2(imgPos.x, imgPos.y + 24);
+            auto br = ImVec2(tl.x + 24, tl.y + 24);
             if (doubleH) {
-                LoadTextureFromMatrix(objTile.tdh, mOamTextures[id * 2 + 1], mOamBuffers[id * 2 + 1]);
+                auto textureId = mOamTextures[id * 2 + 1];
+
+                LoadTextureFromMatrix<TileData::w, TileData::h>(objTile.tdh, textureId);
+                drawList->AddImage((void*)(intptr_t)textureId, tl, br);
             }
             else {
-                // fill the buffer with white
-                mOamBuffers[id * 2 + 1].fill(whiteA);
-                loadTextureFromRgbaBuffer(mOamTextures[id * 2 + 1], mOamBuffers[id * 2 + 1]);
+                // draw a white square
+                drawList->AddRectFilled(tl, br, ImColor(255, 255, 255));
             }
-            drawList->AddImage((void*)(intptr_t)mOamTextures[id * 2 + 1], tl, ImVec2(tl.x + 24, tl.y + 24));
 
             // draw a red line across the image if the oam is not visible
             if (oam.x() == 0 || oam.x() >= 168 || oam.y() == 0 || oam.y() >= 160) {
@@ -972,7 +984,7 @@ void App::UIDrawBackgroundViewerWindow()
 
             auto currPos = ImGui::GetCursorScreenPos();
 
-            LoadTextureFromMatrix(tile, mBgTextures[r * BgHelper::cols + c], mBgBuffers[r * BgHelper::cols + c]);
+            LoadTextureFromMatrix<TileData::w, TileData::h>(tile, mBgTextures[r * BgHelper::cols + c]);
             ImGui::Image((void*)(intptr_t)mBgTextures[r * BgHelper::cols + c], ImVec2(TileData::w * scaling, TileData::h * scaling));
 
             if (ImGui::IsItemHovered()) {

@@ -54,15 +54,10 @@ private:
     GameBoyClassic mGameboy;
 
     RgbaBuffer mDisplayBuffer;
+
     GLuint mGLDisplayTexture;
-
-    std::vector<RgbaBufferArray<TileData::w, TileData::h>> mTileBuffers;
     std::vector<GLuint> mTileTextures;
-
-    std::vector<RgbaBufferArray<TileData::w, TileData::h>> mOamBuffers;
     std::vector<GLuint> mOamTextures;
-
-    std::vector<RgbaBufferArray<TileData::w, TileData::h>> mBgBuffers;
     std::vector<GLuint> mBgTextures;
 
     std::chrono::nanoseconds mLastEmulateCall;
