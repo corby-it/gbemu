@@ -37,15 +37,8 @@ workspace(project_name)
     files {
         src_base .. "/gb/**.cpp",
         src_base .. "/gb/**.h",
-        src_base .. "/app/**.cpp",
-        src_base .. "/app/**.h",
         src_base .. "/gbdebug/**.h",
         src_base .. "/gbdebug/**.cpp",
-        src_base .. "/imgui/*.cpp",
-        src_base .. "/imgui/*.h",
-        src_base .. "/imgui/backends/imgui_impl_glfw.cpp",
-        src_base .. "/imgui/backends/imgui_impl_opengl3.cpp",
-        src_base .. "/third-party/ImGuiFileDialog/ImGuiFileDialog.cpp",
         src_base .. "/third-party/tracy/public/TracyClient.cpp",
     }
 
@@ -54,8 +47,6 @@ workspace(project_name)
     }
 
     externalincludedirs {
-        src_base .. "/imgui",
-        src_base .. "/imgui/backends",
         src_base .. "/third-party",
         src_base .. "/third-party/tracy/public",
         src_base .. "/third-party/cereal-1.3.2/include",
@@ -150,10 +141,24 @@ workspace(project_name)
         language "C++"
         cppdialect "C++17"
         
-        -- use the regular main.cpp file
+        -- use the regular main.cpp file and the rest of the 
+        -- imgui application files
         files {
-            src_base .. "/main.cpp"
+            src_base .. "/main.cpp",
+            src_base .. "/app/**.cpp",
+            src_base .. "/app/**.h",
+            src_base .. "/imgui/*.cpp",
+            src_base .. "/imgui/*.h",
+            src_base .. "/imgui/backends/imgui_impl_glfw.cpp",
+            src_base .. "/imgui/backends/imgui_impl_opengl3.cpp",
+            src_base .. "/third-party/ImGuiFileDialog/ImGuiFileDialog.cpp",
         }
+
+        externalincludedirs {
+            src_base .. "/imgui",
+            src_base .. "/imgui/backends",
+        }
+
 
     project(project_name .. "-tests")
         kind "ConsoleApp"
