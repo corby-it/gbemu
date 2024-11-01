@@ -1,5 +1,7 @@
 
 project_name = "gbemu"
+app_name = project_name
+tests_name = project_name .. "-tests"
 
 
 workspace(project_name)
@@ -27,19 +29,19 @@ workspace(project_name)
     }
 
 
-    configurations { "debug", "release", "profiling" }
+    configurations { "debug", "release", "profiling", "coverage" }
     architecture "x86_64"
     location(build_base)
 
     targetdir(build_base .. "/bin/%{cfg.buildcfg}")
 
-    -- don't include main.cpp here, every prject will add its own
+    -- the only files common to both projects are the ones related
+    -- to gameboy core emulation
     files {
         src_base .. "/gb/**.cpp",
         src_base .. "/gb/**.h",
         src_base .. "/gbdebug/**.h",
         src_base .. "/gbdebug/**.cpp",
-        src_base .. "/third-party/tracy/public/TracyClient.cpp",
     }
 
     includedirs {
@@ -48,12 +50,12 @@ workspace(project_name)
 
     externalincludedirs {
         src_base .. "/third-party",
-        src_base .. "/third-party/tracy/public",
         src_base .. "/third-party/cereal-1.3.2/include",
+        src_base .. "/third-party/tracy/public",
     }
 
     defines {
-        "PROJECT_NAME=" .. project_name,
+        -- PROJECT_NAME will be defined for each project to have the correct name
         "MAJOR_VER=" ..  _OPTIONS["major_ver"],
         "MINOR_VER=" .. _OPTIONS["minor_ver"],
         "BUILD_VER=" .. _OPTIONS["build_ver"],
@@ -73,57 +75,18 @@ workspace(project_name)
     filter "configurations:release"
         symbols "Off"
         optimize "Speed"
-        flags {
-            "LinkTimeOptimization"
-        }
-        defines { 
-            "DOCTEST_CONFIG_DISABLE" 
-        }
-
-    filter "configurations:profiling"
-        symbols "On"
-        optimize "Speed"
-        flags {
-            "LinkTimeOptimization"
-        }
-        defines { 
-            "DOCTEST_CONFIG_DISABLE",
-            "TRACY_ENABLE",
-            "TRACY_NO_SAMPLING",
-        }
 
     filter { "system:linux", "action:gmake" }
         buildoptions { 
             "-pedantic",
             "-Wno-psabi",
-            "-Wno-unknown-pragmas", -- required to compile ImGuiFileDialog
             "-Wno-format-security",
             "-fmessage-length=0",
             "-fsigned-char",
-            "-ffunction-sections",
-            "-fdata-sections",
-            "`pkg-config --cflags glfw3`"
-        }
-        linkoptions {
-            "-Wl,--gc-sections",
-            "`pkg-config --static --libs glfw3`"
-        }
-        links { 
-            "GL"
         }
 
     filter { "system:windows", "action:vs*" }
         startproject(project_name)
-        externalincludedirs {
-            "$(GLFW_PATH)/include"
-        }
-        libdirs {
-            "$(GLFW_PATH)/lib-vc2022"
-        }
-        links {
-            "opengl32.lib",
-            "glfw3_mt.lib"
-        }
         systemversion "latest"
         staticruntime "On"
         defines { 
@@ -136,15 +99,21 @@ workspace(project_name)
         }
 
 
-    project(project_name)
+    project(app_name)
         kind "WindowedApp"
         language "C++"
         cppdialect "C++17"
+
+        -- code coverage is only meaningful when running tests
+        removeconfigurations { "coverage" }
+
+        defines {
+            "PROJECT_NAME=" .. app_name,
+        }
         
-        -- use the regular main.cpp file and the rest of the 
-        -- imgui application files
+        -- the app main.cpp is in the app directory
+        -- add imgui + glfw files
         files {
-            src_base .. "/main.cpp",
             src_base .. "/app/**.cpp",
             src_base .. "/app/**.h",
             src_base .. "/imgui/*.cpp",
@@ -159,11 +128,59 @@ workspace(project_name)
             src_base .. "/imgui/backends",
         }
 
+        filter { "configurations:profiling" }
+            -- symbols must be on to get meaningful traces when profiling
+            symbols "On"
+            optimize "Speed"
+            files {
+                src_base .. "/third-party/tracy/public/TracyClient.cpp",
+            }
+            defines { 
+                "TRACY_ENABLE",
+                "TRACY_NO_SAMPLING",
+            }
 
-    project(project_name .. "-tests")
+        filter { "system:linux", "configurations:profiling"}
+            -- TracyClient.cpp will produce some warnings when compiled with gcc
+            -- so we have to disable the fatal warnings flag
+            removeflags { "FatalWarnings" } 
+
+        -- add compile and link flags for GLFW
+        filter { "system:linux", "action:gmake" }
+            buildoptions { 
+                "-Wno-unknown-pragmas", -- required to compile ImGuiFileDialog
+                "`pkg-config --cflags glfw3`"
+            }
+            linkoptions {
+                "`pkg-config --static --libs glfw3`"
+            }
+            links { 
+                "GL"
+            }
+
+        filter { "system:windows", "action:vs*" }
+            externalincludedirs {
+                "$(GLFW_PATH)/include"
+            }
+            libdirs {
+                "$(GLFW_PATH)/lib-vc2022"
+            }
+            links {
+                "opengl32.lib",
+                "glfw3_mt.lib"
+            }
+
+
+    project(tests_name)
         kind "ConsoleApp"
         language "C++"
         cppdialect "C++17"
+        
+        removeconfigurations { "profiling" }
+
+        defines {
+            "PROJECT_NAME=" .. tests_name
+        }
 
         -- tests, along with their main, are all located under src/tests
         files {
@@ -173,4 +190,13 @@ workspace(project_name)
         includedirs {
             src_base .. "/tests"
         }
-    
+
+        -- code coverage uses gcov + lcov which is not available on windows
+        filter { "system:windows" }
+            removeconfigurations { "coverage" }
+
+        filter { "system:linux", "action:gmake", "configurations:coverage" }
+            symbols "On"
+            optimize "debug"
+            buildoptions { "--coverage" }
+            linkoptions { "--coverage" }

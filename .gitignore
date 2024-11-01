@@ -25,3 +25,10 @@ windows/*.bmp
 
 # ignore mts result images
 test-files/mts-results/**/*.png
+
+# ignore app configuration file
+appConfig.json
+
+# ignore code coverage report files
+scripts/html
+scripts/*info

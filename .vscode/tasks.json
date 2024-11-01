@@ -152,7 +152,9 @@
             "command": "rm",
             "args": [
                 "-rf",
-                "build"
+                "build",
+                "scripts/*.info",
+                "scripts/html"
             ],
             "problemMatcher": []
         }
