@@ -66,7 +66,7 @@ CEREAL_CLASS_VERSION(LCDCReg, 1);
 
 
 
-enum PPUMode : uint8_t {
+enum class PPUMode : uint8_t {
     HBlank = 0,
     VBlank = 1,
     OAMScan = 2,

@@ -96,7 +96,7 @@ struct Irqs {
         // 4 - Serial
         // 5 - Joypad
 
-        uint8_t currentIrqs = IE & IF & 0x1F;
+        const uint8_t currentIrqs = IE & IF & 0x1F;
 
         if (currentIrqs & mask(Type::VBlank))
             return Type::VBlank;

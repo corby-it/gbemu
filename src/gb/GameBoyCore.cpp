@@ -219,7 +219,7 @@ CartridgeLoadingRes GameBoyClassic::loadCartridge(const std::filesystem::path& p
     }
 
     // also try to load debug symbols (if any)
-    dbg.symTable.parseSymbolFile(path);
+    dbg.symTable->parseSymbolFile(path);
 
     return res;
 }

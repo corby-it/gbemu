@@ -22,6 +22,10 @@ struct Flags : public RegU8 {
     // 6        subtract flag: 1 if a subtracion was performed in the last math operation
     // 7        zero flag: 1 if the result of the last math operation is 0 or if two values match when using the CP instruction
 
+    Flags() {
+        fromU8(0);
+    }
+
     bool Z;
     bool N;
     bool H;
@@ -45,7 +49,7 @@ struct Flags : public RegU8 {
         C = val & maskC;
     }
 
-    virtual void operator=(uint8_t val) { fromU8(val); }
+    void operator=(uint8_t val) { fromU8(val); }
 
     static constexpr const uint8_t maskZ = 0b10000000;
     static constexpr const uint8_t maskN = 0b01000000;
@@ -63,6 +67,16 @@ CEREAL_CLASS_VERSION(Flags, 1);
 
 
 struct Registers {
+
+    Registers() {
+        setAF(0);
+        setBC(0);
+        setDE(0);
+        setHL(0);
+        PC = 0;
+        SP = 0;
+    }
+
     // there are 7 general purpose 8-bit register
     // the A register is also used as the accumulator for math operations,
     // they can also be accessed as 16-bit registers as follow

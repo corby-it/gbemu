@@ -9,7 +9,7 @@
 
 class Timer {
 public:
-    enum ClockSelect : uint8_t {
+    enum class ClockSelect : uint8_t {
         N1024 = 0,
         N16 = 1,
         N64 = 2,

@@ -88,10 +88,14 @@ void MbcNone::onReset()
 
 Mbc1::Mbc1(size_t romSize, size_t ramSize)
     : MbcInterface(MbcType::Mbc1, romSize, ramSize)
+    , mRamEnabled(false)
+    , mAddrMode1(false)
     , mRomMask(bankMask(7, mRomBanksCount))
     , mRamMask(bankMask(2, mRamBanksCount))
+    , mRomBankLow(1)
+    , mRomBankHigh(0)
 {
-    onReset();
+    updateBankConfiguration();
 }
 
 void Mbc1::onReset()
@@ -252,7 +256,7 @@ Mbc2::Mbc2(size_t romSize, size_t ramSize)
     // mbc2 always has 512 half-bytes of ram
     ram.resize(512);
 
-    onReset();
+    mRomCurrBank = 1;
 }
 
 void Mbc2::onReset()
@@ -342,9 +346,9 @@ Mbc3::Mbc3(size_t romSize, size_t ramSize)
     : MbcInterface(MbcType::Mbc3, romSize, ramSize)
     , mRomMask(bankMask(7, mRomBanksCount))
     , mRamMask(bankMask(2, mRamBanksCount))
-{
-    onReset();
-}
+    , mRtcLatchReg(1)
+    , mRamRtcEnabled(false)
+{}
 
 void Mbc3::onReset()
 {
@@ -503,7 +507,7 @@ Mbc5::Mbc5(size_t romSize, size_t ramSize)
     , mRomB0(1)
     , mRomB1(0)
 {
-    onReset();
+    mRomCurrBank = 1;
 }
 
 void Mbc5::onReset()

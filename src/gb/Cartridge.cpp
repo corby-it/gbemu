@@ -338,7 +338,7 @@ static const std::unordered_map<uint8_t, const char*> oldLicenseeCodeMap = {
 
 std::array<uint8_t, CartridgeHeader::headerSize> CartridgeHeader::asArray() const
 {
-    std::array<uint8_t, headerSize> ret;
+    std::array<uint8_t, headerSize> ret{};
 
     if (mRomBaseAddr)
         memcpy(ret.data(), mRomBaseAddr, headerSize);
@@ -359,7 +359,7 @@ bool CartridgeHeader::operator==(const std::array<uint8_t, headerSize>& buffer) 
 
 EntryPointData CartridgeHeader::entryPoint() const
 {
-    EntryPointData ret;
+    EntryPointData ret{};
 
     if (mRomBaseAddr) 
         memcpy(ret.data(), mRomBaseAddr + 0x100, ret.size());
@@ -371,7 +371,7 @@ EntryPointData CartridgeHeader::entryPoint() const
 
 LogoData CartridgeHeader::logoData() const
 {
-    LogoData ret;
+    LogoData ret{};
 
     if (mRomBaseAddr)
         memcpy(ret.data(), mRomBaseAddr + 0x104, ret.size());

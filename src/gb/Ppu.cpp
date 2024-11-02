@@ -60,7 +60,7 @@ STATReg::STATReg()
 
 uint8_t STATReg::asU8() const
 {
-    uint8_t val = (ppuMode & 0x03)
+    uint8_t val = (static_cast<uint8_t>(ppuMode) & 0x03)
         | lycEqual << 2
         | mode0IrqEnable << 3
         | mode1IrqEnable << 4

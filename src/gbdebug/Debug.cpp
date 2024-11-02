@@ -12,6 +12,7 @@ GBDebug::GBDebug()
     , breakOnLdbb(false)
     , breakOnRet(false)
     , targetCallNesting(0)
+    , symTable(std::make_unique<SymTable>())
 {}
 
 
@@ -64,7 +65,7 @@ std::string GBDebug::symbolOrU16(const GameBoyClassic& gb, uint16_t pc)
 {
     uint16_t addr = gb.bus.read16(pc);
 
-    auto sym = symTable.getSymbol(gb.cartridge.mbc->getRomBankId(), gb.cartridge.mbc->getRamBankId(), addr);
+    auto sym = symTable->getSymbol(gb.cartridge.mbc->getRomBankId(), gb.cartridge.mbc->getRamBankId(), addr);
 
     return sym ? *sym : uintToHex(addr);
 }
@@ -74,7 +75,7 @@ std::string GBDebug::symbolOrS8(const GameBoyClassic& gb, uint16_t pc)
     int8_t offset = (int8_t)gb.bus.read8(pc++);
     uint16_t addr = pc + offset;
 
-    auto sym = symTable.getSymbol(gb.cartridge.mbc->getRomBankId(), gb.cartridge.mbc->getRamBankId(), addr);
+    auto sym = symTable->getSymbol(gb.cartridge.mbc->getRomBankId(), gb.cartridge.mbc->getRamBankId(), addr);
 
     return sym ? *sym : std::to_string(offset);
 }

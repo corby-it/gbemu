@@ -5,6 +5,7 @@
 
 #include "SymFile.h"
 #include <string>
+#include <memory>
 
 
 class GameBoyClassic;
@@ -21,7 +22,7 @@ public:
 
     size_t targetCallNesting;
 
-    SymTable symTable;
+    std::unique_ptr<SymTable> symTable;
 
     const std::string& currInstructionStr() const { return mCurrInstruction; }
 

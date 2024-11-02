@@ -91,7 +91,7 @@ public:
         , mLocked(false)
     {}
 
-    virtual uint8_t read8(uint16_t addr) const override
+    uint8_t read8(uint16_t addr) const override
     {
         // when some parts of the memory are locked, reading returns
         // garbage values or FF (source: https://gbdev.io/pandocs/Rendering.html#ppu-modes)
@@ -101,7 +101,7 @@ public:
         return Ram<Size>::read8(addr);
     }
 
-    virtual void write8(uint16_t addr, uint8_t val) override
+    void write8(uint16_t addr, uint8_t val) override
     {
         if (mLocked)
             return;

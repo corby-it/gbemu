@@ -39,7 +39,7 @@ void Timer::step(uint32_t mCycles, bool isCpuStopped)
     // 1 machine cycle is equal to 4 clock cycles and DIV counts the number of clock cycles
     // so we have to increase it by 4
     uint16_t cCycles = (uint16_t)mCycles * 4;
-    uint16_t subClock = clockDividers[mClockSelect];
+    uint16_t subClock = clockDividers[static_cast<uint8_t>(mClockSelect)];
     
     mDiv += cCycles;
 
@@ -68,7 +68,7 @@ void Timer::step(uint32_t mCycles, bool isCpuStopped)
 void Timer::writeTAC(uint8_t val)
 {
     mTacVal = val & 0xF8;
-    auto newClockSelect = (ClockSelect)(val & 0x3);
+    auto newClockSelect = static_cast<ClockSelect>(val & 0x3);
     auto newTimaEnabled = val & 0x4;
 
     // the TIMA subcounter must be restarted when we enable

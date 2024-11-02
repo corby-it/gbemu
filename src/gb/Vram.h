@@ -189,10 +189,10 @@ struct OAMData : public MemoryMappedObj {
 
     bool isInside(uint32_t dispX, uint32_t dispY, bool doubleHeight = false) const 
     {
-        int32_t xl = x() - 8;
-        int32_t xr = x();
-        int32_t yt = y() - 16;
-        int32_t yb = doubleHeight ? y() : y() - 8;
+        const int32_t xl = x() - 8;
+        const int32_t xr = x();
+        const int32_t yt = y() - 16;
+        const int32_t yb = doubleHeight ? y() : y() - 8;
 
         return (int32_t)dispX >= xl && (int32_t)dispX < xr && (int32_t)dispY >= yt && (int32_t)dispY < yb;
     }

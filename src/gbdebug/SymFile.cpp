@@ -108,7 +108,7 @@ bool SymTable::parseWlalinkSymFile(std::ifstream& ifs)
         if (!line.empty() && line[0] == '[') // new section
             break;
 
-        uint32_t bank, addr;
+        uint32_t bank = 0, addr = 0;
         char label[256] = { 0 };
         if (sscanf(line.c_str(), "%2x:%4x %255s", &bank, &addr, label) == 3) {
 
