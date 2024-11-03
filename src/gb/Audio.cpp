@@ -17,8 +17,6 @@ Audio::Audio()
     : mRdh(0)
     , mTimeCounter(0ns)
 {
-    ma_pcm_rb_init(ma_format_f32, 2, 48000, nullptr, nullptr, &audioBuf);
-
     // populate the wave tables
     for (uint32_t i = 0; i < 256; ++i)
         wtblSquare50[i] = 1;
@@ -34,17 +32,12 @@ Audio::Audio()
 }
 
 Audio::~Audio()
-{
-    ma_pcm_rb_uninit(&audioBuf);
-}
+{}
 
 void Audio::reset()
 {
     mRdh = 0;
     mTimeCounter = 0ns;
-
-    // reset the audio buffer
-    ma_pcm_rb_reset(&audioBuf);
 
     // initial values from https://gbdev.gg8.se/wiki/articles/Power_Up_Sequence
     write(0xFF10, 0x80); // NR10
@@ -79,25 +72,11 @@ void Audio::step(uint32_t mCycles)
         if (mTimeCounter >= samplePeriod) {
             mTimeCounter -= samplePeriod;
             
-            // write a sample in the buffer every 21 machine cycles
-            
-            void* pvBuf;
-            uint32_t frames = 1;
-            ma_pcm_rb_acquire_write(&audioBuf, &frames, &pvBuf);
+            if (mSampleCallback)
+                mSampleCallback(wtblSine[mRdh], wtblSine[mRdh]);
 
-            auto pfBuf = static_cast<float*>(pvBuf);
-
-            for (uint32_t i = 0; i < frames; ++i) {
-                *pfBuf = wtblSine[mRdh];
-                ++pfBuf;
-                *pfBuf = wtblSine[mRdh];
-                ++pfBuf;
-
-                // wrap after 512 bytes
-                mRdh = (mRdh + 1) & 0x000001FF;
-            }
-
-            ma_pcm_rb_commit_write(&audioBuf, frames);
+            // wrap after 512 bytes
+            mRdh = (mRdh + 1) & 0x000001FF;
         }
     }
 }

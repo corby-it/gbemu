@@ -102,57 +102,77 @@ struct paTestData
 };
 
 static paTestData soundData = { 0, 0 };
-static float amplitude = 0.1f;
+static float amplitude = 0.4f;
 
-void App::audioDataCallback(ma_device* pDevice, void* pOutput, const void* /*pInput*/, ma_uint32 frameCount)
+void App::audioDataCallback(ma_device* pDevice, void* pOutput, const void* /*pInput*/, ma_uint32 requestedFrames)
 {
     // In playback mode copy data to pOutput. In capture mode read data from pInput. In full-duplex mode, both
     // pOutput and pInput will be valid and you can move data from pInput into pOutput. Never process more than
-    // frameCount availableFrames.
+    // requestedFrames availableFrames.
 
-    float* pfOut = static_cast<float*>(pOutput);
+    float* pfOutBuf = static_cast<float*>(pOutput);
     App* app = static_cast<App*>(pDevice->pUserData);
 
-    void* pvBuf;
+    void* pvInBuf;
     ma_uint32 availableFrames = 48000;
     ma_uint32 extracted = 0;
     
-    ma_pcm_rb_acquire_read(&app->mGameboy.audio.audioBuf, &availableFrames, &pvBuf);
+    ma_pcm_rb_acquire_read(&app->mAudioRingBuffer, &availableFrames, &pvInBuf);
 
-    TracyPlot(plotRequestedAudioFrames, (int64_t)frameCount);
+    float* pfInBuf = static_cast<float*>(pvInBuf);
+
+    TracyPlot(plotRequestedAudioFrames, (int64_t)requestedFrames);
     TracyPlot(plotAvailableAudioFrames, (int64_t)availableFrames);
-    
-    if (availableFrames < frameCount) {
-        // fill the buffer with zeros until we have enough availableFrames
-        for (ma_uint32 i = 0; i < frameCount; ++i) {
-            *pfOut = 0;  /* left */
-            ++pfOut;
-            *pfOut = 0;  /* right */
-            ++pfOut;
-        }
-        
+
+    if (availableFrames == 0) {
+        // the output buffer is already silenced
         extracted = 0;
     }
     else {
-        // read sample from the buffer into the output
-        float* pfBuf = static_cast<float*>(pvBuf);
 
-        for (ma_uint32 i = 0; i < frameCount; ++i) {
-            *pfOut = *pfBuf * amplitude;  /* left */
-            ++pfOut; ++pfBuf;
+        ma_uint64 frameCountIn = availableFrames;
+        ma_uint64 frameCountOut = requestedFrames;
 
-            *pfOut = *pfBuf * amplitude;  /* right */
-            ++pfOut; ++pfBuf;
-        }
+        ma_resampler_set_rate_ratio(&app->mAudioResampler, (float)frameCountIn / frameCountOut);
 
-        extracted = frameCount;
+        ma_resampler_process_pcm_frames(&app->mAudioResampler, pfInBuf, &frameCountIn, pfOutBuf, &frameCountOut);
+
+        extracted = availableFrames;
     }
 
-    ma_pcm_rb_commit_read(&app->mGameboy.audio.audioBuf, extracted);
+
+    
+    //if (availableFrames < requestedFrames) {
+    //    // fill the buffer with zeros until we have enough availableFrames
+    //    for (ma_uint32 i = 0; i < requestedFrames; ++i) {
+    //        *pfOut = 0;  /* left */
+    //        ++pfOut;
+    //        *pfOut = 0;  /* right */
+    //        ++pfOut;
+    //    }
+    //    
+    //    extracted = 0;
+    //}
+    //else {
+    //    // read sample from the buffer into the output
+    //    float* pfBuf = static_cast<float*>(pvBuf);
+
+    //    for (ma_uint32 i = 0; i < requestedFrames; ++i) {
+    //        *pfOut = *pfBuf * amplitude;  /* left */
+    //        ++pfOut; ++pfBuf;
+
+    //        *pfOut = *pfBuf * amplitude;  /* right */
+    //        ++pfOut; ++pfBuf;
+    //    }
+
+    //    extracted = requestedFrames;
+    //}
+
+    ma_pcm_rb_commit_read(&app->mAudioRingBuffer, extracted);
 
 
 
-    //for (ma_uint32 i = 0; i < frameCount; ++i) {
+    //for (ma_uint32 i = 0; i < requestedFrames; ++i) {
     //    *pfOut = soundData.left_phase * amplitude;  /* left */
     //    ++pfOut;
     //    *pfOut = soundData.right_phase * amplitude;  /* right */
@@ -173,6 +193,21 @@ void App::audioDataCallback(ma_device* pDevice, void* pOutput, const void* /*pIn
 
 void App::audioSetup()
 {
+    // setup the ring buffer
+    ma_pcm_rb_init(ma_format_f32, 2, 48000, nullptr, nullptr, &mAudioRingBuffer);
+    ma_pcm_rb_reset(&mAudioRingBuffer);
+
+    // setup the resampler
+    ma_resampler_config resamplerConfig = ma_resampler_config_init(
+        ma_format_f32,
+        2,
+        48000,
+        48000,
+        ma_resample_algorithm_linear);
+
+    ma_resampler_init(&resamplerConfig, nullptr, &mAudioResampler);
+
+    // setup the audio device 
     ma_device_config config = ma_device_config_init(ma_device_type_playback);
     config.playback.format = ma_format_f32;   // Set to ma_format_unknown to use the device's native format.
     config.playback.channels = 2;               // Set to 0 to use the device's native channel count.
@@ -180,16 +215,36 @@ void App::audioSetup()
     config.dataCallback = App::audioDataCallback;   // This function will be called when miniaudio needs more data.
     config.pUserData = this;   // Can be accessed from the device object (device.pUserData).
 
-    if (ma_device_init(NULL, &config, mAudioDevice.get()) != MA_SUCCESS) {
-        //return -1;  // Failed to initialize the device.
+    ma_device_init(NULL, &config, mAudioDevice.get());
+    ma_device_start(mAudioDevice.get());
+
+    // setup the audio callback in the emulator
+    mGameboy.audio.setSampleCallback(std::bind(&App::onAudioSampleReady, this, std::placeholders::_1, std::placeholders::_2));
+}
+
+void App::onAudioSampleReady(float sampleL, float sampleR)
+{
+    void* pvBuf;
+    uint32_t frames = 1;
+    ma_pcm_rb_acquire_write(&mAudioRingBuffer, &frames, &pvBuf);
+
+    auto pfBuf = static_cast<float*>(pvBuf);
+
+    for (uint32_t i = 0; i < frames; ++i) {
+        *pfBuf = sampleL;
+        ++pfBuf;
+        *pfBuf = sampleR;
+        ++pfBuf;
     }
 
-    ma_device_start(mAudioDevice.get());
+    ma_pcm_rb_commit_write(&mAudioRingBuffer, frames);
 }
 
 void App::audioTeardown()
 {
     ma_device_uninit(mAudioDevice.get());
+    ma_resampler_uninit(&mAudioResampler, nullptr);
+    ma_pcm_rb_uninit(&mAudioRingBuffer);
 }
 
 // Simple helper functions to load an image into a OpenGL texture with common settings
