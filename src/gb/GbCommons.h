@@ -76,6 +76,12 @@ namespace mmap {
 
         namespace audio {
             MMAP_T start = 0xFF10;
+
+            namespace wave_ram {
+                MMAP_T start = 0xFF30;
+                MMAP_T end = 0xFF3F;
+            }
+
             MMAP_T end = 0xFF3F;
         }
 

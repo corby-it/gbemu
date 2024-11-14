@@ -3,11 +3,21 @@
 #include "Audio.h"
 #include "GameBoyCore.h"
 #include <cstring>
+#include <algorithm>
 #define _USE_MATH_DEFINES
 #include <math.h>
 
 
 using namespace std::chrono;
+
+
+
+
+
+
+// ------------------------------------------------------------------------------------------------
+// Audio
+// ------------------------------------------------------------------------------------------------
 
 static float wtblSquare50[512];
 static float wtblSine[512];
@@ -96,3 +106,4 @@ void Audio::write(uint16_t addr, uint8_t val)
    
     mData[addr - mmap::regs::audio::start] = val;
 }
+

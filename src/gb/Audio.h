@@ -7,6 +7,17 @@
 #include <cereal/cereal.hpp>
 #include <chrono>
 #include <functional>
+#include <array>
+
+
+
+
+
+
+// ------------------------------------------------------------------------------------------------
+// Audio
+// ------------------------------------------------------------------------------------------------
+
 
 
 // Just a dummy implementation to have some registers for read/write operations
