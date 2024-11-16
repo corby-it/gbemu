@@ -68,7 +68,7 @@ class DMA;
 class Cartridge;
 class Timer;
 class Joypad;
-class Audio;
+class APU;
 class Serial;
 
 typedef Ram<8_KB>   WorkRam;
@@ -114,8 +114,8 @@ public:
         mJoypad = &jp;
         switchRWFunctions();
     }
-    void connect(Audio& au) {
-        mAudio = &au;
+    void connect(APU& apu) {
+        mApu = &apu;
         switchRWFunctions();
     }
     void connect(Serial& sr) {
@@ -145,7 +145,7 @@ private:
     Cartridge* mCartridge;
     Timer* mTimer;
     Joypad* mJoypad;
-    Audio* mAudio;
+    APU* mApu;
     Serial* mSerial;
     HiRam* mHiRam;
 

@@ -11,6 +11,7 @@
 #include <optional>
 #include <chrono>
 #include <memory>
+#include <fstream>
 
 
 class App : public AppBase {
@@ -52,9 +53,10 @@ private:
     bool loadRomFile(const std::filesystem::path& path);
 
     void onAudioSampleReady(float sampleL, float sampleR);
+    void onAudioSampleReadyToFile(float sampleL, float sampleR);
     static void audioDataCallback(ma_device* pDevice, void* pOutput, const void* pInput, ma_uint32 frameCount);
 
-    
+
     AppConfig mConfig;
     std::filesystem::path mConfigSavePath;
 
@@ -72,7 +74,10 @@ private:
     std::unique_ptr<ma_device> mAudioDevice;
     ma_pcm_rb mAudioRingBuffer;
     ma_resampler mAudioResampler;
+    ma_encoder mAudioWavEncoder;
 
+
+    std::vector<float> mAudioBuf;
 };
 
 

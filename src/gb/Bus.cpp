@@ -6,7 +6,7 @@
 #include "Joypad.h"
 #include "Dma.h"
 #include "Ppu.h"
-#include "Audio.h"
+#include "Apu.h"
 #include "Serial.h"
 #include "Cartridge.h"
 #include "GbCommons.h"
@@ -52,7 +52,7 @@ GBBus::GBBus()
     , mCartridge(nullptr)
     , mTimer(nullptr)
     , mJoypad(nullptr)
-    , mAudio(nullptr)
+    , mApu(nullptr)
     , mSerial(nullptr)
     , mHiRam(nullptr)
     , mReadFnPtr(&GBBus::dummyRead)
@@ -62,7 +62,7 @@ GBBus::GBBus()
 void GBBus::switchRWFunctions()
 {
     if (mCpu && mWram && mPpu && mDma && mCartridge && mTimer
-        && mJoypad && mAudio && mSerial && mHiRam) {
+        && mJoypad && mApu && mSerial && mHiRam) {
 
         mReadFnPtr = &GBBus::realRead;
         mWriteFnPtr = &GBBus::realWrite;
@@ -114,7 +114,7 @@ uint8_t GBBus::realRead(uint16_t addr) const
     }
 
     if (addr >= mmap::regs::audio::start && addr <= mmap::regs::audio::end) {
-        return mAudio->read(addr);
+        return mApu->read(addr);
     }
 
     if (addr >= mmap::regs::lcd::start && addr <= mmap::regs::lcd::end) {
@@ -182,7 +182,7 @@ void GBBus::realWrite(uint16_t addr, uint8_t val)
         else if (addr == mmap::regs::timer::TAC) mTimer->writeTAC(val);
     }
     else if (addr >= mmap::regs::audio::start && addr <= mmap::regs::audio::end) {
-        return mAudio->write(addr, val);
+        return mApu->write(addr, val);
     }
     else if (addr >= mmap::regs::lcd::start && addr <= mmap::regs::lcd::end) {
         if (addr == mmap::regs::lcd::lcdc) mPpu->writeLCDC(val);

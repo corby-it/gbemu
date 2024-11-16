@@ -58,7 +58,7 @@ GameBoyClassic::GameBoyClassic()
     , cartridge()
     , timer(bus)
     , joypad(bus)
-    , audio()
+    , apu()
     , serial()
     , hiRam(mmap::hiram::start)
     , status(Status::Stopped)
@@ -71,7 +71,7 @@ GameBoyClassic::GameBoyClassic()
     bus.connect(cartridge);
     bus.connect(timer);
     bus.connect(joypad);
-    bus.connect(audio);
+    bus.connect(apu);
     bus.connect(serial);
     bus.connect(hiRam);
 
@@ -87,7 +87,7 @@ void GameBoyClassic::gbReset()
     cartridge.reset();
     timer.reset();
     joypad.reset();
-    audio.reset();
+    apu.reset();
     serial.reset();
     hiRam.reset();
 
@@ -104,7 +104,7 @@ GbStepRes GameBoyClassic::gbStep()
     bool frameReady = ppu.step(cpuRes.cycles);
     timer.step(cpuRes.cycles, cpu.isStopped());
     joypad.step(cpuRes.cycles);
-    audio.step(cpuRes.cycles);
+    apu.step(cpuRes.cycles);
 
     if (status != Status::Running) {
         ZoneScoped;
@@ -245,7 +245,7 @@ SaveStateError GameBoyClassic::saveState(const fs::path& path)
         oar(cartridge);
         oar(timer);
         oar(joypad);
-        oar(audio);
+        oar(apu);
         oar(serial);
         oar(hiRam);
     }
@@ -277,7 +277,7 @@ SaveStateError GameBoyClassic::loadState(const fs::path& path)
         iar(cartridge);
         iar(timer);
         iar(joypad);
-        iar(audio);
+        iar(apu);
         iar(serial);
         iar(hiRam);
     }

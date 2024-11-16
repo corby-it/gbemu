@@ -1,5 +1,5 @@
 
-#include "gb/AudioSource.h"
+#include "gb/AudioChannel.h"
 #include "TestUtils.h"
 #include <vector>
 #include <fstream>
@@ -10,79 +10,14 @@ namespace fs = std::filesystem;
 
 
 // when this macro is defined the samples audio files will be generated
-//#define GENERATE_AUDIO_FILES
+#define GENERATE_AUDIO_FILES
 
 
 // set the sample rate at 44.1khz for the tests and
-// for each test generate 2 seconds of audio
+// for each test generate 2 seconds of mono audio
 static constexpr uint32_t sampleRate = 44100;
 static constexpr uint32_t sampleCount = sampleRate * 2;
 
-static fs::path getAudioTestRoot()
-{
-    return getTestRoot() / "audio";
-}
-
-static fs::path getAudioTestFile(const std::string& testName, const std::string& ext = ".sample")
-{
-    auto fname = testName + ext;
-    auto outputPath = getAudioTestRoot() / fname;
-
-    return outputPath;
-}
-
-
-#ifdef GENERATE_AUDIO_FILES
-
-static void vecToFile(const std::vector<uint8_t>& data, const std::string& testName, bool audacityOut = false)
-{
-    auto outputPath = getAudioTestFile(testName);
-    fs::create_directories(outputPath.parent_path());
-
-    std::ofstream ofs(outputPath);
-    if (ofs) {
-        for (const auto& sample : data) 
-            ofs << (unsigned int)sample << "\n";
-    }
-
-    if (audacityOut) {
-        auto audOutputPath = getAudioTestFile(testName, ".txt");
-
-        std::ofstream audOfs(audOutputPath);
-        if (audOfs) {
-            for (const auto& sample : data) {
-                // samples come in in the range 0-15 and must be mapped between -1.f and 1.f
-                float val = static_cast<float>(sample);
-                val = (val - 7.5f) / 7.5f;
-                audOfs << val << "\n";
-            }
-        }
-    }
-}
-
-#endif // GENERATE_AUDIO_FILES
-
-
-static std::vector<uint8_t> fileToVec(const std::string& testName)
-{
-    std::vector<uint8_t> data;
-
-    std::ifstream ifs(getAudioTestFile(testName));
-    if (ifs) {
-        data.reserve(sampleCount);
-
-        for (uint32_t i = 0; i < sampleCount; ++i) {
-            unsigned int val;
-            ifs >> val;
-            if (!ifs)
-                break;
-
-            data.push_back((uint8_t)val);
-        }
-    }
-
-    return data;
-}
 
 
 
@@ -287,13 +222,14 @@ TEST_CASE("Square wave channel")
     }
 
 #ifdef GENERATE_AUDIO_FILES
-    //vecToFile(generatedAudio, testName, true);
+    //audioVecToFileMono<uint8_t>(generatedAudio, testName);
+    //audioVecToFileMono<float>(generatedAudio, testName, ".txt", convertForAudacity);
 #endif // GENERATE_AUDIO_FILES
 
 
     // read the corresponding test file and compare the results
 
-    auto expectedAudio = fileToVec(testName);
+    auto expectedAudio = audioFileToVecMono<uint32_t>(testName, sampleCount);
 
     REQUIRE(expectedAudio.size() == sampleCount);
 
@@ -374,11 +310,12 @@ TEST_CASE("Noise channel")
     }
 
 #ifdef GENERATE_AUDIO_FILES
-    //vecToFile(generatedAudio, testName, true);
+    //audioVecToFileMono<uint8_t>(generatedAudio, testName);
+    //audioVecToFileMono<float>(generatedAudio, testName, ".txt", convertForAudacity);
 #endif // GENERATE_AUDIO_FILES
 
     // read the corresponding test file and compare the results
-    auto expectedAudio = fileToVec(testName);
+    auto expectedAudio = audioFileToVecMono<uint32_t>(testName, sampleCount);
 
     REQUIRE(expectedAudio.size() == sampleCount);
 
@@ -455,12 +392,13 @@ TEST_CASE("User wave channel")
     }
 
 #ifdef GENERATE_AUDIO_FILES
-    //vecToFile(generatedAudio, testName, true);
+    //audioVecToFileMono<uint8_t>(generatedAudio, testName);
+    //audioVecToFileMono<float>(generatedAudio, testName, ".txt", convertForAudacity);
 #endif // GENERATE_AUDIO_FILES
 
 
     // read the corresponding test file and compare the results
-    auto expectedAudio = fileToVec(testName);
+    auto expectedAudio = audioFileToVecMono<uint32_t>(testName, sampleCount);
 
     REQUIRE(expectedAudio.size() == sampleCount);
 

@@ -47,7 +47,7 @@ class AudioChannelIf {
 public:
     AudioChannelIf(uint16_t lengthTimerTarget);
 
-    void reset();
+    virtual void reset();
 
     // call this step function when the channel is emulated on its own
     // if it's emulated inside something else then, replicate its functionality
@@ -80,14 +80,18 @@ public:
     virtual void sweepTick() {}
     void lengthTimerTick();
 
-
+    // returns true when the implementation decides that a new sample value must be computed
     virtual bool onStep() = 0;
-    virtual uint8_t computeChannelOutput() = 0;
+    // update the current output value
+    void updateChannelOutput();
+
 
     bool isChEnabled() const { return mChEnabled; }
     bool isDacEnabled() const { return mDacEnabled; }
 
 protected:
+
+    virtual uint8_t computeChannelOutput() = 0;
 
     void enableLengthTimer(uint16_t startVal);
     bool isLengthTimerEnabled() const { return mLengthTimerEnable; }
@@ -128,7 +132,7 @@ public:
 
     void enableSweepModulation(bool b) { mHasSweep = b; }
     
-    void reset();
+    void reset() override;
 
 
     void writeReg0(uint8_t val) override;
@@ -211,7 +215,7 @@ class NoiseChannel : public AudioChannelIf {
 public:
     NoiseChannel();
 
-    void reset();
+    void reset() override;
 
 
     // there is no reg 0 in the noise channel
@@ -279,10 +283,10 @@ class UserWaveChannel : public AudioChannelIf {
 public:
     UserWaveChannel();
 
-    void reset();
+    void reset() override;
+    void resetWaveRam();
 
     
-
     void writeReg0(uint8_t val) override;
     uint8_t readReg0() const override;
 

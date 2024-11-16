@@ -77,6 +77,36 @@ namespace mmap {
         namespace audio {
             MMAP_T start = 0xFF10;
 
+            MMAP_T NR10 = 0xFF10;
+            MMAP_T NR11 = 0xFF11;
+            MMAP_T NR12 = 0xFF12;
+            MMAP_T NR13 = 0xFF13;
+            MMAP_T NR14 = 0xFF14;
+            
+            // NR20 doesn't exist, 0xFF15 is not used
+            MMAP_T NR21 = 0xFF16;
+            MMAP_T NR22 = 0xFF17;
+            MMAP_T NR23 = 0xFF18;
+            MMAP_T NR24 = 0xFF19;
+
+            MMAP_T NR30 = 0xFF1A;
+            MMAP_T NR31 = 0xFF1B;
+            MMAP_T NR32 = 0xFF1C;
+            MMAP_T NR33 = 0xFF1D;
+            MMAP_T NR34 = 0xFF1E;
+
+            // NR40 doesn't exist, 0xFF1F is not used
+            MMAP_T NR41 = 0xFF20;
+            MMAP_T NR42 = 0xFF21;
+            MMAP_T NR43 = 0xFF22;
+            MMAP_T NR44 = 0xFF23;
+
+            MMAP_T NR50 = 0xFF24;
+            MMAP_T NR51 = 0xFF25;
+            MMAP_T NR52 = 0xFF26;
+
+            // range 0xFF27 - 0xFF2F is not used
+
             namespace wave_ram {
                 MMAP_T start = 0xFF30;
                 MMAP_T end = 0xFF3F;

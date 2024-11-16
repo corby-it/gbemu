@@ -1,5 +1,5 @@
 
-#include "AudioSource.h"
+#include "AudioChannel.h"
 #include "GameBoyCore.h"
 #include "GbCommons.h"
 #include <cassert>
@@ -119,20 +119,8 @@ bool AudioChannelIf::step()
     }
 
     // if a new sample is available, update the current output value
-    if (updateOut) {
-        if (mDacEnabled) {
-            // when the dac is enabled the current output value depends on the channel status
-            // if the channel is disabled the output is 0, otherwise the implmementation
-            // will compute the value
-            // if the channel is disabled, the integer 0 will be turned into an analog 1 by the dac
-            mCurrOutput = mChEnabled ? computeChannelOutput() : 0;
-        }
-        else {
-            // when the dac is disabled the output value stays in the middle
-            // of the available range 0x0 to 0xf, that is 0x7 (which should be 0 in the analog range)
-            mCurrOutput = 0x7;
-        }
-    }
+    if (updateOut) 
+        updateChannelOutput();
 
 
     // check downsampling, that is, check if a new sample is ready
@@ -147,6 +135,22 @@ bool AudioChannelIf::step()
     }
 
     return newSample;
+}
+
+void AudioChannelIf::updateChannelOutput()
+{
+    if (mDacEnabled) {
+        // when the dac is enabled the current output value depends on the channel status
+        // if the channel is disabled the output is 0, otherwise the implementation
+        // will compute the value
+        // if the channel is disabled, the integer 0 will be turned into an analog 1 by the dac
+        mCurrOutput = mChEnabled ? computeChannelOutput() : 0;
+    }
+    else {
+        // when the dac is disabled the output value stays in the middle
+        // of the available range 0x0 to 0xf, that is 0x7 (which should be 0 in the analog range)
+        mCurrOutput = 0x7;
+    }
 }
 
 
@@ -177,6 +181,7 @@ void AudioChannelIf::lengthTimerTick()
         }
     }
 }
+
 
 
 
@@ -655,6 +660,7 @@ UserWaveChannel::UserWaveChannel()
     : AudioChannelIf(256)
 {
     reset();
+    resetWaveRam();
 }
 
 void UserWaveChannel::reset()
@@ -671,11 +677,16 @@ void UserWaveChannel::reset()
     mPeriodH = 0;
     mTrigger = false;
 
-
-    std::fill(mWaveRam.begin(), mWaveRam.end(), 0);
+    // wave ram is not affected by a reset of the channel
+    // but the index is
     mWaveRamIdx = 0;
 
     mPeriodCounter = 0;
+}
+
+void UserWaveChannel::resetWaveRam()
+{
+    std::fill(mWaveRam.begin(), mWaveRam.end(), 0);
 }
 
 void UserWaveChannel::writeReg0(uint8_t val)
@@ -746,7 +757,7 @@ void UserWaveChannel::writeWaveRam(uint16_t addr, uint8_t val)
     addr -= mmap::regs::audio::wave_ram::start;
 
     // the ram is 16 bytes long = 32 4-bit samples
-    // reading starts from the high nibble of byte 0, the its low nibble, then
+    // reading starts from the high nibble of byte 0, then its low nibble, then
     // the high nibble of byte 1, etc.
 
     uint8_t hi = val >> 4;

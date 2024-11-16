@@ -52,6 +52,8 @@ App::App()
     // background textures
     mBgTextures.resize(BgHelper::rows * BgHelper::cols);
     glGenTextures(BgHelper::rows * BgHelper::cols, mBgTextures.data());
+
+    mAudioBuf.reserve(88200);
 }
 
 App::~App()
@@ -194,7 +196,7 @@ void App::audioDataCallback(ma_device* pDevice, void* pOutput, const void* /*pIn
 void App::audioSetup()
 {
     // setup the ring buffer
-    ma_pcm_rb_init(ma_format_f32, 2, 48000, nullptr, nullptr, &mAudioRingBuffer);
+    ma_pcm_rb_init(ma_format_f32, 2, 88200, nullptr, nullptr, &mAudioRingBuffer);
     ma_pcm_rb_reset(&mAudioRingBuffer);
 
     // setup the resampler
@@ -216,10 +218,14 @@ void App::audioSetup()
     config.pUserData = this;   // Can be accessed from the device object (device.pUserData).
 
     ma_device_init(NULL, &config, mAudioDevice.get());
-    ma_device_start(mAudioDevice.get());
+    //ma_device_start(mAudioDevice.get());
+
+    // setup the wav encoder
+    ma_encoder_config encoderCfg = ma_encoder_config_init(ma_encoding_format_wav, ma_format_f32, 2, 44100);
+    ma_encoder_init_file("gb-audio.wav", &encoderCfg, &mAudioWavEncoder);
 
     // setup the audio callback in the emulator
-    mGameboy.audio.setSampleCallback(std::bind(&App::onAudioSampleReady, this, std::placeholders::_1, std::placeholders::_2));
+    //mGameboy.apu.setSampleCallback(std::bind(&App::onAudioSampleReadyToFile, this, std::placeholders::_1, std::placeholders::_2));
 }
 
 void App::onAudioSampleReady(float sampleL, float sampleR)
@@ -240,8 +246,20 @@ void App::onAudioSampleReady(float sampleL, float sampleR)
     ma_pcm_rb_commit_write(&mAudioRingBuffer, frames);
 }
 
+void App::onAudioSampleReadyToFile(float sampleL, float sampleR)
+{
+    mAudioBuf.push_back(sampleL);
+    mAudioBuf.push_back(sampleR);
+
+    if (mAudioBuf.size() >= 44100) {
+        ma_encoder_write_pcm_frames(&mAudioWavEncoder, mAudioBuf.data(), mAudioBuf.size() / 2, nullptr);
+        mAudioBuf.clear();
+    }
+}
+
 void App::audioTeardown()
 {
+    ma_encoder_uninit(&mAudioWavEncoder);
     ma_device_uninit(mAudioDevice.get());
     ma_resampler_uninit(&mAudioResampler, nullptr);
     ma_pcm_rb_uninit(&mAudioRingBuffer);

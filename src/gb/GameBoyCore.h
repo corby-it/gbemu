@@ -10,7 +10,7 @@
 #include "Joypad.h"
 #include "Dma.h"
 #include "Ppu.h"
-#include "Audio.h"
+#include "Apu.h"
 #include "Serial.h"
 #include "Cartridge.h"
 #include "gbdebug/Debug.h"
@@ -77,7 +77,7 @@ public:
     Cartridge cartridge;
     Timer timer;
     Joypad joypad;
-    Audio audio;
+    APU apu;
     Serial serial;
     HiRam hiRam;
 
