@@ -153,14 +153,21 @@ void AudioChannelIf::updateChannelOutput()
     }
 }
 
-
-void AudioChannelIf::enableLengthTimer(uint16_t startVal)
+void AudioChannelIf::trigger()
 {
-    // when the length timer is enabled we have to reset the corresponding counter
-    // starting from the value passed by the implementation
-    mLengthTimerEnable = true;
-    mLengthTimerCounter = startVal;
+    // on a trigger event, if the length timer counter is elapsed it's automatically set to 
+    // the maximum value, that is 0
+    if (mLengthTimerCounter == mLengthTimerTargetVal)
+        mLengthTimerCounter = 0;
+
+    // call the onTrigger function of the implementation 
+    onTrigger();
+
+    // if the dac is off the channel is disabled again
+    if (!mDacEnabled)
+        mChEnabled = false;
 }
+
 
 void AudioChannelIf::lengthTimerTick()
 {
@@ -168,17 +175,19 @@ void AudioChannelIf::lengthTimerTick()
     // when the counter reaches target value the channel is turned off
     // square wave and noise channels use 64 as target value
     // user wave channel use 256 as target value
-
-    if (!mLengthTimerEnable)
-        return;
-
-    if (mLengthTimerCounter < mLengthTimerTargetVal) {
+    // NOTES:
+    //  - the length timer keeps ticking even if the channel is disabled
+    //  - reaching the target val does not disable the counter
+    //  - the current counter value can be changed at any time
+    
+    if (mLengthTimerEnable && mLengthTimerCounter < mLengthTimerTargetVal)
         mLengthTimerCounter++;
-
-        if (mLengthTimerCounter == mLengthTimerTargetVal) {
+    
+    if (mLengthTimerCounter == mLengthTimerTargetVal) {
+        // the timer elapsed, if it was enabled we also 
+        // turn off the channel
+        if (mLengthTimerEnable)
             mChEnabled = false;
-            mLengthTimerEnable = false;
-        }
     }
 }
 
@@ -217,7 +226,6 @@ void SquareWaveChannel::reset()
     mSweepDir = false;
     mSweepStep = 0;
     // Reg 1
-    mLengthTimerInitialVal = 0;
     mDutyCycleIdx = 0;
     // Reg 2
     mEnvInitialVol = 0;
@@ -227,8 +235,6 @@ void SquareWaveChannel::reset()
     mPeriodL = 0;
     // Reg 4
     mPeriodH = 0;
-    mTrigger = false;
-
 
     mSampleIdx = 0;
     mVolume = 0;
@@ -271,7 +277,7 @@ void SquareWaveChannel::writeReg1(uint8_t val)
 {
     // bits 0-5 are the initial length timer
     // bits 6-7 select the duty cycle
-    mLengthTimerInitialVal = val & 0x3F;
+    setLengthTimerCounter(val & 0x3F);
     mDutyCycleIdx = (val >> 6) & 0x03;
 }
 
@@ -311,13 +317,11 @@ void SquareWaveChannel::writeReg4(uint8_t val)
     // bit 6 enables the length timer
     // bit 7 triggers the channel
     mPeriodH = val & 0x07;
-    bool lengthTimerEnable = val & 0x40;
-    mTrigger = val & 0x80;
-
-    if (mTrigger)
+    
+    if (val & 0x80)
         trigger();
-    if (lengthTimerEnable)
-        enableLengthTimer(mLengthTimerInitialVal);
+
+    enableLengthTimer(val & 0x40);
 }
 
 uint8_t SquareWaveChannel::readReg4() const
@@ -432,7 +436,7 @@ uint16_t SquareWaveChannel::sweepCompute()
     return newPeriod;
 }
 
-void SquareWaveChannel::trigger()
+void SquareWaveChannel::onTrigger()
 {
     // when a channel is triggered it becomes enabled and
     // it starts playing its waveform from the beginning
@@ -450,11 +454,6 @@ void SquareWaveChannel::trigger()
     mSweepShadowPeriod = mPeriodL | (mPeriodH << 8);
     mSweepCounter = 0;
     mSweepEnabled = (mSweepPace > 0) || (mSweepStep > 0);
-
-
-    // if the dac is off the channel is disabled again
-    if (!mDacEnabled)
-        mChEnabled = false;
 }
 
 
@@ -474,8 +473,6 @@ void NoiseChannel::reset()
 {
     AudioChannelIf::reset();
 
-    // Reg 1
-    mLengthTimerInitialVal = 0;
     // Reg 2
     mEnvInitialVol = 0;
     mEnvDir = false;
@@ -484,9 +481,7 @@ void NoiseChannel::reset()
     mClockDivider = 0;
     mLfsrWidthIs7 = false;
     mClockShift = 0;
-    // Reg 4
-    mTrigger = false;
-
+    
     // counters and other internal stuff
     mVolume = 0;
     mLfsr.reset();
@@ -502,7 +497,7 @@ void NoiseChannel::writeReg1(uint8_t val)
 {
     // bits 0-5 are the initial length timer
     // bits 6-7 are unused
-    mLengthTimerInitialVal = val & 0x3F;
+    setLengthTimerCounter(val & 0x3F);
 }
 
 uint8_t NoiseChannel::readReg1() const
@@ -556,13 +551,10 @@ void NoiseChannel::writeReg4(uint8_t val)
     // bits 0-5 are unused
     // bit 6 enables the length timer
     // bit 7 triggers the channel
-    bool lengthTimerEnable = val & 0x40;
-    mTrigger = val & 0x80;
-
-    if (mTrigger)
+    if (val & 0x80)
         trigger();
-    if (lengthTimerEnable)
-        enableLengthTimer(mLengthTimerInitialVal);
+
+    enableLengthTimer(val & 0x40);
 }
 
 uint8_t NoiseChannel::readReg4() const
@@ -628,7 +620,7 @@ void NoiseChannel::envelopeTick()
 }
 
 
-void NoiseChannel::trigger()
+void NoiseChannel::onTrigger()
 {
     // when a channel is triggered it becomes enabled and
     // it starts playing noise
@@ -643,11 +635,6 @@ void NoiseChannel::trigger()
     // reset envenlope stuff
     mVolume = mEnvInitialVol;
     mEnvPaceCounter = 0;
-
-
-    // if the dac is off the channel is disabled again
-    if (!mDacEnabled)
-        mChEnabled = false;
 }
 
 
@@ -667,16 +654,13 @@ void UserWaveChannel::reset()
 {
     AudioChannelIf::reset();
 
-    // Reg 1
-    mLengthTimerInitialVal = 0;
     // Reg 2
     mOutputVolume = 0;
     // Reg 3
     mPeriodL = 0;
     // Reg 4
     mPeriodH = 0;
-    mTrigger = false;
-
+    
     // wave ram is not affected by a reset of the channel
     // but the index is
     mWaveRamIdx = 0;
@@ -702,13 +686,13 @@ void UserWaveChannel::writeReg0(uint8_t val)
 
 uint8_t UserWaveChannel::readReg0() const
 {
-    return 0xff & (mDacEnabled << 1);
+    return 0xff & (mDacEnabled << 7);
 }
 
 void UserWaveChannel::writeReg1(uint8_t val)
 {
     // the initial length timer value is 8-bit wide for this channel
-    mLengthTimerInitialVal = val;
+    setLengthTimerCounter(val);
 }
 
 uint8_t UserWaveChannel::readReg1() const
@@ -735,13 +719,11 @@ void UserWaveChannel::writeReg4(uint8_t val)
     // bit 6 enables the length timer
     // bit 7 triggers the channel
     mPeriodH = val & 0x07;
-    bool lengthTimerEnable = val & 0x40;
-    mTrigger = val & 0x80;
-
-    if (mTrigger)
+    
+    if (val & 0x80)
         trigger();
-    if (lengthTimerEnable)
-        enableLengthTimer(mLengthTimerInitialVal);
+
+    enableLengthTimer(val & 0x40);
 }
 
 uint8_t UserWaveChannel::readReg4() const
@@ -834,7 +816,7 @@ uint8_t UserWaveChannel::computeChannelOutput()
     return sample >> shift;
 }
 
-void UserWaveChannel::trigger()
+void UserWaveChannel::onTrigger()
 {
     // when a channel is triggered it becomes enabled and
     // it starts playing its waveform from the beginning, in this case 
@@ -845,10 +827,6 @@ void UserWaveChannel::trigger()
 
     // update the period counter with the current value
     mPeriodCounter = mPeriodL | (mPeriodH << 8);
-
-    // if the dac is off the channel is disabled again
-    if (!mDacEnabled)
-        mChEnabled = false;
 }
 
 

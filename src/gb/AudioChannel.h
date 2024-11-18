@@ -93,7 +93,12 @@ protected:
 
     virtual uint8_t computeChannelOutput() = 0;
 
-    void enableLengthTimer(uint16_t startVal);
+    void trigger();
+    virtual void onTrigger() = 0;
+
+    // length timer counter value can be changed at any time
+    void setLengthTimerCounter(uint16_t val) { mLengthTimerCounter = val; }
+    void enableLengthTimer(bool b) { mLengthTimerEnable = b; }
     bool isLengthTimerEnabled() const { return mLengthTimerEnable; }
 
     bool mChEnabled;
@@ -161,7 +166,7 @@ private:
 
     uint16_t sweepCompute();
 
-    void trigger();
+    void onTrigger() override;
 
     typedef std::array<uint8_t, 8>    WaveTable;
 
@@ -175,7 +180,6 @@ private:
     uint8_t mSweepStep;
 
     // Reg 1 - length timer and duty cycle
-    uint8_t mLengthTimerInitialVal;
     uint8_t mDutyCycleIdx;
 
     // Reg 2 - volume and envelope
@@ -188,8 +192,7 @@ private:
 
     // Reg 4 - period high and control
     uint8_t mPeriodH;
-    bool mTrigger;
-
+    
     // counters and other internal stuff
     uint8_t mSampleIdx;
     uint8_t mVolume;
@@ -241,11 +244,10 @@ private:
     bool onStep() override;
     uint8_t computeChannelOutput() override;
 
-    void trigger();
+    void onTrigger() override;
 
 
     // Reg 1 - length timer initial val
-    uint8_t mLengthTimerInitialVal;
 
     // Reg 2 - volume and envelope
     uint8_t mEnvInitialVol;
@@ -258,7 +260,6 @@ private:
     uint8_t mClockShift;
 
     // Reg 4 - trigger and length timer enable
-    bool mTrigger;
 
     // counters and other internal stuff
     uint8_t mVolume;
@@ -312,12 +313,10 @@ private:
     bool onStep() override;
     uint8_t computeChannelOutput() override;
 
-    void trigger();
+    void onTrigger() override;
 
     // Reg 0 - DAC enable
     // Reg 1 - length timer initial val
-    uint8_t mLengthTimerInitialVal;
-
     // Reg 2 - volume (this channel has no envelope)
     uint8_t mOutputVolume;
 
@@ -326,7 +325,6 @@ private:
 
     // Reg 4 - period high and control
     uint8_t mPeriodH;
-    bool mTrigger;
 
 
     // counters and other internal stuff

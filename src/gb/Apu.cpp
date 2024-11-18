@@ -348,9 +348,9 @@ uint8_t APU::readReg1() const
 void APU::writeReg2(uint8_t val)
 {
     // only bit 7 is writable (apu on/off)
-    bool apuEnabledNew = val & 0x80;
+    mApuEnabled = val & 0x80;
 
-    if (mApuEnabled && !apuEnabledNew) {
+    if (!mApuEnabled) {
         // when the APU is turned off we reset all channels, reset all registers
         // and make all the registers (except for NR52) read-only
         // wave ram is unaffected
@@ -360,14 +360,12 @@ void APU::writeReg2(uint8_t val)
         writeReg0(0);
         writeReg1(0);
     }
-
-    mApuEnabled = apuEnabledNew;
 }
 
 uint8_t APU::readReg2() const
 {
     // bits 0, 1, 2 and 3 contain the status of the channels
-    return 0xff | (mApuEnabled << 7)
+    return (mApuEnabled << 7)
         | (mNoise.isChEnabled() << 3)
         | (mWave.isChEnabled() << 2)
         | (mSquare2.isChEnabled() << 1)
