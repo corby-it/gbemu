@@ -5,13 +5,16 @@
 
 #include "AppBase.h"
 #include "AppConfig.h"
+#include "AudioHandler.h"
 #include "gb/GameBoyCore.h"
 #include "gb/Matrix.h"
-#include <miniaudio.h>
 #include <optional>
 #include <chrono>
 #include <memory>
 #include <fstream>
+
+
+
 
 
 class App : public AppBase {
@@ -27,8 +30,6 @@ public:
 private:
 
     Joypad::PressedButton getPressedButtons();
-    void audioSetup();
-    void audioTeardown();
 
     bool emulateFullSpeed(std::chrono::nanoseconds currTime);
     bool emulateOtherSpeeds(std::chrono::nanoseconds currTime);
@@ -36,6 +37,7 @@ private:
     std::optional<std::chrono::nanoseconds> emulateFor() const;
 
     void UISetupDocking();
+    void UICheckAudioInitialization();
     void UIDrawMenu();
     void UIDrawControlWindow();
     void UIDrawGBDisplayWindow();
@@ -52,10 +54,7 @@ private:
 
     bool loadRomFile(const std::filesystem::path& path);
 
-    void onAudioSampleReady(float sampleL, float sampleR);
-    void onAudioSampleReadyToFile(float sampleL, float sampleR);
-    static void audioDataCallback(ma_device* pDevice, void* pOutput, const void* pInput, ma_uint32 frameCount);
-
+    static float getResamplingRatio(EmulationSpeed speed);
 
     AppConfig mConfig;
     std::filesystem::path mConfigSavePath;
@@ -71,13 +70,9 @@ private:
 
     std::chrono::nanoseconds mLastEmulateCall;
 
-    std::unique_ptr<ma_device> mAudioDevice;
-    ma_pcm_rb mAudioRingBuffer;
-    ma_resampler mAudioResampler;
-    ma_encoder mAudioWavEncoder;
+    bool mAudioInitSuccess;
+    AudioHandler mAudioHandler;
 
-
-    std::vector<float> mAudioBuf;
 };
 
 

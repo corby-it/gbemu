@@ -77,6 +77,7 @@ public:
         ar(cereal::make_nvp("recentRomsFolder", recentRomsFolder));
         ar(cereal::make_nvp("recentRomsPath", recentRomsPath));
         ar(cereal::make_nvp("inputCfg", inputCfg));
+        ar(cereal::make_nvp("audioVolume", audioVolume));
     }
 
     template<class Archive>
@@ -84,6 +85,7 @@ public:
         ar(cereal::make_nvp("recentRomsFolder", recentRomsFolder));
         ar(cereal::make_nvp("recentRomsPath", recentRomsPath));
         ar(cereal::make_nvp("inputCfg", inputCfg));
+        ar(cereal::make_nvp("audioVolume", audioVolume));
     }
 
 
@@ -98,6 +100,8 @@ public:
     InputConfig inputCfg;
 
     EmulationSpeed emulationSpeed;
+
+    float audioVolume;
 
     bool showMemoryEditor;
     bool showTileViewer;

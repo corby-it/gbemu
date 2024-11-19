@@ -1,8 +1,4 @@
 
-// include miniaudio here to avoid the warning C4005: 'APIENTRY': macro redefinition
-// caused by glfw including windows.h as well
-#define MINIAUDIO_IMPLEMENTATION
-#include <miniaudio.h>
 
 #include "App.h"
 #include "imgui/imgui_internal.h"
@@ -17,6 +13,7 @@
 
 using namespace std::chrono;
 using namespace std::chrono_literals;
+using namespace std::placeholders;
 namespace fs = std::filesystem;
 
 using hr_clock = std::chrono::high_resolution_clock;
@@ -26,7 +23,7 @@ App::App()
     : mConfigSavePath(fs::current_path() / "appConfig.json")
     , mDisplayBuffer(Display::w, Display::h)
     , mLastEmulateCall(-1ns)
-    , mAudioDevice(std::make_unique<ma_device>())
+    , mAudioInitSuccess(false)
 {
     // read configuration from file
     {
@@ -52,14 +49,10 @@ App::App()
     // background textures
     mBgTextures.resize(BgHelper::rows * BgHelper::cols);
     glGenTextures(BgHelper::rows * BgHelper::cols, mBgTextures.data());
-
-    mAudioBuf.reserve(88200);
 }
 
 App::~App()
 {
-    audioTeardown();
-
     glDeleteTextures(1, &mGLDisplayTexture);
     glDeleteTextures(VRam::maxTiles, mTileTextures.data());
     glDeleteTextures(OAMRam::oamCount * 2, mOamTextures.data());
@@ -80,190 +73,26 @@ App::~App()
 const char* const plotOvershootPlotName = "EmulateOvershoot";
 const char* const plotTimeSinceLastEmulateCall = "TimeSinceLastEmulateCall";
 const char* const plotRequiredFrames = "RequiredFrames";
-const char* const plotRequestedAudioFrames = "RequestedAudioFrames";
-const char* const plotAvailableAudioFrames = "AvailableAudioFrames";
+
 
 void App::startup()
 {
-    audioSetup();
-
     TracyPlotConfig(plotOvershootPlotName, tracy::PlotFormatType::Number, false, false, 0);
     TracyPlotConfig(plotTimeSinceLastEmulateCall, tracy::PlotFormatType::Number, false, false, 0);
     TracyPlotConfig(plotRequiredFrames, tracy::PlotFormatType::Number, false, false, 0);
-    TracyPlotConfig(plotRequestedAudioFrames, tracy::PlotFormatType::Number, false, false, 0);
-    TracyPlotConfig(plotAvailableAudioFrames, tracy::PlotFormatType::Number, false, false, 0);
+
+    mAudioInitSuccess = mAudioHandler.initialize();
+    mAudioHandler.setResamplingRatio(getResamplingRatio(mConfig.emulationSpeed));
+    mAudioHandler.setVolume(mConfig.audioVolume);
+
+    mAudioHandler.enableSynthesizedFileOutput();
+    mAudioHandler.enablePlayedFileOutput();
+
+    mGameboy.apu.setSampleCallback(std::bind(&AudioHandler::onAudioSampleReady, &mAudioHandler, _1, _2));
 }
 
 
 
-
-struct paTestData
-{
-    float left_phase;
-    float right_phase;
-};
-
-static paTestData soundData = { 0, 0 };
-static float amplitude = 0.4f;
-
-void App::audioDataCallback(ma_device* pDevice, void* pOutput, const void* /*pInput*/, ma_uint32 requestedFrames)
-{
-    // In playback mode copy data to pOutput. In capture mode read data from pInput. In full-duplex mode, both
-    // pOutput and pInput will be valid and you can move data from pInput into pOutput. Never process more than
-    // requestedFrames availableFrames.
-
-    float* pfOutBuf = static_cast<float*>(pOutput);
-    App* app = static_cast<App*>(pDevice->pUserData);
-
-    void* pvInBuf;
-    ma_uint32 availableFrames = 48000;
-    ma_uint32 extracted = 0;
-    
-    ma_pcm_rb_acquire_read(&app->mAudioRingBuffer, &availableFrames, &pvInBuf);
-
-    float* pfInBuf = static_cast<float*>(pvInBuf);
-
-    TracyPlot(plotRequestedAudioFrames, (int64_t)requestedFrames);
-    TracyPlot(plotAvailableAudioFrames, (int64_t)availableFrames);
-
-    if (availableFrames == 0) {
-        // the output buffer is already silenced
-        extracted = 0;
-    }
-    else {
-
-        ma_uint64 frameCountIn = availableFrames;
-        ma_uint64 frameCountOut = requestedFrames;
-
-        ma_resampler_set_rate_ratio(&app->mAudioResampler, (float)frameCountIn / frameCountOut);
-
-        ma_resampler_process_pcm_frames(&app->mAudioResampler, pfInBuf, &frameCountIn, pfOutBuf, &frameCountOut);
-
-        extracted = availableFrames;
-    }
-
-
-    
-    //if (availableFrames < requestedFrames) {
-    //    // fill the buffer with zeros until we have enough availableFrames
-    //    for (ma_uint32 i = 0; i < requestedFrames; ++i) {
-    //        *pfOut = 0;  /* left */
-    //        ++pfOut;
-    //        *pfOut = 0;  /* right */
-    //        ++pfOut;
-    //    }
-    //    
-    //    extracted = 0;
-    //}
-    //else {
-    //    // read sample from the buffer into the output
-    //    float* pfBuf = static_cast<float*>(pvBuf);
-
-    //    for (ma_uint32 i = 0; i < requestedFrames; ++i) {
-    //        *pfOut = *pfBuf * amplitude;  /* left */
-    //        ++pfOut; ++pfBuf;
-
-    //        *pfOut = *pfBuf * amplitude;  /* right */
-    //        ++pfOut; ++pfBuf;
-    //    }
-
-    //    extracted = requestedFrames;
-    //}
-
-    ma_pcm_rb_commit_read(&app->mAudioRingBuffer, extracted);
-
-
-
-    //for (ma_uint32 i = 0; i < requestedFrames; ++i) {
-    //    *pfOut = soundData.left_phase * amplitude;  /* left */
-    //    ++pfOut;
-    //    *pfOut = soundData.right_phase * amplitude;  /* right */
-    //    ++pfOut;
-
-    //    /* Generate simple sawtooth phaser that ranges between -1.0 and 1.0. */
-    //    soundData.left_phase += 0.01f;
-    //    /* When signal reaches top, drop back down. */
-    //    if (soundData.left_phase >= 1.0f)
-    //        soundData.left_phase -= 2.0f;
-    //    /* higher pitch so we can distinguish left and right. */
-    //    soundData.right_phase += 0.03f;
-    //    if (soundData.right_phase >= 1.0f)
-    //        soundData.right_phase -= 2.0f;
-    //}
-}
-
-
-void App::audioSetup()
-{
-    // setup the ring buffer
-    ma_pcm_rb_init(ma_format_f32, 2, 88200, nullptr, nullptr, &mAudioRingBuffer);
-    ma_pcm_rb_reset(&mAudioRingBuffer);
-
-    // setup the resampler
-    ma_resampler_config resamplerConfig = ma_resampler_config_init(
-        ma_format_f32,
-        2,
-        48000,
-        48000,
-        ma_resample_algorithm_linear);
-
-    ma_resampler_init(&resamplerConfig, nullptr, &mAudioResampler);
-
-    // setup the audio device 
-    ma_device_config config = ma_device_config_init(ma_device_type_playback);
-    config.playback.format = ma_format_f32;   // Set to ma_format_unknown to use the device's native format.
-    config.playback.channels = 2;               // Set to 0 to use the device's native channel count.
-    config.sampleRate = 48000;           // Set to 0 to use the device's native sample rate.
-    config.dataCallback = App::audioDataCallback;   // This function will be called when miniaudio needs more data.
-    config.pUserData = this;   // Can be accessed from the device object (device.pUserData).
-
-    ma_device_init(NULL, &config, mAudioDevice.get());
-    //ma_device_start(mAudioDevice.get());
-
-    // setup the wav encoder
-    ma_encoder_config encoderCfg = ma_encoder_config_init(ma_encoding_format_wav, ma_format_f32, 2, 44100);
-    ma_encoder_init_file("gb-audio.wav", &encoderCfg, &mAudioWavEncoder);
-
-    // setup the audio callback in the emulator
-    //mGameboy.apu.setSampleCallback(std::bind(&App::onAudioSampleReadyToFile, this, std::placeholders::_1, std::placeholders::_2));
-}
-
-void App::onAudioSampleReady(float sampleL, float sampleR)
-{
-    void* pvBuf;
-    uint32_t frames = 1;
-    ma_pcm_rb_acquire_write(&mAudioRingBuffer, &frames, &pvBuf);
-
-    auto pfBuf = static_cast<float*>(pvBuf);
-
-    for (uint32_t i = 0; i < frames; ++i) {
-        *pfBuf = sampleL;
-        ++pfBuf;
-        *pfBuf = sampleR;
-        ++pfBuf;
-    }
-
-    ma_pcm_rb_commit_write(&mAudioRingBuffer, frames);
-}
-
-void App::onAudioSampleReadyToFile(float sampleL, float sampleR)
-{
-    mAudioBuf.push_back(sampleL);
-    mAudioBuf.push_back(sampleR);
-
-    if (mAudioBuf.size() >= 44100) {
-        ma_encoder_write_pcm_frames(&mAudioWavEncoder, mAudioBuf.data(), mAudioBuf.size() / 2, nullptr);
-        mAudioBuf.clear();
-    }
-}
-
-void App::audioTeardown()
-{
-    ma_encoder_uninit(&mAudioWavEncoder);
-    ma_device_uninit(mAudioDevice.get());
-    ma_resampler_uninit(&mAudioResampler, nullptr);
-    ma_pcm_rb_uninit(&mAudioRingBuffer);
-}
 
 // Simple helper functions to load an image into a OpenGL texture with common settings
 static void loadTextureFromRgbaBuffer(GLuint& outTexture, RgbaBufferIf& buffer)
@@ -474,6 +303,7 @@ void App::updateUI()
 {
     UISetupDocking();
 
+    UICheckAudioInitialization();
     UIDrawMenu();
     UIDrawControlWindow();
     UIDrawGBDisplayWindow();
@@ -489,6 +319,28 @@ void App::UISetupDocking()
 {    
     if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DockingEnable) {
         ImGui::DockSpaceOverViewport(ImGui::GetMainViewport());
+    }
+}
+
+void App::UICheckAudioInitialization()
+{
+    if (!mAudioInitSuccess)
+        ImGui::OpenPopup("Audio initialization error");
+
+    // Always center this window when appearing
+    ImVec2 center = ImGui::GetMainViewport()->GetCenter();
+    ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+
+    if (ImGui::BeginPopupModal("Audio initialization error", NULL, ImGuiWindowFlags_AlwaysAutoResize))
+    {
+        ImGui::Text("Error while initializing the audio sub-system:");
+        ImGui::Text("%s", mAudioHandler.getInitResult().c_str());
+
+        if (ImGui::Button("OK", ImVec2(120, 0))) {
+            mAudioInitSuccess = true;
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
     }
 }
 
@@ -581,6 +433,51 @@ bool App::loadRomFile(const std::filesystem::path& path)
     }
 }
 
+float App::getResamplingRatio(EmulationSpeed speed)
+{
+    /**
+     * 1 gameboy frame takes 70224 dots to be rendered, there are 4 dots for each m-cycle so 1 dot takes:
+     *
+     *      1 / (1048576 * 4) = 0.0000002384185791015625 seconds
+     *
+     * so rendering an entire frame takes:
+     *
+     *      0.0000002384185791015625 * 70224 = 0.016742706298828125 seconds
+     *      -> 16.7427063 ms
+     *
+     * this is 59.727500 fps, not exactly 60fps
+     *
+     * if the emulation assumes 59.7275fps and renders audio at 44100hz, but the emulator
+     * app runs at 60fps, it means that it actually generates audio at a higher sample rate than 44100hz.
+     * the ratio between the two sample rate is:
+     *
+     *      60 / 59.7275 = 1.00456238751
+     *
+     * which means that the actual emulator sample rate is:
+     *
+     *      44100 * 1.00456238751 = 44301.2012892 HZ
+     *
+     * this means that when the audio subsystem requests X audio samples,
+     * we actually have to resample X * 1.00456238751 samples into X
+     * for example, if it requests 441 samples:
+     *
+     *      441 * 1.00456238751 = 443.01201289 samples
+     * 
+     * when the emulation speed changes we also have to change the resampling ratio,
+     * the same works for other emulation speeds
+     */
+
+    static constexpr float resamplingRatio100 = 60.f / 59.7275f;
+
+    switch(speed){
+    default:
+    case EmulationSpeed::Full: return resamplingRatio100;
+    case EmulationSpeed::Half: return resamplingRatio100 / 2;
+    case EmulationSpeed::Quarter: return resamplingRatio100 / 4;
+    case EmulationSpeed::Unbound: return -1;
+    }
+}
+
 
 void App::UIDrawControlWindow()
 {
@@ -658,6 +555,9 @@ void App::UIDrawControlWindow()
             if (ImGui::Selectable(speedItems[n], isSelected)) {
                 emulationSpeedComboIdx = n;
                 mConfig.emulationSpeed = static_cast<EmulationSpeed>(n);
+                
+                // when emulation speed changes we also have to update the audio resampling parameters
+                mAudioHandler.setResamplingRatio(getResamplingRatio(mConfig.emulationSpeed));
             }
 
             // Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
@@ -778,10 +678,12 @@ void App::UIDrawControlWindow()
     ImGui::SeparatorText("Audio");
 
     if (ImGui::Button("Mute")) {
-        amplitude = 0;
+        mConfig.audioVolume = 0;
     }
     ImGui::SameLine();
-    ImGui::SliderFloat("Volume", &amplitude, 0, 1, "", ImGuiSliderFlags_Logarithmic);
+    ImGui::SliderFloat("Volume", &mConfig.audioVolume, 0, 1, "", ImGuiSliderFlags_Logarithmic);
+
+    mAudioHandler.setVolume(mConfig.audioVolume);
 
     ImGui::End();
 }

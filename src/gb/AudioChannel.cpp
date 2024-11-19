@@ -572,7 +572,7 @@ bool NoiseChannel::onStep()
 
         bool xored = mLfsr[0] ^ mLfsr[1] ^ 1;
         mLfsr >>= 1;
-        mLfsr[15] = xored;
+        mLfsr[14] = xored;
         
         if (mLfsrWidthIs7)
             mLfsr[6] = xored;
@@ -627,7 +627,8 @@ void NoiseChannel::onTrigger()
     mChEnabled = true;
 
     // reset the clock counter target using the clock divider and the shift values
-    static constexpr uint8_t dividers[8] = { 8, 16, 32, 48, 64, 80, 96, 112 };
+    /*static constexpr uint8_t dividers[8] = { 8, 16, 32, 48, 64, 80, 96, 112 };*/
+    static constexpr uint8_t dividers[8] = { 4, 8, 16, 24, 32, 40, 48, 56 };
 
     mClockCounterTarget = dividers[mClockDivider] << mClockShift;
     mClockCounter = 0;
