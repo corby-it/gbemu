@@ -1,4 +1,8 @@
 
+#ifdef _WIN32
+#include <Windows.h>
+#endif // _WIN32
+
 #include "AppBase.h"
 #include "Version.h"
 #include "imgui.h"
@@ -6,12 +10,14 @@
 #include "imgui_impl_opengl3.h"
 #include "tracy/Tracy.hpp"
 #include <stdio.h>
+#include <thread>
 #include <cstdlib>
 #define GL_SILENCE_DEPRECATION
 #if defined(IMGUI_IMPL_OPENGL_ES2)
 #include <GLES2/gl2.h>
 #endif
 #include <GLFW/glfw3.h> // Will drag system OpenGL headers
+
 
 // [Win32] Our example includes a copy of glfw3.lib pre-compiled with VS2010 to maximize ease of testing and compatibility with old VS compilers.
 // To link with VS2010-era libraries, VS2015+ requires linking with legacy_stdio_definitions.lib, which we do using this pragma.
@@ -75,12 +81,12 @@ AppBase::AppBase()
         std::exit(1);
 
     glfwMakeContextCurrent(mWindow);
-    glfwSwapInterval(1); // Enable vsync
+    glfwSwapInterval(0); // disable vsync
 
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
-    ImGuiIO& io = ImGui::GetIO(); (void)io;
+    ImGuiIO& io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;         // Enable Docking
@@ -90,8 +96,7 @@ AppBase::AppBase()
 
     // Setup Dear ImGui style
     ImGui::StyleColorsDark();
-    //ImGui::StyleColorsLight();
-
+    
     // When viewports are enabled we tweak WindowRounding/WindowBg so platform windows can look identical to regular ones.
     ImGuiStyle& style = ImGui::GetStyle();
     if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
@@ -121,8 +126,6 @@ AppBase::AppBase()
     //ImFont* font = io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 18.0f, nullptr, io.Fonts->GetGlyphRangesJapanese());
     //IM_ASSERT(font != nullptr);
 
-    // Our state
-    // mClearColor = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
     mClearColor = ImVec4(0.f, 0.f, 0.f, 1.f);
 }
 
@@ -144,6 +147,18 @@ void AppBase::run()
 {
     startup();
 
+    TracyPlotConfig("waitTime", tracy::PlotFormatType::Number, false, false, 0);
+
+#ifdef _WIN32
+    // on windows, the default resolution of the timer used for sleeping is quite bad,
+    // around 15-16ms, in order to increase the resolution we have to call timeBeginPeriod()
+    // requesting a higher resolution in ms.
+    // a corresponding call to timeEndPeriod() is required when the higher resolution
+    // is not needed anymore
+    timeBeginPeriod(1);
+#endif
+
+    mLastFrameTime = glfwGetTime();
     while(!glfwWindowShouldClose(mWindow)) {
         ZoneScoped;
 
@@ -198,12 +213,43 @@ void AppBase::run()
         }
 
         {
+            ZoneScopedN("Sleep");
+            double timeToNextFrame = (mLastFrameTime + fpsPeriod) - glfwGetTime();
+
+            while (timeToNextFrame > 0.002) {
+                std::this_thread::sleep_for(1ms);
+                timeToNextFrame = (mLastFrameTime + fpsPeriod) - glfwGetTime();
+            }
+
+        }
+
+        {
+            ZoneScopedN("Busywait");
+            // busy wait for the last 2ms
+            double now = glfwGetTime();
+
+            while (true) {
+                now = glfwGetTime();
+
+                if (now >= mLastFrameTime + fpsPeriod) {
+                    break;
+                }
+            }
+
+            mLastFrameTime = now;
+        }
+
+        {
             ZoneScopedN("SwapBuffers");
             glfwSwapBuffers(mWindow);
         }
         
         FrameMark;
     }
+
+#ifdef _WIN32
+    timeEndPeriod(1);
+#endif
 }
 
 void AppBase::closeWindow()

@@ -29,7 +29,7 @@ protected:
 
 
 private:
-    static constexpr double fpsLimit = 1.0 / 60.0;
+    static constexpr double fpsPeriod = 1.0 / 60.0;
     double mLastFrameTime;
 
     GLFWwindow* mWindow;

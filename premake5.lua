@@ -168,7 +168,8 @@ workspace(project_name)
             }
             links {
                 "opengl32.lib",
-                "glfw3_mt.lib"
+                "glfw3_mt.lib",
+                "Winmm.lib"
             }
 
 
