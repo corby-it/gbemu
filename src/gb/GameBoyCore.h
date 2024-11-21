@@ -39,7 +39,16 @@ enum class SaveStateError {
 const char* saveStateErrorToStr(SaveStateError err);
 
 
-class GameBoyClassic {
+typedef Ram<8_KB>   WorkRam;
+typedef Ram<127>    HiRam;
+
+CEREAL_CLASS_VERSION(WorkRam, 1);
+CEREAL_CLASS_VERSION(HiRam, 1);
+
+
+
+
+class GameBoyClassic : public Bus {
 public:
     enum class Status {
         Stopped,
@@ -51,6 +60,11 @@ public:
 
 
     GameBoyClassic();
+
+
+    uint8_t read8(uint16_t addr) const override;
+    void write8(uint16_t addr, uint8_t val) override;
+
 
     EmulateRes emulate();
 
@@ -64,13 +78,11 @@ public:
     SaveStateError saveState(const std::filesystem::path& path);
     SaveStateError loadState(const std::filesystem::path& path);
 
-
     CartridgeLoadingRes loadCartridge(const std::filesystem::path& path);
 
     std::filesystem::path romFilePath;
 
 
-    GBBus bus;
     CPU cpu;
     WorkRam wram;
     PPU ppu;

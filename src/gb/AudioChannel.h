@@ -431,7 +431,7 @@ public:
     uint8_t readReg4() const override;
 
     void writeWaveRam(uint16_t addr, uint8_t val);
-    uint8_t readWaveRam(uint16_t addr);
+    uint8_t readWaveRam(uint16_t addr) const;
 
 
     template<class Archive>

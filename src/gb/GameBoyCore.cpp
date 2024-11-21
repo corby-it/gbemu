@@ -51,31 +51,19 @@ const char* GameBoyClassic::statusToStr(Status st)
 
 
 GameBoyClassic::GameBoyClassic()
-    : bus()
-    , cpu(bus)
+    : cpu(*this)
     , wram(mmap::wram::start)
-    , ppu(bus)
-    , dma(bus)
+    , ppu(*this)
+    , dma(*this)
     , cartridge()
-    , timer(bus)
-    , joypad(bus)
+    , timer(*this)
+    , joypad(*this)
     , apu()
     , serial()
     , hiRam(mmap::hiram::start)
     , status(Status::Stopped)
     , mStepInstruction(false)
 {
-    bus.connect(cpu);
-    bus.connect(wram);
-    bus.connect(ppu);
-    bus.connect(dma);
-    bus.connect(cartridge);
-    bus.connect(timer);
-    bus.connect(joypad);
-    bus.connect(apu);
-    bus.connect(serial);
-    bus.connect(hiRam);
-
     gbReset();
 }
 
@@ -94,6 +82,142 @@ void GameBoyClassic::gbReset()
 
     dbg.updateInstructionToStr(*this);
 }
+
+
+uint8_t GameBoyClassic::read8(uint16_t addr) const
+{
+    // Memory -------------------------------------------------------------------------------------
+
+    if (addr >= mmap::rom::start && addr <= mmap::rom::end) {
+        return cartridge.read8(addr);
+    }
+    else if (addr >= mmap::vram::start && addr <= mmap::vram::end) {
+        return ppu.vram.read8(addr);
+    }
+    else if (addr >= mmap::external_ram::start && addr <= mmap::external_ram::end) {
+        return cartridge.read8(addr);
+    }
+    else if (addr >= mmap::wram::start && addr <= mmap::wram::end) {
+        return wram.read8(addr);
+    }
+    else if (addr >= mmap::echoram::start && addr <= mmap::echoram::end) {
+        return wram.read8(addr - (mmap::echoram::start - mmap::wram::start));
+    }
+    else if (addr >= mmap::oam::start && addr <= mmap::oam::end) {
+        return ppu.oamRam.read8(addr);
+    }
+    // Control registers --------------------------------------------------------------------------
+    else if (addr == mmap::regs::joypad) {
+        return joypad.read();
+    }
+    else if (addr == mmap::regs::serial_data) {
+        return serial.readData();
+    }
+    else if (addr == mmap::regs::serial_ctrl) {
+        return serial.readCtrl();
+    }
+    else if (addr >= mmap::regs::timer::start && addr <= mmap::regs::timer::end) {
+        if (addr == mmap::regs::timer::DIV) return timer.readDIV();
+        else if (addr == mmap::regs::timer::TIMA) return timer.readTIMA();
+        else if (addr == mmap::regs::timer::TMA) return timer.readTMA();
+        else if (addr == mmap::regs::timer::TAC) return timer.readTAC();
+    }
+    else if (addr >= mmap::regs::audio::start && addr <= mmap::regs::audio::end) {
+        return apu.read(addr);
+    }
+    else if (addr >= mmap::regs::lcd::start && addr <= mmap::regs::lcd::end) {
+        if (addr == mmap::regs::lcd::lcdc) return ppu.readLCDC();
+        else if (addr == mmap::regs::lcd::stat) return ppu.readSTAT();
+        else if (addr == mmap::regs::lcd::scy) return ppu.readSCY();
+        else if (addr == mmap::regs::lcd::scx) return ppu.readSCX();
+        else if (addr == mmap::regs::lcd::ly) return ppu.readLY();
+        else if (addr == mmap::regs::lcd::lyc) return ppu.readLYC();
+        else if (addr == mmap::regs::lcd::dma) return dma.read();
+        else if (addr == mmap::regs::lcd::bgp) return ppu.readBGP();
+        else if (addr == mmap::regs::lcd::obp0) return ppu.readOBP0();
+        else if (addr == mmap::regs::lcd::obp1) return ppu.readOBP1();
+        else if (addr == mmap::regs::lcd::wy) return ppu.readWY();
+        else if (addr == mmap::regs::lcd::wx) return ppu.readWX();
+    }
+    else if (addr == mmap::regs::IF) {
+        return cpu.irqs.readIF();
+    }
+    else if (addr >= mmap::hiram::start && addr <= mmap::hiram::end) {
+        return hiRam.read8(addr);
+    }
+    else if (addr == mmap::IE) {
+        return cpu.irqs.readIE();
+    }
+    
+    return 0xFF;
+}
+
+void GameBoyClassic::write8(uint16_t addr, uint8_t val)
+{
+    // Memory -------------------------------------------------------------------------------------
+    if (addr >= mmap::rom::start && addr <= mmap::rom::end) {
+        cartridge.write8(addr, val);
+    }
+    else if (addr >= mmap::vram::start && addr <= mmap::vram::end) {
+        ppu.vram.write8(addr, val);
+    }
+    else if (addr >= mmap::external_ram::start && addr <= mmap::external_ram::end) {
+        cartridge.write8(addr, val);
+    }
+    else if (addr >= mmap::wram::start && addr <= mmap::wram::end) {
+        wram.write8(addr, val);
+    }
+    else if (addr >= mmap::echoram::start && addr <= mmap::echoram::end) {
+        wram.write8(addr - (mmap::echoram::start - mmap::wram::start), val);
+    }
+    else if (addr >= mmap::oam::start && addr <= mmap::oam::end) {
+        ppu.oamRam.write8(addr, val);
+    }
+    // Control registers --------------------------------------------------------------------------
+    else if (addr == mmap::regs::joypad) {
+        joypad.write(val);
+    }
+    else if (addr == mmap::regs::serial_data) {
+        serial.writeData(val);
+    }
+    else if (addr == mmap::regs::serial_ctrl) {
+        serial.writeCtrl(val);
+    }
+    else if (addr >= mmap::regs::timer::start && addr <= mmap::regs::timer::end) {
+        if (addr == mmap::regs::timer::DIV) timer.writeDIV(val);
+        else if (addr == mmap::regs::timer::TIMA) timer.writeTIMA(val);
+        else if (addr == mmap::regs::timer::TMA) timer.writeTMA(val);
+        else if (addr == mmap::regs::timer::TAC) timer.writeTAC(val);
+    }
+    else if (addr >= mmap::regs::audio::start && addr <= mmap::regs::audio::end) {
+        return apu.write(addr, val);
+    }
+    else if (addr >= mmap::regs::lcd::start && addr <= mmap::regs::lcd::end) {
+        if (addr == mmap::regs::lcd::lcdc) ppu.writeLCDC(val);
+        else if (addr == mmap::regs::lcd::stat) ppu.writeSTAT(val);
+        else if (addr == mmap::regs::lcd::scy) ppu.writeSCY(val);
+        else if (addr == mmap::regs::lcd::scx) ppu.writeSCX(val);
+        else if (addr == mmap::regs::lcd::ly) ppu.writeLY(val);
+        else if (addr == mmap::regs::lcd::lyc) ppu.writeLYC(val);
+        else if (addr == mmap::regs::lcd::dma) dma.write(val);
+        else if (addr == mmap::regs::lcd::bgp) ppu.writeBGP(val);
+        else if (addr == mmap::regs::lcd::obp0) ppu.writeOBP0(val);
+        else if (addr == mmap::regs::lcd::obp1) ppu.writeOBP1(val);
+        else if (addr == mmap::regs::lcd::wy) ppu.writeWY(val);
+        else if (addr == mmap::regs::lcd::wx) ppu.writeWX(val);
+    }
+    else if (addr == mmap::regs::IF) {
+        cpu.irqs.writeIF(val);
+    }
+    else if (addr >= mmap::hiram::start && addr <= mmap::hiram::end) {
+        hiRam.write8(addr, val);
+    }
+    else if (addr == mmap::IE) {
+        cpu.irqs.writeIE(val);
+    }
+}
+
+
 
 GbStepRes GameBoyClassic::gbStep()
 {
@@ -161,7 +285,7 @@ EmulateRes GameBoyClassic::emulate()
 
     // debug stuff
     if (status == Status::Running && dbg.enabled) {
-        if (dbg.breakOnLdbb && bus.read8(cpu.regs.PC) == op::LD_B_B) {
+        if (dbg.breakOnLdbb && this->read8(cpu.regs.PC) == op::LD_B_B) {
             status = Status::Paused;
             res.stillGoing = false;
         }

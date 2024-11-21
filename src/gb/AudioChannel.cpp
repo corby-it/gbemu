@@ -752,7 +752,7 @@ void UserWaveChannel::writeWaveRam(uint16_t addr, uint8_t val)
     mWaveRam[addr * 2  + 1] = lo;
 }
 
-uint8_t UserWaveChannel::readWaveRam(uint16_t addr)
+uint8_t UserWaveChannel::readWaveRam(uint16_t addr) const
 {
     assert(addr >= mmap::regs::audio::wave_ram::start && addr <= mmap::regs::audio::wave_ram::end);
 
