@@ -45,6 +45,7 @@ private:
     void UIDrawTileViewerWindow();
     void UIDrawBackgroundViewerWindow();
     void UIDrawInputConfigWindow();
+    void UIDrawAudioVisualWindow();
     
     void UIDrawRegsTables();
     void UIDrawCpuRegTable();

@@ -6,6 +6,78 @@
 #include <array>
 #include <chrono>
 #include <bitset>
+#include <memory>
+#include <algorithm>
+#include <cstring>
+#include <cereal/cereal.hpp>
+#include <cereal/types/bitset.hpp>
+#include <cereal/types/array.hpp>
+#include <cereal/types/polymorphic.hpp>
+#include <cereal/types/base_class.hpp>
+
+
+
+template<typename DataT, size_t Size>
+class RingBuffer {
+public:
+
+    static_assert((Size > 0) && ((Size & (Size - 1)) == 0), "Size must be a power of 2!");
+
+    static constexpr size_t size = Size;
+
+    RingBuffer()
+        : mData(std::make_unique<DataT[]>(Size))
+        , mWrHead(0)
+    {
+        std::fill(mData.get(), mData.get() + Size, DataT{});
+    }
+
+    RingBuffer(const RingBuffer& other)
+        : mData(std::make_unique<DataT[]>(Size))
+        , mWrHead(other.mWrHead)
+    {
+        memcpy(mData.get(), other.mData.get(), Size * sizeof(DataT));
+    }
+
+    RingBuffer& operator=(const RingBuffer& other)
+    {
+        memcpy(mData.get(), other.mData.get(), Size * sizeof(DataT));
+        mWrHead = other.mWrHead;
+
+        return *this;
+    }
+
+    void write(DataT sample)
+    {
+        mData[mWrHead] = sample;
+
+        mWrHead = (mWrHead + 1) & (Size - 1);
+    }
+
+    void copyToBuf(DataT* buf, size_t bufSize) const
+    {
+        if (!buf)
+            return;
+
+        auto rdHead = mWrHead;
+
+        while (--bufSize) {
+            *buf = mData[rdHead];
+            ++buf;
+
+            rdHead = (rdHead + 1) & (Size - 1);
+        }
+    }
+
+
+private:
+
+    std::unique_ptr<DataT[]> mData;
+    size_t mWrHead;
+
+};
+
+
 
 
 
@@ -29,12 +101,22 @@ public:
     Event step();
 
 
+    template<class Archive>
+    void serialize(Archive& ar)
+    {
+        ar(mDivApuSubtickCounter);
+        ar(mFrameSequencerCounter);
+    }
+
+
 private:
 
     uint16_t mDivApuSubtickCounter;
     uint8_t mFrameSequencerCounter;
 
 };
+
+CEREAL_CLASS_VERSION(FrameSequencer, 1);
 
 
 
@@ -89,6 +171,23 @@ public:
     bool isChEnabled() const { return mChEnabled; }
     bool isDacEnabled() const { return mDacEnabled; }
 
+
+    typedef RingBuffer<float, 1024> RingBufferType;
+
+    const RingBufferType& getAudioBuffer() const { return mAudioRingBuf; }
+
+
+    template<class Archive>
+    void serialize(Archive& ar)
+    {
+        ar(mChEnabled, mDacEnabled, mCurrOutput);
+        ar(mLengthTimerEnable, mLengthTimerCounter, mLengthTimerTargetVal);
+        ar(mUseInternalFrameSequencer, mFrameSeq);
+        ar(mTimeCounter, mDownsamplingFreq);
+    }
+
+
+
 protected:
 
     virtual uint8_t computeChannelOutput() = 0;
@@ -122,7 +221,11 @@ private:
     std::chrono::nanoseconds mTimeCounter;
     uint32_t mDownsamplingFreq;
 
+
+    RingBufferType mAudioRingBuf;
 };
+
+CEREAL_CLASS_VERSION(AudioChannelIf, 1);
 
 
 
@@ -158,6 +261,17 @@ public:
 
     void envelopeTick() override;
     void sweepTick() override;
+
+
+    template<class Archive>
+    void serialize(Archive& ar)
+    {
+        ar(cereal::base_class<AudioChannelIf>(this));
+        ar(mHasSweep, mSweepPace, mSweepDir, mSweepStep);
+        ar(mDutyCycleIdx, mEnvInitialVol, mEnvDir, mEnvPace);
+        ar(mPeriodL, mPeriodH, mSampleIdx, mVolume, mPeriodCounter);
+        ar(mEnvPaceCounter, mSweepEnabled, mSweepShadowPeriod, mSweepCounter);
+    }
 
 
 private:
@@ -207,6 +321,7 @@ private:
     uint8_t mSweepCounter;
 };
 
+CEREAL_CLASS_VERSION(SquareWaveChannel, 1);
 
 
 
@@ -237,6 +352,16 @@ public:
 
     
     void envelopeTick() override;
+
+    template<class Archive>
+    void serialize(Archive& ar)
+    {
+        ar(cereal::base_class<AudioChannelIf>(this));
+        ar(mEnvInitialVol, mEnvDir, mEnvPace);
+        ar(mClockDivider, mLfsrWidthIs7, mClockShift);
+        ar(mVolume, mLfsr);
+        ar(mClockCounter, mClockCounterTarget, mEnvPaceCounter);
+    }
     
 
 private:
@@ -274,6 +399,8 @@ private:
     
 };
 
+CEREAL_CLASS_VERSION(NoiseChannel, 1);
+
 
 
 // ------------------------------------------------------------------------------------------------
@@ -307,6 +434,14 @@ public:
     uint8_t readWaveRam(uint16_t addr);
 
 
+    template<class Archive>
+    void serialize(Archive& ar)
+    {
+        ar(cereal::base_class<AudioChannelIf>(this));
+        ar(mOutputVolume, mPeriodL, mPeriodH);
+        ar(mWaveRam, mWaveRamIdx, mPeriodCounter);
+    }
+
 
 private:
 
@@ -335,6 +470,7 @@ private:
 
 };
 
+CEREAL_CLASS_VERSION(UserWaveChannel, 1);
 
 
 

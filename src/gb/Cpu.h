@@ -207,8 +207,8 @@ private:
         // (this function is templated to work with flags as well)
         // pop the register onto the stack
         // e.g.: POP BC
-        lsb = mBus.read8(regs.SP);
-        msb = mBus.read8(regs.SP + 1);
+        lsb = mBus->read8(regs.SP);
+        msb = mBus->read8(regs.SP + 1);
         regs.SP += 2;
 
         return 3;
@@ -370,7 +370,7 @@ private:
 
     // Members ------------------------------------------------------------------------------------
 
-    Bus& mBus;
+    Bus* mBus;
 
     // each instruction of the gameboy uses a number of clock cycles that is 
     // divisible by 4, here we use that number already divided by 4 (usually called m-cycles,

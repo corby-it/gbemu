@@ -9,6 +9,8 @@
 #include <chrono>
 #include <functional>
 #include <array>
+#include <cereal/cereal.hpp>
+#include <cereal/types/array.hpp>
 
 
 
@@ -25,6 +27,13 @@ public:
 
     float process(float x0);
 
+    template<class Archive>
+    void serialize(Archive& ar)
+    {
+        ar(mB0, mB1, mB2, mA1, mA2);
+        ar(mYz1, mYz2, mXz1, mXz2);
+    }
+
 
 private:
 
@@ -35,6 +44,8 @@ private:
     float mXz1, mXz2;
 
 };
+
+CEREAL_CLASS_VERSION(ApuHpfFilter, 1);
 
 
 
@@ -65,10 +76,21 @@ public:
 
 
     template<class Archive>
-    void serialize(Archive& ar, uint32_t const /*version*/) {
-        int tmp = 0;
-        ar(tmp);
+    void serialize(Archive& ar, uint32_t const /*version*/)
+    {
+        ar(square1, square2, wave, noise);
+        ar(mVinL, mVinR, mVolL, mVolR);
+        ar(mChPanL, mChPanR);
+        ar(mOutL, mOutR, mApuEnabled);
+        ar(mEnableHpf, mFrameSeq, mHpfL, mHpfR);
+        ar(mDownsamplingFreq, mTimeCounter);
     }
+
+
+    SquareWaveChannel square1;
+    SquareWaveChannel square2;
+    UserWaveChannel wave;
+    NoiseChannel noise;
 
 
 private:
@@ -108,10 +130,6 @@ private:
 
     FrameSequencer mFrameSeq;
 
-    SquareWaveChannel mSquare1;
-    SquareWaveChannel mSquare2;
-    UserWaveChannel mWave;
-    NoiseChannel mNoise;
 
     std::array<AudioChannelIf*, chCount> mChannels;
 
@@ -124,6 +142,9 @@ private:
     std::chrono::nanoseconds mTimeCounter;
 
 };
+
+CEREAL_CLASS_VERSION(APU, 1);
+
 
 
 

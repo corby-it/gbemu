@@ -68,7 +68,7 @@ float ApuHpfFilter::process(float x0)
 
 APU::APU(uint32_t downsamplingFreq)
     : mDownsamplingFreq(downsamplingFreq)
-    , mChannels{ &mSquare1, &mSquare2, &mWave, &mNoise }
+    , mChannels{ &square1, &square2, &wave, &noise }
     , mEnableHpf(true)
 {
     // set cutoff frequency for the HPFs to 30 HZ
@@ -76,7 +76,7 @@ APU::APU(uint32_t downsamplingFreq)
     mHpfL.setCutoff(30.f, (float)downsamplingFreq);
 
     // enable sweep modulation for ch1 (ch2 doesn't have it)
-    mSquare1.enableSweepModulation(true);
+    square1.enableSweepModulation(true);
 
     // a single frame sequencer in this class will trigger the channels
     for (auto ch : mChannels)
@@ -92,7 +92,7 @@ void APU::reset()
     for (auto ch : mChannels)
         ch->reset();
 
-    mWave.resetWaveRam();
+    wave.resetWaveRam();
 
     mVinL = false;
     mVinR = false;
@@ -115,32 +115,32 @@ uint8_t APU::read(uint16_t addr)
     assert(addr >= areg::start && addr <= areg::end);
 
     if (addr >= areg::wave_ram::start && addr <= areg::wave_ram::end) {
-        return mWave.readWaveRam(addr);
+        return wave.readWaveRam(addr);
     }
     else {
         // some bits are always set to 1 when read back
         switch (addr) {
-        case areg::NR10: return mSquare1.readReg0() | 0x80; break;
-        case areg::NR11: return mSquare1.readReg1() | 0x3F; break;
-        case areg::NR12: return mSquare1.readReg2() | 0x00; break;
-        case areg::NR13: return mSquare1.readReg3() | 0xFF; break;
-        case areg::NR14: return mSquare1.readReg4() | 0xBF; break;
+        case areg::NR10: return square1.readReg0() | 0x80; break;
+        case areg::NR11: return square1.readReg1() | 0x3F; break;
+        case areg::NR12: return square1.readReg2() | 0x00; break;
+        case areg::NR13: return square1.readReg3() | 0xFF; break;
+        case areg::NR14: return square1.readReg4() | 0xBF; break;
 
-        case areg::NR21: return mSquare2.readReg1() | 0x3F; break;
-        case areg::NR22: return mSquare2.readReg2() | 0x00; break;
-        case areg::NR23: return mSquare2.readReg3() | 0xFF; break;
-        case areg::NR24: return mSquare2.readReg4() | 0xBF; break;
+        case areg::NR21: return square2.readReg1() | 0x3F; break;
+        case areg::NR22: return square2.readReg2() | 0x00; break;
+        case areg::NR23: return square2.readReg3() | 0xFF; break;
+        case areg::NR24: return square2.readReg4() | 0xBF; break;
 
-        case areg::NR30: return mWave.readReg0() | 0x7F; break;
-        case areg::NR31: return mWave.readReg1() | 0xFF; break;
-        case areg::NR32: return mWave.readReg2() | 0x9F; break;
-        case areg::NR33: return mWave.readReg3() | 0xFF; break;
-        case areg::NR34: return mWave.readReg4() | 0xBF; break;
+        case areg::NR30: return wave.readReg0() | 0x7F; break;
+        case areg::NR31: return wave.readReg1() | 0xFF; break;
+        case areg::NR32: return wave.readReg2() | 0x9F; break;
+        case areg::NR33: return wave.readReg3() | 0xFF; break;
+        case areg::NR34: return wave.readReg4() | 0xBF; break;
 
-        case areg::NR41: return mNoise.readReg1() | 0xFF; break;
-        case areg::NR42: return mNoise.readReg2() | 0x00; break;
-        case areg::NR43: return mNoise.readReg3() | 0x00; break;
-        case areg::NR44: return mNoise.readReg4() | 0xBF; break;
+        case areg::NR41: return noise.readReg1() | 0xFF; break;
+        case areg::NR42: return noise.readReg2() | 0x00; break;
+        case areg::NR43: return noise.readReg3() | 0x00; break;
+        case areg::NR44: return noise.readReg4() | 0xBF; break;
 
         case areg::NR50: return readReg0() | 0x00; break;
         case areg::NR51: return readReg1() | 0x00; break;
@@ -158,32 +158,32 @@ void APU::write(uint16_t addr, uint8_t val)
     assert(addr >= areg::start && addr <= areg::end);
 
     if (addr >= areg::wave_ram::start && addr <= areg::wave_ram::end) {
-        mWave.writeWaveRam(addr, val);
+        wave.writeWaveRam(addr, val);
     }
     else {
         if (mApuEnabled) {
             switch (addr) {
-            case areg::NR10: mSquare1.writeReg0(val); break;
-            case areg::NR11: mSquare1.writeReg1(val); break;
-            case areg::NR12: mSquare1.writeReg2(val); break;
-            case areg::NR13: mSquare1.writeReg3(val); break;
-            case areg::NR14: mSquare1.writeReg4(val); break;
+            case areg::NR10: square1.writeReg0(val); break;
+            case areg::NR11: square1.writeReg1(val); break;
+            case areg::NR12: square1.writeReg2(val); break;
+            case areg::NR13: square1.writeReg3(val); break;
+            case areg::NR14: square1.writeReg4(val); break;
 
-            case areg::NR21: mSquare2.writeReg1(val); break;
-            case areg::NR22: mSquare2.writeReg2(val); break;
-            case areg::NR23: mSquare2.writeReg3(val); break;
-            case areg::NR24: mSquare2.writeReg4(val); break;
+            case areg::NR21: square2.writeReg1(val); break;
+            case areg::NR22: square2.writeReg2(val); break;
+            case areg::NR23: square2.writeReg3(val); break;
+            case areg::NR24: square2.writeReg4(val); break;
 
-            case areg::NR30: mWave.writeReg0(val); break;
-            case areg::NR31: mWave.writeReg1(val); break;
-            case areg::NR32: mWave.writeReg2(val); break;
-            case areg::NR33: mWave.writeReg3(val); break;
-            case areg::NR34: mWave.writeReg4(val); break;
+            case areg::NR30: wave.writeReg0(val); break;
+            case areg::NR31: wave.writeReg1(val); break;
+            case areg::NR32: wave.writeReg2(val); break;
+            case areg::NR33: wave.writeReg3(val); break;
+            case areg::NR34: wave.writeReg4(val); break;
 
-            case areg::NR41: mNoise.writeReg1(val); break;
-            case areg::NR42: mNoise.writeReg2(val); break;
-            case areg::NR43: mNoise.writeReg3(val); break;
-            case areg::NR44: mNoise.writeReg4(val); break;
+            case areg::NR41: noise.writeReg1(val); break;
+            case areg::NR42: noise.writeReg2(val); break;
+            case areg::NR43: noise.writeReg3(val); break;
+            case areg::NR44: noise.writeReg4(val); break;
 
             case areg::NR50: writeReg0(val); break;
             case areg::NR51: writeReg1(val); break;
@@ -272,10 +272,10 @@ uint8_t APU::readReg2() const
 {
     // bits 0, 1, 2 and 3 contain the status of the channels
     return (mApuEnabled << 7)
-        | (mNoise.isChEnabled() << 3)
-        | (mWave.isChEnabled() << 2)
-        | (mSquare2.isChEnabled() << 1)
-        | (mSquare1.isChEnabled() << 0);
+        | (noise.isChEnabled() << 3)
+        | (wave.isChEnabled() << 2)
+        | (square2.isChEnabled() << 1)
+        | (square1.isChEnabled() << 0);
 }
 
 

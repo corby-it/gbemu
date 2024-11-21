@@ -511,7 +511,7 @@ private:
     bool renderPixelGetWinVal(uint32_t dispX, uint8_t& colorId);
     OAMPixelInfoList renderPixelGetObjsValues(uint32_t currX);
 
-    Bus& mBus;
+    Bus* mBus;
 
     uint32_t mDotCounter;
     OAMRegister mOamScanRegister;

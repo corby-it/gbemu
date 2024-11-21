@@ -209,6 +209,23 @@ DisplayBuf::DisplayBuf(uint32_t w, uint32_t h)
     , mData(std::make_unique<uint8_t[]>(w * h))
 {}
 
+DisplayBuf::DisplayBuf(const DisplayBuf& other)
+    : Matrix(other)
+    , mData(std::make_unique<uint8_t[]>(other.mWidth * other.mHeight))
+{
+    memcpy(mData.get(), other.mData.get(), other.mWidth * other.mHeight);
+}
+
+DisplayBuf& DisplayBuf::operator=(const DisplayBuf& other)
+{
+    Matrix::operator=(other);
+
+    mData.reset(new uint8_t[other.mWidth * other.mHeight]);
+    memcpy(mData.get(), other.mData.get(), other.mWidth * other.mHeight);
+
+    return *this;
+}
+
 
 uint8_t DisplayBuf::getImpl(uint32_t x, uint32_t y) const
 {

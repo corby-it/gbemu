@@ -257,6 +257,10 @@ class DisplayBuf : public Matrix {
 public:
     DisplayBuf(uint32_t w, uint32_t h);
 
+    DisplayBuf(const DisplayBuf& other);
+    DisplayBuf& operator=(const DisplayBuf& other);
+
+
     void clear();
 
     uint8_t* data() { return mData.get(); }

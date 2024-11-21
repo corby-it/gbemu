@@ -25,14 +25,16 @@ App::App()
     , mLastEmulateCall(-1ns)
     , mAudioInitSuccess(false)
 {
-    // read configuration from file
-    {
+    // read configuration from file, oin failure restart from default values
+    try {
         std::ifstream ifs(mConfigSavePath);
         if (ifs) {
             cereal::JSONInputArchive ar(ifs);
             ar(mConfig);
         }
     }
+    catch (const cereal::Exception& /*ex*/) {}
+
 
     // create an OpenGL texture identifier for the display image
     glGenTextures(1, &mGLDisplayTexture);
@@ -312,6 +314,7 @@ void App::updateUI()
     UIDrawTileViewerWindow();
     UIDrawBackgroundViewerWindow();
     UIDrawInputConfigWindow();
+    UIDrawAudioVisualWindow();
 }
 
 
@@ -382,6 +385,7 @@ void App::UIDrawMenu()
             ImGui::MenuItem("Memory editor", nullptr, &mConfig.showMemoryEditor);
             ImGui::MenuItem("Tile viewer", nullptr, &mConfig.showTileViewer);
             ImGui::MenuItem("Background viewer", nullptr, &mConfig.showBackgroundViewer);
+            ImGui::MenuItem("Audio visualizer", nullptr, &mConfig.showAudioVisual);
             ImGui::MenuItem("Input configuration", nullptr, &mConfig.showInputConfigWindow);
             ImGui::EndMenu();
         }
@@ -1259,6 +1263,30 @@ void App::UIDrawInputConfigWindow()
     ImGui::End();
 }
 
+void App::UIDrawAudioVisualWindow()
+{
+    if (!mConfig.showAudioVisual)
+        return;
+
+    ImGui::Begin("Audio visualizer", &mConfig.showAudioVisual);
+
+    float buf[1024];
+    
+    mGameboy.apu.square1.getAudioBuffer().copyToBuf(buf, 1024);
+    ImGui::PlotLines("Square1", buf, 1024, 0, nullptr, 0.f, 16.f, ImVec2(800, 80));
+
+    mGameboy.apu.square2.getAudioBuffer().copyToBuf(buf, 1024);
+    ImGui::PlotLines("Square2", buf, 1024, 0, nullptr, 0.f, 16.f, ImVec2(800, 80));
+
+    mGameboy.apu.wave.getAudioBuffer().copyToBuf(buf, 1024);
+    ImGui::PlotLines("Wave", buf, 1024, 0, nullptr, 0.f, 16.f, ImVec2(800, 80));
+
+    mGameboy.apu.noise.getAudioBuffer().copyToBuf(buf, 1024);
+    ImGui::PlotLines("Noise", buf, 1024, 0, nullptr, 0.f, 16.f, ImVec2(800, 80));
+
+    ImGui::End();
+}
+
 
 
 struct RegTableEntry {
@@ -1449,14 +1477,14 @@ void App::UIDrawRegsTables()
     UIDrawCpuRegTable();
     UIDrawCpuFlagsTable();
 
+    ImGui::SeparatorText("Current instruction");
+    ImGui::Text("%s", mGameboy.dbg.currInstructionStr().c_str());
+
     ImGui::SeparatorText("Timer");
     UIDrawTimerRegTable();
 
     ImGui::SeparatorText("PPU");
     UIDrawPpuRegTable();
-
-    ImGui::SeparatorText("Current instruction");
-    ImGui::Text("%s", mGameboy.dbg.currInstructionStr().c_str());
 
     ImGui::End();
 }

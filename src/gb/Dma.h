@@ -28,7 +28,7 @@ public:
 
 
 private:
-    Bus& mBus;
+    Bus* mBus;
 
     uint8_t mReg;
 

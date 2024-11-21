@@ -5,7 +5,7 @@
 
 
 DMA::DMA(Bus& bus)
-    : mBus(bus)
+    : mBus(&bus)
 {
     reset();
 }
@@ -70,9 +70,9 @@ void DMA::step(uint32_t mCycles)
             mStartTransfer = false;
             mIsTransferring = true;
 
-            auto currVal = mBus.read8(mCurrAddr + mCounter);
+            auto currVal = mBus->read8(mCurrAddr + mCounter);
             
-            mBus.write8(mmap::oam::start + mCounter, currVal);
+            mBus->write8(mmap::oam::start + mCounter, currVal);
 
             if (++mCounter >= 160)
                 mIsTransferring = false;

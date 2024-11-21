@@ -175,7 +175,7 @@ const char* bgHelperTileAddressingToStr(BgHelperTileAddressing bghta)
 // ------------------------------------------------------------------------------------------------
 
 PPU::PPU(Bus& bus)
-    : mBus(bus)
+    : mBus(&bus)
 {
     reset();
 }
@@ -276,21 +276,21 @@ bool PPU::step(uint32_t mCycles)
 
                     // check if we have to trigger mode 2 (OAM Scan) STAT irq
                     if (regs.STAT.mode2IrqEnable) {
-                        auto currIF = mBus.read8(mmap::regs::IF);
-                        mBus.write8(mmap::regs::IF, Irqs::mask(Irqs::Type::Lcd) | currIF);
+                        auto currIF = mBus->read8(mmap::regs::IF);
+                        mBus->write8(mmap::regs::IF, Irqs::mask(Irqs::Type::Lcd) | currIF);
                     }
                 }
                 
                 // as soon as we enter v-blank mode the ppu triggers the v-blank interrupt in the cpu
                 if (regs.LY == 144) {
-                    auto currIF = mBus.read8(mmap::regs::IF);
+                    auto currIF = mBus->read8(mmap::regs::IF);
                     uint8_t newIrqMask = Irqs::mask(Irqs::Type::VBlank);
 
                     // check if we also have to trigger mode 1 (V-Blank) STAT irq
                     if (regs.STAT.mode1IrqEnable)
                         newIrqMask |= Irqs::mask(Irqs::Type::Lcd);
 
-                    mBus.write8(mmap::regs::IF, newIrqMask | currIF);
+                    mBus->write8(mmap::regs::IF, newIrqMask | currIF);
 
                     // when we enter the v-blank mode it means the PPU is done drawing the current frame:
                     // - swap the display buffers top bring the complete frame on the front
@@ -301,14 +301,14 @@ bool PPU::step(uint32_t mCycles)
 
                 // check if we have to trigger the LY==LYC irq
                 if (regs.STAT.lycIrqEnable && regs.LY == regs.LYC) {
-                    auto currIF = mBus.read8(mmap::regs::IF);
-                    mBus.write8(mmap::regs::IF, Irqs::mask(Irqs::Type::Lcd) | currIF);
+                    auto currIF = mBus->read8(mmap::regs::IF);
+                    mBus->write8(mmap::regs::IF, Irqs::mask(Irqs::Type::Lcd) | currIF);
                 }
             }
             // check if we have to trigger mode 0 (H-Blank) STAT irq
             if (regs.STAT.mode0IrqEnable && mDotCounter == 252) {
-                auto currIF = mBus.read8(mmap::regs::IF);
-                mBus.write8(mmap::regs::IF, Irqs::mask(Irqs::Type::Lcd) | currIF);
+                auto currIF = mBus->read8(mmap::regs::IF);
+                mBus->write8(mmap::regs::IF, Irqs::mask(Irqs::Type::Lcd) | currIF);
             }
             if (mFirstStep) {
                 mFirstStep = false;

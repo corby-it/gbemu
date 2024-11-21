@@ -46,7 +46,7 @@ bool Registers::equal(const Registers& other)
 
 
 CPU::CPU(Bus& bus)
-    : mBus(bus)
+    : mBus(&bus)
 {
     reset();
 }
@@ -78,7 +78,7 @@ CpuStepRes CPU::step()
     // or until one of the joypad lines goes low (not an interrupt, only the signal going low is enough!)
     // see the gameboy developer manual, page 23
     if (mIsStopped) {
-        auto joypad = mBus.read8(mmap::regs::joypad);
+        auto joypad = mBus->read8(mmap::regs::joypad);
         
         if ((joypad & 0x0F) != 0x0F) 
             mIsStopped = false;
@@ -131,7 +131,7 @@ CpuStepRes CPU::step()
     }
 
     // fetch opcode 
-    auto opcode = mBus.read8(regs.PC++);
+    auto opcode = mBus->read8(regs.PC++);
 
     // HALT bug, see: https://gbdev.io/pandocs/halt.html
     if (triggerHaltBug)
@@ -453,7 +453,7 @@ uint8_t CPU::executeCb(bool& ok)
 {
     // to correctly execute one of the instructions prefixed with CB we 
     // have to read another byte from PC to get the actual opcode
-    uint8_t cbOpcode = mBus.read8(regs.PC++);
+    uint8_t cbOpcode = mBus->read8(regs.PC++);
 
     switch (cbOpcode) {
         // 0x0*
@@ -756,7 +756,7 @@ uint8_t CPU::opLdRegImm(uint8_t& dst)
     // immediate load into register
     // e.g.: LD A,n8
     // 2 cycles required
-    dst = mBus.read8(regs.PC++);
+    dst = mBus->read8(regs.PC++);
     return 2;
 }
 
@@ -773,7 +773,7 @@ uint8_t CPU::opLdRegInd(uint8_t& dst, uint16_t srcAddr)
 {
     // load memory into a register, address could be stored in HL, BC, DE
     // 2 cycles required
-    dst = mBus.read8(srcAddr);
+    dst = mBus->read8(srcAddr);
     return 2;
 }
 
@@ -781,7 +781,7 @@ uint8_t CPU::opLdIndReg(uint16_t dstAddr, const uint8_t& src)
 {
     // load memory into register, address is stored in HL
     // 2 cycles required
-    mBus.write8(dstAddr, src);
+    mBus->write8(dstAddr, src);
     return 2;
 }
 
@@ -789,7 +789,7 @@ uint8_t CPU::opLdIndImm()
 {
     // load immediate into memory
     // LD [HL],n8
-    mBus.write8(regs.HL(), mBus.read8(regs.PC++));
+    mBus->write8(regs.HL(), mBus->read8(regs.PC++));
 
     return 3;
 }
@@ -798,10 +798,10 @@ uint8_t CPU::opLdRegIndImm16()
 {
     // load in register from memory at immediate address (only works with the A register)
     // LD A,[a16]
-    uint16_t addr = mBus.read8(regs.PC++);
-    addr |= mBus.read8(regs.PC++) << 8;
+    uint16_t addr = mBus->read8(regs.PC++);
+    addr |= mBus->read8(regs.PC++) << 8;
 
-    regs.A = mBus.read8(addr);
+    regs.A = mBus->read8(addr);
 
     return 4;
 }
@@ -810,10 +810,10 @@ uint8_t CPU::opLdIndImm16Reg()
 {
     // load in memory at immediate address from register (only works with the A register)
     // LD [a16],A
-    uint16_t addr = mBus.read8(regs.PC++);
-    addr |= mBus.read8(regs.PC++) << 8;
+    uint16_t addr = mBus->read8(regs.PC++);
+    addr |= mBus->read8(regs.PC++) << 8;
 
-    mBus.write8(addr, regs.A);
+    mBus->write8(addr, regs.A);
 
     return 4;
 }
@@ -823,8 +823,8 @@ uint8_t CPU::opLdRegIndImm8()
     // load in register from memory at immediate 8-bit address
     // only works with the A register, the actual address is 0xff00 + a8
     // LDH A,[a8]
-    auto addrLsb = mBus.read8(regs.PC++);
-    regs.A = mBus.read8(0xff00 + addrLsb);
+    auto addrLsb = mBus->read8(regs.PC++);
+    regs.A = mBus->read8(0xff00 + addrLsb);
 
     return 3;
 }
@@ -834,8 +834,8 @@ uint8_t CPU::opLdIndImm8Reg()
     // load in memory at immediate 8-bit address from register
     // only works with the A register, the actual address is 0xff00 + a8
     // LDH [a8],A
-    auto addrLsb = mBus.read8(regs.PC++);
-    mBus.write8(0xff00 + addrLsb, regs.A);
+    auto addrLsb = mBus->read8(regs.PC++);
+    mBus->write8(0xff00 + addrLsb, regs.A);
 
     return 3;
 }
@@ -845,7 +845,7 @@ uint8_t CPU::opLdAIndDec()
     // load in A the value in mem[HL] and decrement the value of HL
     // LD A,[HL-]
     auto addr = regs.HL();
-    regs.A = mBus.read8(addr);
+    regs.A = mBus->read8(addr);
     regs.setHL(addr - 1);
 
     return 2;
@@ -856,7 +856,7 @@ uint8_t CPU::opLdAIndInc()
     // load in A the value in mem[HL] and increment the value of HL
     // LD A,[HL+]
     auto addr = regs.HL();
-    regs.A = mBus.read8(addr);
+    regs.A = mBus->read8(addr);
     regs.setHL(addr + 1);
 
     return 2;
@@ -867,7 +867,7 @@ uint8_t CPU::opLdIndDecA()
     // load in mem[HL] the value of A and decrement the value of HL
     // LD [HL-],A
     auto addr = regs.HL();
-    mBus.write8(addr, regs.A);
+    mBus->write8(addr, regs.A);
     regs.setHL(addr - 1);
 
     return 2;
@@ -878,7 +878,7 @@ uint8_t CPU::opLdIndIncA()
     // load in mem[HL] the value of A and increment the value of HL
     // LD [HL+],A
     auto addr = regs.HL();
-    mBus.write8(addr, regs.A);
+    mBus->write8(addr, regs.A);
     regs.setHL(addr + 1);
 
     return 2;
@@ -888,8 +888,8 @@ uint8_t CPU::opLdReg16Imm(uint8_t& msb, uint8_t& lsb)
 {
     // load immediate 16-bit value into BC, DE or HL
     // e.g.: LD BC,n16    
-    lsb = mBus.read8(regs.PC++);
-    msb = mBus.read8(regs.PC++);
+    lsb = mBus->read8(regs.PC++);
+    msb = mBus->read8(regs.PC++);
 
     return 3;
 }
@@ -898,8 +898,8 @@ uint8_t CPU::opLdReg16Imm(uint16_t& dst)
 {
     // load immediate 16-bit value into SP
     // e.g.: LD SP,n16
-    uint16_t val = mBus.read8(regs.PC++);
-    val |= mBus.read8(regs.PC++) << 8;
+    uint16_t val = mBus->read8(regs.PC++);
+    val |= mBus->read8(regs.PC++) << 8;
 
     dst = val;
 
@@ -910,10 +910,10 @@ uint8_t CPU::opLdIndImm16Sp()
 {
     // load the SP value in memory to the immediate 16-bit address
     // LD [a16],SP
-    uint16_t addr = mBus.read8(regs.PC++);
-    addr |= mBus.read8(regs.PC++) << 8;
+    uint16_t addr = mBus->read8(regs.PC++);
+    addr |= mBus->read8(regs.PC++) << 8;
 
-    mBus.write16(addr, regs.SP);
+    mBus->write16(addr, regs.SP);
 
     return 5;
 }
@@ -940,7 +940,7 @@ uint8_t CPU::opLdHlSpOffset()
     // in bits 11 and 15 respectively BUT, many other emulators check those flags 
     // in bits 3 and 7 respectively, as if this wasn't a 16 bit operation but an 8 bit one
 
-    int16_t val = (int8_t)mBus.read8(regs.PC++);
+    int16_t val = (int8_t)mBus->read8(regs.PC++);
 
     regs.setHL(regs.SP + val);
 
@@ -958,7 +958,7 @@ uint8_t CPU::opPushReg16(uint16_t val)
     // e.g.: PUSH BC
 
     regs.SP -= 2;
-    mBus.write16(regs.SP, val);
+    mBus->write16(regs.SP, val);
 
     return 4;
 }
@@ -1003,7 +1003,7 @@ uint8_t CPU::opAddInd()
     // ADD A,[HL]
     // A = A + mem[HL], 2 cycles
 
-    return opAdd8Common(mBus.read8(regs.HL()), 2);
+    return opAdd8Common(mBus->read8(regs.HL()), 2);
 }
 
 uint8_t CPU::opAddImm()
@@ -1011,7 +1011,7 @@ uint8_t CPU::opAddImm()
     // ADD A,n8
     // 2 cycles
 
-    return opAdd8Common(mBus.read8(regs.PC++), 2);
+    return opAdd8Common(mBus->read8(regs.PC++), 2);
 }
 
 
@@ -1053,7 +1053,7 @@ uint8_t CPU::opAdcInd()
     // ADC A,[HL]
     // A = A + carry flag + mem[HL], 2 cycles
 
-    return opAdcCommon(mBus.read8(regs.HL()), 2);
+    return opAdcCommon(mBus->read8(regs.HL()), 2);
 }
 
 uint8_t CPU::opAdcImm()
@@ -1061,7 +1061,7 @@ uint8_t CPU::opAdcImm()
     // ADC A,n8
     // 2 cycles
 
-    return opAdcCommon(mBus.read8(regs.PC++), 2);
+    return opAdcCommon(mBus->read8(regs.PC++), 2);
 }
 
 
@@ -1097,7 +1097,7 @@ uint8_t CPU::opSubInd()
     // it performs A = A - mem[HL]
     // all flags are updated accordingly
 
-    return opSubCommon(mBus.read8(regs.HL()), 2);
+    return opSubCommon(mBus->read8(regs.HL()), 2);
 }
 
 uint8_t CPU::opSubImm()
@@ -1106,7 +1106,7 @@ uint8_t CPU::opSubImm()
     // it performs A = A - val
     // all flags are updated accordingly
 
-    return opSubCommon(mBus.read8(regs.PC++), 2);
+    return opSubCommon(mBus->read8(regs.PC++), 2);
 }
 
 uint8_t CPU::opSbcCommon(uint8_t rhs, uint8_t cycles)
@@ -1140,14 +1140,14 @@ uint8_t CPU::opSbcInd()
 {
     // SBC A,[HL]
 
-    return opSbcCommon(mBus.read8(regs.HL()), 2);
+    return opSbcCommon(mBus->read8(regs.HL()), 2);
 }
 
 uint8_t CPU::opSbcImm()
 {
     // SBC A,n8
 
-    return opSbcCommon(mBus.read8(regs.PC++), 2);
+    return opSbcCommon(mBus->read8(regs.PC++), 2);
 }
 
 
@@ -1179,14 +1179,14 @@ uint8_t CPU::opAndInd()
 {
     // AND A,[HL]
     // 2 cycles
-    return opAndCommon(mBus.read8(regs.HL()), 2);
+    return opAndCommon(mBus->read8(regs.HL()), 2);
 }
 
 uint8_t CPU::opAndImm()
 {
     // AND A,n8
     // 2 cycles
-    return opAndCommon(mBus.read8(regs.PC++), 2);
+    return opAndCommon(mBus->read8(regs.PC++), 2);
 }
 
 uint8_t CPU::opOrCommon(uint8_t rhs, uint8_t cycles)
@@ -1217,14 +1217,14 @@ uint8_t CPU::opOrInd()
 {
     // OR A,[HL]
     // 2 cycles
-    return opOrCommon(mBus.read8(regs.HL()), 2);
+    return opOrCommon(mBus->read8(regs.HL()), 2);
 }
 
 uint8_t CPU::opOrImm()
 {
     // OR A,n8
     // 2 cycles
-    return opOrCommon(mBus.read8(regs.PC++), 2);
+    return opOrCommon(mBus->read8(regs.PC++), 2);
 }
 
 uint8_t CPU::opXorCommon(uint8_t rhs, uint8_t cycles)
@@ -1255,14 +1255,14 @@ uint8_t CPU::opXorInd()
 {
     // XOR A,[HL]
     // 2 cycles
-    return opXorCommon(mBus.read8(regs.HL()), 2);
+    return opXorCommon(mBus->read8(regs.HL()), 2);
 }
 
 uint8_t CPU::opXorImm()
 {
     // XOR A,n8
     // 2 cycles
-    return opXorCommon(mBus.read8(regs.PC++), 2);
+    return opXorCommon(mBus->read8(regs.PC++), 2);
 }
 
 uint8_t CPU::opCpCommon(uint8_t rhs, uint8_t cycles)
@@ -1291,14 +1291,14 @@ uint8_t CPU::opCpInd()
 {
     // CP A,[HL]
     // 2 cycles
-    return opCpCommon(mBus.read8(regs.HL()), 2);
+    return opCpCommon(mBus->read8(regs.HL()), 2);
 }
 
 uint8_t CPU::opCpImm()
 {
     // CP A,n8
     // 2 cycles
-    return opCpCommon(mBus.read8(regs.PC++), 2);
+    return opCpCommon(mBus->read8(regs.PC++), 2);
 }
 
 uint8_t CPU::opIncReg(uint8_t& reg)
@@ -1322,13 +1322,13 @@ uint8_t CPU::opIncInd()
     // increment the content of mem[HL] by 1, set flags accordingly apart from C
     // which is never set in this case
 
-    uint8_t val = mBus.read8(regs.HL());
+    uint8_t val = mBus->read8(regs.HL());
 
     regs.flags.Z = val == 0xff;
     regs.flags.H = checkHalfCarry(val, 1);
     regs.flags.N = false;
 
-    mBus.write8(regs.HL(), val + 1);
+    mBus->write8(regs.HL(), val + 1);
 
     return 3;
 }
@@ -1354,13 +1354,13 @@ uint8_t CPU::opDecInd()
     // decrement the content of mem[HL] by 1, set flags accordingly apart from C
     // which is never set in this case
 
-    uint8_t val = mBus.read8(regs.HL());
+    uint8_t val = mBus->read8(regs.HL());
 
     regs.flags.Z = val == 0x01;
     regs.flags.H = checkHalfBorrow(val, 1);
     regs.flags.N = true;
 
-    mBus.write8(regs.HL(), val - 1);
+    mBus->write8(regs.HL(), val - 1);
 
     return 3;
 }
@@ -1504,7 +1504,7 @@ uint8_t CPU::opAddSpImm()
     // ADD SP,e8
     // add the *signed* immediate value to the stack pointer and update the flags
 
-    int16_t val = (int8_t)mBus.read8(regs.PC++);
+    int16_t val = (int8_t)mBus->read8(regs.PC++);
 
     uint16_t res = regs.SP + val;
 
@@ -1666,9 +1666,9 @@ uint8_t CPU::opCbRlcInd()
     // N and H are reset
     // 4 cycles
 
-    auto val = mBus.read8(regs.HL());
+    auto val = mBus->read8(regs.HL());
     opCbRlcReg(val);
-    mBus.write8(regs.HL(), val);
+    mBus->write8(regs.HL(), val);
 
     return 4;
 }
@@ -1701,9 +1701,9 @@ uint8_t CPU::opCbRlInd()
     // flag Z is updated depending on the value of the byte, N and H are reset
     // 4 cycles
 
-    auto val = mBus.read8(regs.HL());
+    auto val = mBus->read8(regs.HL());
     opCbRlReg(val);
-    mBus.write8(regs.HL(), val);
+    mBus->write8(regs.HL(), val);
 
     return 4;
 }
@@ -1736,9 +1736,9 @@ uint8_t CPU::opCbRrcInd()
     // the Z flag depends on the value of the byte, H and N are reset
     // 4 cycles
 
-    auto val = mBus.read8(regs.HL());
+    auto val = mBus->read8(regs.HL());
     opCbRrcReg(val);
-    mBus.write8(regs.HL(), val);
+    mBus->write8(regs.HL(), val);
 
     return 4;
 }
@@ -1770,9 +1770,9 @@ uint8_t CPU::opCbRrInd()
     // the Z flag depends on the value of the byte, H and N are reset
     // 4 cycles
 
-    auto val = mBus.read8(regs.HL());
+    auto val = mBus->read8(regs.HL());
     opCbRrReg(val);
-    mBus.write8(regs.HL(), val);
+    mBus->write8(regs.HL(), val);
 
     return 4;
 }
@@ -1805,9 +1805,9 @@ uint8_t CPU::opCbSlaInd()
     // the Z flag depends on the value of the byte, H and N are reset
     // 4 cycles
 
-    auto val = mBus.read8(regs.HL());
+    auto val = mBus->read8(regs.HL());
     opCbSlaReg(val);
-    mBus.write8(regs.HL(), val);
+    mBus->write8(regs.HL(), val);
 
     return 4;
 }
@@ -1841,9 +1841,9 @@ uint8_t CPU::opCbSraInd()
     // the Z flag depends on the value of the byte, H and N are reset
     // 4 cycles
 
-    auto val = mBus.read8(regs.HL());
+    auto val = mBus->read8(regs.HL());
     opCbSraReg(val);
-    mBus.write8(regs.HL(), val);
+    mBus->write8(regs.HL(), val);
 
     return 4;
 }
@@ -1876,9 +1876,9 @@ uint8_t CPU::opCbSrlInd()
     // the Z flag depends on the value of the byte, H and N are reset
     // 4 cycles
 
-    auto val = mBus.read8(regs.HL());
+    auto val = mBus->read8(regs.HL());
     opCbSrlReg(val);
-    mBus.write8(regs.HL(), val);
+    mBus->write8(regs.HL(), val);
 
     return 4;
 }
@@ -1907,9 +1907,9 @@ uint8_t CPU::opCbSwapInd()
     // the Z flag depends on the value of the byte, C, H and N are reset
     // 4 cycles
 
-    auto val = mBus.read8(regs.HL());
+    auto val = mBus->read8(regs.HL());
     opCbSwapReg(val);
-    mBus.write8(regs.HL(), val);
+    mBus->write8(regs.HL(), val);
 
     return 4;
 }
@@ -1939,7 +1939,7 @@ uint8_t CPU::opCbBitInd(uint8_t b)
     // H is always 1, N is always 0, C is unchanged
     // 3 cycles
 
-    auto val = mBus.read8(regs.HL());
+    auto val = mBus->read8(regs.HL());
     opCbBitReg(b, val);
 
     return 3;
@@ -1966,9 +1966,9 @@ uint8_t CPU::opCbSetInd(uint8_t b)
     // 4 cycles
     assert(b < 8);
 
-    auto val = mBus.read8(regs.HL());
+    auto val = mBus->read8(regs.HL());
     val |= (1 << b);
-    mBus.write8(regs.HL(), val);
+    mBus->write8(regs.HL(), val);
 
     return 4;
 }
@@ -1994,9 +1994,9 @@ uint8_t CPU::opCbResInd(uint8_t b)
     // 4 cycles
     assert(b < 8);
 
-    auto val = mBus.read8(regs.HL());
+    auto val = mBus->read8(regs.HL());
     val &= ~(1 << b);
-    mBus.write8(regs.HL(), val);
+    mBus->write8(regs.HL(), val);
 
     return 4;
 }
@@ -2009,7 +2009,7 @@ uint8_t CPU::opJpImm()
     // immediate unconditional jump, jump to address specified in the instruction 
     // len: 3 bytes
     // cycles: 4
-    uint16_t addr = mBus.read16(regs.PC);
+    uint16_t addr = mBus->read16(regs.PC);
     
     // the PC is incremented by two to read the address but then it's immediately 
     // replaced by the new address so we can sksip this
@@ -2049,7 +2049,7 @@ uint8_t CPU::opJrImm()
     // immediate relative jump, modifies the value of PC using the immediate *signed* value 
     // 3 cycles 
 
-    int16_t val = (int8_t)mBus.read8(regs.PC++);
+    int16_t val = (int8_t)mBus->read8(regs.PC++);
     regs.PC += val;
 
     return 3;
@@ -2079,12 +2079,12 @@ uint8_t CPU::opCallImm()
     // 6 cycles
 
     // read the new PC address
-    uint16_t newPC = mBus.read16(regs.PC);
+    uint16_t newPC = mBus->read16(regs.PC);
     regs.PC += 2;
 
     // push the old PC to the stack
     regs.SP -= 2;
-    mBus.write16(regs.SP, regs.PC);
+    mBus->write16(regs.SP, regs.PC);
 
     // also push the old PC to the nesting stack
     mCallNesting.push(regs.PC);
@@ -2126,7 +2126,7 @@ uint8_t CPU::opRst(uint8_t offset)
     
     // push the old PC to the stack
     regs.SP -= 2;
-    mBus.write16(regs.SP, regs.PC);
+    mBus->write16(regs.SP, regs.PC);
 
     // update the current PC
     regs.PC = newPC;
@@ -2140,7 +2140,7 @@ uint8_t CPU::opRet()
     // RET pops the old PC value from the stack and copies it into PC
     // 4 cycles
 
-    auto newPC = mBus.read16(regs.SP);
+    auto newPC = mBus->read16(regs.SP);
     regs.SP += 2;
 
     regs.PC = newPC;
@@ -2239,7 +2239,7 @@ uint8_t CPU::opStop()
     mIsStopped = true;
 
     // the stop instruction also resets the div register in the timer
-    mBus.write8(mmap::regs::timer::DIV, 0);
+    mBus->write8(mmap::regs::timer::DIV, 0);
 
     return 1;
 }
@@ -2259,7 +2259,7 @@ uint8_t CPU::opCallIrq(Irqs::Type type)
 
     // push the old PC to the stack
     regs.SP -= 2;
-    mBus.write16(regs.SP, regs.PC);
+    mBus->write16(regs.SP, regs.PC);
 
     // save the old PC to the nesting stack for debug purposes
     mIrqNesting.push(regs.PC);

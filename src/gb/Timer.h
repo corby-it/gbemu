@@ -51,7 +51,7 @@ public:
 
 
 private:
-    Bus& mBus;
+    Bus* mBus;
 
     // REGISTERS
 

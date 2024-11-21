@@ -107,6 +107,7 @@ public:
     bool showTileViewer;
     bool showBackgroundViewer;
     bool showInputConfigWindow;
+    bool showAudioVisual;
 
 };
 

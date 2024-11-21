@@ -72,7 +72,7 @@ class APU;
 class Serial;
 
 typedef Ram<8_KB>   WorkRam;
-typedef Ram<127>        HiRam;
+typedef Ram<127>    HiRam;
 
 CEREAL_CLASS_VERSION(WorkRam, 1);
 CEREAL_CLASS_VERSION(HiRam, 1);

@@ -5,7 +5,7 @@
 
 
 Timer::Timer(Bus& bus)
-    : mBus(bus)
+    : mBus(&bus)
 {
     reset();
 }
@@ -59,8 +59,8 @@ void Timer::step(uint32_t mCycles, bool isCpuStopped)
             // reset TIMA value to that of TMA
             mTima = mTma;
 
-            auto currIF = mBus.read8(mmap::regs::IF);
-            mBus.write8(mmap::regs::IF, Irqs::mask(Irqs::Type::Timer) | currIF);
+            auto currIF = mBus->read8(mmap::regs::IF);
+            mBus->write8(mmap::regs::IF, Irqs::mask(Irqs::Type::Timer) | currIF);
         }
     }
 }

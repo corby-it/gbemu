@@ -22,6 +22,21 @@ public:
         reset();
     }
 
+    Ram(const Ram& other)
+        : mStartAddr(other.mStartAddr)
+        , mData(std::make_unique<uint8_t[]>(Size))
+    {
+        memcpy(mData.get(), other.mData.get(), Size);
+    }
+
+    Ram& operator=(const Ram& other)
+    {
+        mStartAddr = other.mStartAddr;
+        memcpy(mData.get(), other.mData.get(), Size);
+
+        return *this;
+    }
+
     virtual ~Ram() {}
 
     virtual uint8_t read8(uint16_t addr) const
@@ -90,6 +105,19 @@ public:
         : Ram<Size>(startAddr)
         , mLocked(false)
     {}
+
+    LockableRam(const LockableRam& other)
+        : Ram<Size>(other)
+        , mLocked(other.mLocked)
+    {}
+
+    LockableRam& operator=(const LockableRam& other)
+    {
+        Ram<Size>::operator=(other);
+        mLocked = other.mLocked;
+
+        return *this;
+    }
 
     uint8_t read8(uint16_t addr) const override
     {

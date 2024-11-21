@@ -66,5 +66,6 @@ AppConfig::AppConfig()
     , showTileViewer(false)
     , showBackgroundViewer(false)
     , showInputConfigWindow(false)
+    , showAudioVisual(false)
 {}
 

@@ -33,6 +33,7 @@ enum class SaveStateError {
     OpenFileError,
     CartridgeMismatch,
     LoadingError,
+    SavingError,
 };
 
 const char* saveStateErrorToStr(SaveStateError err);

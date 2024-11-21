@@ -151,6 +151,8 @@ void AudioChannelIf::updateChannelOutput()
         // of the available range 0x0 to 0xf, that is 0x7 (which should be 0 in the analog range)
         mCurrOutput = 0x7;
     }
+
+    mAudioRingBuf.write((float)mCurrOutput);
 }
 
 void AudioChannelIf::trigger()

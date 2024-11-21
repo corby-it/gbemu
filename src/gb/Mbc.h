@@ -7,6 +7,7 @@
 #include "GbCommons.h"
 #include <cstdint>
 #include <vector>
+#include <memory>
 #include <cereal/types/vector.hpp>
 #include <cereal/types/polymorphic.hpp>
 #include <cereal/types/base_class.hpp>
@@ -32,6 +33,8 @@ class MbcInterface {
 public:
     MbcInterface(MbcType type, size_t romSize, size_t ramSize);
     virtual ~MbcInterface() {}
+
+    virtual std::unique_ptr<MbcInterface> clone() const = 0;
 
     void reset();
 
@@ -85,6 +88,11 @@ class MbcNone : public MbcInterface {
 public:
     MbcNone(size_t romSize = 32_KB, size_t ramSize = 0);
 
+    std::unique_ptr<MbcInterface> clone() const override {
+        return std::make_unique<MbcNone>(*this);
+    }
+
+
     uint8_t read8(uint16_t addr) const override;
     void write8(uint16_t addr, uint8_t val) override;
 
@@ -109,6 +117,10 @@ CEREAL_CLASS_VERSION(MbcNone, 1);
 class Mbc1 : public MbcInterface {
 public:
     Mbc1(size_t romSize = 32_KB, size_t ramSize = 0);
+
+    std::unique_ptr<MbcInterface> clone() const override {
+        return std::make_unique<Mbc1>(*this);
+    }
 
     uint8_t read8(uint16_t addr) const override;
     void write8(uint16_t addr, uint8_t val) override;
@@ -148,6 +160,11 @@ class Mbc2 : public MbcInterface {
 public:
     Mbc2(size_t romSize = 32_KB, size_t ramSize = 0);
 
+    std::unique_ptr<MbcInterface> clone() const override {
+        return std::make_unique<Mbc2>(*this);
+    }
+
+
     uint8_t read8(uint16_t addr) const override;
     void write8(uint16_t addr, uint8_t val) override;
 
@@ -179,6 +196,11 @@ CEREAL_CLASS_VERSION(Mbc2, 1);
 class Mbc3 : public MbcInterface {
 public:
     Mbc3(size_t romSize = 32_KB, size_t ramSize = 0);
+
+    std::unique_ptr<MbcInterface> clone() const override {
+        return std::make_unique<Mbc3>(*this);
+    }
+
 
     uint8_t read8(uint16_t addr) const override;
     void write8(uint16_t addr, uint8_t val) override;
@@ -215,13 +237,18 @@ class Mbc5 : public MbcInterface {
 public:
     Mbc5(size_t romSize = 32_KB, size_t ramSize = 0);
 
+    std::unique_ptr<MbcInterface> clone() const override {
+        return std::make_unique<Mbc5>(*this);
+    }
+
+
     uint8_t read8(uint16_t addr) const override;
     void write8(uint16_t addr, uint8_t val) override;
 
     template<class Archive>
     void serialize(Archive& ar, uint32_t const /*version*/) {
         ar(cereal::base_class<MbcInterface>(this));
-        
+        ar(mRamEnabled, mRomMask, mRamMask, mRomB0, mRomB1);
     }
 
 private:
@@ -245,6 +272,7 @@ CEREAL_REGISTER_TYPE(MbcNone);
 CEREAL_REGISTER_TYPE(Mbc1);
 CEREAL_REGISTER_TYPE(Mbc2);
 CEREAL_REGISTER_TYPE(Mbc3);
+CEREAL_REGISTER_TYPE(Mbc5);
 
 
 #endif // GBEMU_SRC_GB_MBC_H_

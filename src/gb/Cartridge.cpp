@@ -627,6 +627,19 @@ Cartridge::Cartridge()
     : mbc(std::make_unique<MbcNone>(32_KB, 0))
 {}
 
+Cartridge::Cartridge(const Cartridge& other)
+    : mbc(other.mbc->clone())
+    , header(CartridgeHeader(mbc->rom.data()))
+{}
+
+Cartridge& Cartridge::operator=(const Cartridge& other)
+{
+    mbc = other.mbc->clone();
+    header = CartridgeHeader(mbc->rom.data());
+    
+    return *this;
+}
+
 void Cartridge::reset()
 {
     mbc->reset();

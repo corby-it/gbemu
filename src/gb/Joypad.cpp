@@ -6,7 +6,7 @@
 
 
 Joypad::Joypad(Bus& bus)
-    : mBus(bus)
+    : mBus(&bus)
 {
     reset();
 }
@@ -36,8 +36,8 @@ void Joypad::step(uint32_t mCycles)
 
         if (mCyclesCounter > 4) {
             // trigger interrupt
-            auto currIF = mBus.read8(mmap::regs::IF);
-            mBus.write8(mmap::regs::IF, Irqs::mask(Irqs::Type::Joypad) | currIF);
+            auto currIF = mBus->read8(mmap::regs::IF);
+            mBus->write8(mmap::regs::IF, Irqs::mask(Irqs::Type::Joypad) | currIF);
         }
     }
 }

@@ -151,6 +151,8 @@ const char* cartridgeLoadingResToStr(CartridgeLoadingRes lr);
 class Cartridge {
 public:
     Cartridge();
+    Cartridge(const Cartridge& other);
+    Cartridge& operator=(const Cartridge& other);
 
     void reset();
 

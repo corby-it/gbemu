@@ -73,7 +73,7 @@ private:
 
     bool inCurrentSelection(Btn btn) const;
 
-    Bus& mBus;
+    Bus* mBus;
 
     Selection mSelection;
 

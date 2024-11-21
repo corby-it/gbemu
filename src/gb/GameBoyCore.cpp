@@ -23,9 +23,10 @@ const char* saveStateErrorToStr(SaveStateError err)
 {
     switch (err) {
     case SaveStateError::NoError: return "No error";
-    case SaveStateError::OpenFileError: return "Can't open file";
+    case SaveStateError::OpenFileError: return "Can't open the file";
     case SaveStateError::CartridgeMismatch: return "The currently loaded cartridge header doesn't match the save state cartridge header";
-    case SaveStateError::LoadingError: return "Loading error";
+    case SaveStateError::LoadingError: return "Loading error, maybe the save state file is corrupted?";
+    case SaveStateError::SavingError: return "Saving error";
     default:
         assert(false);
         return "Unknown error";
@@ -231,7 +232,7 @@ SaveStateError GameBoyClassic::saveState(const fs::path& path)
     if(!ofs)
         return SaveStateError::OpenFileError;
 
-    {
+    try {
         cereal::BinaryOutputArchive oar(ofs);
 
         // write the content of the cartridge header file first, this will be used to check
@@ -249,6 +250,9 @@ SaveStateError GameBoyClassic::saveState(const fs::path& path)
         oar(serial);
         oar(hiRam);
     }
+    catch (const cereal::Exception& /*ex*/) {
+        return SaveStateError::SavingError;
+    }
 
     return SaveStateError::NoError;
 }
@@ -259,7 +263,7 @@ SaveStateError GameBoyClassic::loadState(const fs::path& path)
     if (!ifs)
         return SaveStateError::OpenFileError;
 
-    {
+    try {
         cereal::BinaryInputArchive iar(ifs);
 
         // first verify if the header of the currently loaded cartridge is compatible with
@@ -270,16 +274,45 @@ SaveStateError GameBoyClassic::loadState(const fs::path& path)
         if (cartridge.header != buf)
             return SaveStateError::CartridgeMismatch;
 
-        iar(cpu);
-        iar(wram);
-        iar(ppu);
-        iar(dma);
-        iar(cartridge);
-        iar(timer);
-        iar(joypad);
-        iar(apu);
-        iar(serial);
-        iar(hiRam);
+        // read everything from the archive into a copy of the current state
+
+        CPU tmpCpu = cpu;
+        WorkRam tmpWram = wram;
+        PPU tmpPpu = ppu;
+        DMA tmpDma = dma;
+        Cartridge tmpCart = cartridge;
+        Timer tmpTimer = timer;
+        Joypad tmpJoypad = joypad;
+        APU tmpApu = apu;
+        Serial tmpSerial = serial;
+        HiRam tmphiRam = hiRam;
+
+        iar(tmpCpu);
+        iar(tmpWram);
+        iar(tmpPpu);
+        iar(tmpDma);
+        iar(tmpCart);
+        iar(tmpTimer);
+        iar(tmpJoypad);
+        iar(tmpApu);
+        iar(tmpSerial);
+        iar(tmphiRam);
+
+        // if no execption got caught while deserializing we can copy back 
+        // the new state into the gameboy
+        cpu = tmpCpu;
+        wram = tmpWram;
+        ppu = tmpPpu;
+        dma = tmpDma;
+        cartridge = tmpCart;
+        timer = tmpTimer;
+        joypad = tmpJoypad;
+        apu = tmpApu;
+        serial = tmpSerial;
+        hiRam = tmphiRam;
+    }
+    catch (const cereal::Exception& /*ex*/) {
+        return SaveStateError::LoadingError;
     }
 
     return SaveStateError::NoError;
