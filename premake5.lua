@@ -52,7 +52,6 @@ workspace(project_name)
         src_base .. "/third-party",
         src_base .. "/third-party/cereal-1.3.2/include",
         src_base .. "/third-party/tracy/public",
-        src_base .. "/third-party/miniaudio",
     }
 
     defines {
@@ -117,16 +116,17 @@ workspace(project_name)
         files {
             src_base .. "/app/**.cpp",
             src_base .. "/app/**.h",
-            src_base .. "/imgui/*.cpp",
-            src_base .. "/imgui/*.h",
-            src_base .. "/imgui/backends/imgui_impl_glfw.cpp",
-            src_base .. "/imgui/backends/imgui_impl_opengl3.cpp",
+            src_base .. "/third-party/imgui/*.cpp",
+            src_base .. "/third-party/imgui/*.h",
+            src_base .. "/third-party/imgui/backends/imgui_impl_glfw.cpp",
+            src_base .. "/third-party/imgui/backends/imgui_impl_opengl3.cpp",
             src_base .. "/third-party/ImGuiFileDialog/ImGuiFileDialog.cpp",
         }
 
         externalincludedirs {
-            src_base .. "/imgui",
-            src_base .. "/imgui/backends",
+            src_base .. "/third-party/imgui",
+            src_base .. "/third-party/imgui/backends",
+            src_base .. "/third-party/miniaudio",
         }
 
         filter { "configurations:profiling" }
