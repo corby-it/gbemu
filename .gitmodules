@@ -8,3 +8,6 @@
 [submodule "src/third-party/miniaudio"]
 	path = src/third-party/miniaudio
 	url = https://github.com/mackron/miniaudio.git
+[submodule "src/third-party/implot"]
+	path = src/third-party/implot
+	url = https://github.com/epezent/implot.git

@@ -5,10 +5,11 @@
 
 #include "AppBase.h"
 #include "Version.h"
-#include "imgui.h"
-#include "imgui_impl_glfw.h"
-#include "imgui_impl_opengl3.h"
-#include "tracy/Tracy.hpp"
+#include <imgui.h>
+#include <imgui_impl_glfw.h>
+#include <imgui_impl_opengl3.h>
+#include <implot.h>
+#include <tracy/Tracy.hpp>
 #include <stdio.h>
 #include <thread>
 #include <cstdlib>
@@ -83,9 +84,11 @@ AppBase::AppBase()
     glfwMakeContextCurrent(mWindow);
     glfwSwapInterval(0); // disable vsync
 
-    // Setup Dear ImGui context
+    // Setup Dear ImGui and ImPlot contexts
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
+    ImPlot::CreateContext();
+
     ImGuiIO& io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
@@ -134,6 +137,8 @@ AppBase::~AppBase()
     // Cleanup
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
+
+    ImPlot::DestroyContext();
     ImGui::DestroyContext();
 
     glfwDestroyWindow(mWindow);

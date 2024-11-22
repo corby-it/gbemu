@@ -121,12 +121,15 @@ workspace(project_name)
             src_base .. "/third-party/imgui/backends/imgui_impl_glfw.cpp",
             src_base .. "/third-party/imgui/backends/imgui_impl_opengl3.cpp",
             src_base .. "/third-party/ImGuiFileDialog/ImGuiFileDialog.cpp",
+            src_base .. "/third-party/implot/implot.cpp",
+            src_base .. "/third-party/implot/implot_items.cpp",
         }
 
         externalincludedirs {
             src_base .. "/third-party/imgui",
             src_base .. "/third-party/imgui/backends",
             src_base .. "/third-party/miniaudio",
+            src_base .. "/third-party/implot",
         }
 
         filter { "configurations:profiling" }
@@ -186,7 +189,8 @@ workspace(project_name)
 
         -- tests, along with their main, are all located under src/tests
         files {
-            src_base .. "/tests/**.cpp"
+            src_base .. "/tests/**.h",
+            src_base .. "/tests/**.cpp",
         }
 
         includedirs {

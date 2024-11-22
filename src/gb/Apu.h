@@ -9,6 +9,7 @@
 #include <chrono>
 #include <functional>
 #include <array>
+#include <algorithm>
 #include <cereal/cereal.hpp>
 #include <cereal/types/array.hpp>
 
@@ -75,6 +76,17 @@ public:
     void setSampleCallback(OnSampleReadyCallback cb) { mSampleCallback = cb; }
 
 
+    typedef RingBuffer<float, 4096>     ApuRingBufferType;
+    typedef RingBuffer<uint8_t, 4096>   ChannelRingBufferType;
+
+    const ApuRingBufferType& getApuBufferL() const { return mApuRingBufL; }
+    const ApuRingBufferType& getApuBufferR() const { return mApuRingBufR; }
+
+    const ChannelRingBufferType& getChannelBuffer(uint32_t i) const {
+        return mChRingBuffs[std::clamp(i, 0u, 3u)];
+    }
+
+
     template<class Archive>
     void serialize(Archive& ar, uint32_t const /*version*/)
     {
@@ -86,6 +98,9 @@ public:
         ar(mDownsamplingFreq, mTimeCounter);
     }
 
+
+
+    static constexpr uint32_t chCount = 4;
 
     SquareWaveChannel square1;
     SquareWaveChannel square2;
@@ -106,7 +121,6 @@ private:
     void writeReg2(uint8_t val);
     uint8_t readReg2() const;
 
-    static constexpr uint32_t chCount = 4;
     
     // NR50
     bool mVinL;
@@ -137,6 +151,11 @@ private:
     ApuHpfFilter mHpfL;
 
     OnSampleReadyCallback mSampleCallback;
+
+    std::array<ChannelRingBufferType, chCount> mChRingBuffs;
+
+    ApuRingBufferType mApuRingBufL;
+    ApuRingBufferType mApuRingBufR;
 
     uint32_t mDownsamplingFreq;
     std::chrono::nanoseconds mTimeCounter;

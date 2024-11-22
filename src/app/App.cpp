@@ -1,9 +1,10 @@
 
 
 #include "App.h"
-#include "imgui/imgui_internal.h"
-#include "ImGuiFileDialog/ImGuiFileDialog.h"
-#include "imgui_memory_editor.h"
+#include <imgui/imgui_internal.h>
+#include <ImGuiFileDialog/ImGuiFileDialog.h>
+#include <imgui_memory_editor.h>
+#include <implot.h>
 #include <tracy/Tracy.hpp>
 #include <cereal/cereal.hpp>
 #include <cereal/archives/json.hpp>
@@ -1263,26 +1264,79 @@ void App::UIDrawInputConfigWindow()
     ImGui::End();
 }
 
+
 void App::UIDrawAudioVisualWindow()
 {
+    static constexpr auto chBufSize = APU::ChannelRingBufferType::size;
+    static APU::ChannelRingBufferType::DataT chBuf[chBufSize];
+
+    static constexpr auto mixBufsize = APU::ApuRingBufferType::size;
+    static APU::ApuRingBufferType::DataT mixBuf[mixBufsize];
+    
     if (!mConfig.showAudioVisual)
         return;
 
-    ImGui::Begin("Audio visualizer", &mConfig.showAudioVisual);
+    ImGui::Begin("Audio visualizer", &mConfig.showAudioVisual, ImGuiWindowFlags_AlwaysAutoResize);
 
-    float buf[1024];
-    
-    mGameboy.apu.square1.getAudioBuffer().copyToBuf(buf, 1024);
-    ImGui::PlotLines("Square1", buf, 1024, 0, nullptr, 0.f, 16.f, ImVec2(800, 80));
+    const uint32_t plotWidth = 900;
 
-    mGameboy.apu.square2.getAudioBuffer().copyToBuf(buf, 1024);
-    ImGui::PlotLines("Square2", buf, 1024, 0, nullptr, 0.f, 16.f, ImVec2(800, 80));
+    ImPlot::PushColormap(ImPlotColormap_Cool);
 
-    mGameboy.apu.wave.getAudioBuffer().copyToBuf(buf, 1024);
-    ImGui::PlotLines("Wave", buf, 1024, 0, nullptr, 0.f, 16.f, ImVec2(800, 80));
+    if (ImPlot::BeginSubplots("Audio Channels", 4, 1, ImVec2(plotWidth, 400))) {
 
-    mGameboy.apu.noise.getAudioBuffer().copyToBuf(buf, 1024);
-    ImGui::PlotLines("Noise", buf, 1024, 0, nullptr, 0.f, 16.f, ImVec2(800, 80));
+        const char* titles[APU::chCount] = { "Square 1", "Square 2", "Wave", "Noise" };
+
+        for (uint32_t i = 0; i < APU::chCount; ++i) {
+            mGameboy.apu.getChannelBuffer(i).copyToBuf(chBuf, chBufSize);
+
+            ImPlotFlags plotFlags = ImPlotFlags_CanvasOnly;
+
+            if (ImPlot::BeginPlot(titles[i], ImVec2(-1, 0), plotFlags)) {
+                ImPlot::SetupAxis(ImAxis_Y1, titles[i], ImPlotAxisFlags_Lock);
+                ImPlot::SetupAxisLimits(ImAxis_Y1, 0, 16, ImPlotCond_Always);
+
+                ImPlot::SetupAxis(ImAxis_X1, nullptr, ImPlotAxisFlags_Lock | ImPlotAxisFlags_NoDecorations);
+                ImPlot::SetupAxisLimits(ImAxis_X1, 0, chBufSize, ImPlotCond_Always);
+                ImPlot::SetupFinish();
+
+                ImPlot::PlotLine(titles[i], chBuf, chBufSize);
+                ImPlot::EndPlot();
+            }
+        }
+
+        ImPlot::EndSubplots();
+    }
+
+    if (ImPlot::BeginSubplots("Audio Mix", 2, 1, ImVec2(plotWidth, 200))) {
+
+        const char* titles[2] = { "Left", "Right" };
+        const APU::ApuRingBufferType* bufPtrs[2] = {
+            &mGameboy.apu.getApuBufferL(),
+            &mGameboy.apu.getApuBufferR(),
+        };
+
+        for (uint32_t i = 0; i < 2; ++i) {
+            bufPtrs[i]->copyToBuf(mixBuf, mixBufsize);
+
+            ImPlotFlags plotFlags = ImPlotFlags_CanvasOnly;
+
+            if (ImPlot::BeginPlot(titles[i], ImVec2(-1, 0), plotFlags)) {
+                ImPlot::SetupAxis(ImAxis_Y1, titles[i], ImPlotAxisFlags_Lock);
+                ImPlot::SetupAxisLimits(ImAxis_Y1, -1, 1, ImPlotCond_Always);
+
+                ImPlot::SetupAxis(ImAxis_X1, nullptr, ImPlotAxisFlags_Lock | ImPlotAxisFlags_NoDecorations);
+                ImPlot::SetupAxisLimits(ImAxis_X1, 0, mixBufsize, ImPlotCond_Always);
+                ImPlot::SetupFinish();
+
+                ImPlot::PlotLine(titles[i], mixBuf, mixBufsize);
+                ImPlot::EndPlot();
+            }
+        }
+
+        ImPlot::EndSubplots();
+    }
+
+    ImPlot::PopColormap();
 
     ImGui::End();
 }

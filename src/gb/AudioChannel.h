@@ -17,13 +17,15 @@
 
 
 
-template<typename DataT, size_t Size>
+template<typename T, size_t Size>
 class RingBuffer {
 public:
 
     static_assert((Size > 0) && ((Size & (Size - 1)) == 0), "Size must be a power of 2!");
 
     static constexpr size_t size = Size;
+
+    typedef T   DataT;
 
     RingBuffer()
         : mData(std::make_unique<DataT[]>(Size))
@@ -172,11 +174,6 @@ public:
     bool isDacEnabled() const { return mDacEnabled; }
 
 
-    typedef RingBuffer<float, 1024> RingBufferType;
-
-    const RingBufferType& getAudioBuffer() const { return mAudioRingBuf; }
-
-
     template<class Archive>
     void serialize(Archive& ar)
     {
@@ -221,8 +218,6 @@ private:
     std::chrono::nanoseconds mTimeCounter;
     uint32_t mDownsamplingFreq;
 
-
-    RingBufferType mAudioRingBuf;
 };
 
 CEREAL_CLASS_VERSION(AudioChannelIf, 1);

@@ -347,8 +347,11 @@ void APU::mix()
 
     // first turn the output of each channel into a float and scale it between 0 and 1
     std::array<float, chCount> chOutputs;
-    for (uint32_t i = 0; i < chCount; ++i)
-        chOutputs[i] = static_cast<float>(mChannels[i]->getOutput()) / 15.f;
+    for (uint32_t i = 0; i < chCount; ++i) {
+        uint8_t chOut = mChannels[i]->getOutput();
+        mChRingBuffs[i].write(chOut);
+        chOutputs[i] = static_cast<float>(chOut) / 15.f;
+    }
 
     // apply panning, if a channel is selected for a side, sum the channel output and 
     // scale again between 0 and 1
@@ -377,4 +380,7 @@ void APU::mix()
 
     if(mSampleCallback)
         mSampleCallback(mOutL, mOutR);
+
+    mApuRingBufL.write(mOutL);
+    mApuRingBufR.write(mOutR);
 }
