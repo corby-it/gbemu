@@ -52,6 +52,7 @@ private:
     void UIDrawCpuFlagsTable();
     void UIDrawTimerRegTable();
     void UIDrawPpuRegTable();
+    void UIDrawApuRegTable();
 
     bool loadRomFile(const std::filesystem::path& path);
 

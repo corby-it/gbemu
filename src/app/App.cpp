@@ -87,8 +87,8 @@ void App::startup()
     mAudioHandler.setResamplingRatio(getResamplingRatio(mConfig.emulationSpeed));
     mAudioHandler.setVolume(mConfig.audioVolume);
 
-    mAudioHandler.enableSynthesizedFileOutput();
-    mAudioHandler.enablePlayedFileOutput();
+    /*mAudioHandler.enableSynthesizedFileOutput();
+    mAudioHandler.enablePlayedFileOutput();*/
 
     mGameboy.apu.setSampleCallback(std::bind(&AudioHandler::onAudioSampleReady, &mAudioHandler, _1, _2));
 }
@@ -361,7 +361,7 @@ void App::UIDrawMenu()
                     config.path = mConfig.recentRomsFolder.string().c_str();
 
                 config.flags = ImGuiFileDialogFlags_Modal;
-                ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose Rom File", ".gb", config);
+                ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose Rom File", ".gb,.gbc", config);
             }
             if (ImGui::BeginMenu("Open Recent...")) {
                 if (mConfig.recentRomsPath.empty()) {
@@ -1295,7 +1295,7 @@ struct RegTableEntry {
     uint32_t val;
 };
 
-static const ImGuiTableFlags tableFlags = ImGuiTableFlags_Resizable | ImGuiTableFlags_Reorderable
+static const ImGuiTableFlags regsTableFlags = ImGuiTableFlags_Resizable | ImGuiTableFlags_Reorderable
     | ImGuiTableFlags_Hideable | ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersV;
 
 static const char* fmtHex4 = "0x%04x";
@@ -1315,7 +1315,7 @@ void App::UIDrawCpuRegTable()
         { fmtHex2, "IF", mGameboy.cpu.irqs.readIF()},
     };
 
-    if (ImGui::BeginTable("cpuRegsTable", 4, tableFlags))
+    if (ImGui::BeginTable("cpuRegsTable", 4, regsTableFlags))
     {
         ImGui::TableSetupColumn("Reg");
         ImGui::TableSetupColumn("Val");
@@ -1355,7 +1355,7 @@ void App::UIDrawCpuFlagsTable()
         { "", "C", mGameboy.cpu.regs.flags.C },
     };
 
-    if (ImGui::BeginTable("cpuFlagsTable", 4, tableFlags))
+    if (ImGui::BeginTable("cpuFlagsTable", 4, regsTableFlags))
     {
         auto drawTableLine = [](const RegTableEntry& entry1, const RegTableEntry& entry2) {
             ImGui::TableNextRow();
@@ -1390,7 +1390,7 @@ void App::UIDrawTimerRegTable()
          { fmtHex2, "TAC", mGameboy.timer.readTAC() }
     };
 
-    if (ImGui::BeginTable("timerRegsTable", 4, tableFlags))
+    if (ImGui::BeginTable("timerRegsTable", 4, regsTableFlags))
     {
         ImGui::TableSetupColumn("Reg");
         ImGui::TableSetupColumn("Val");
@@ -1437,7 +1437,7 @@ void App::UIDrawPpuRegTable()
         { "%u", "currDot", mGameboy.ppu.getDotCounter() },
     };
 
-    if (ImGui::BeginTable("ppuRegsTable", 4, tableFlags))
+    if (ImGui::BeginTable("ppuRegsTable", 4, regsTableFlags))
     {
         ImGui::TableSetupColumn("Reg");
         ImGui::TableSetupColumn("Val");
@@ -1467,6 +1467,104 @@ void App::UIDrawPpuRegTable()
     }
 }
 
+namespace areg = mmap::regs::audio;
+
+void App::UIDrawApuRegTable()
+{
+    RegTableEntry apuEntries[] = {
+        { fmtHex2, "NR10", mGameboy.apu.read(areg::NR10) },
+        { fmtHex2, "NR30", mGameboy.apu.read(areg::NR30) },
+        { fmtHex2, "NR11", mGameboy.apu.read(areg::NR11) },
+        { fmtHex2, "NR31", mGameboy.apu.read(areg::NR31) },
+        { fmtHex2, "NR12", mGameboy.apu.read(areg::NR12) },
+        { fmtHex2, "NR32", mGameboy.apu.read(areg::NR32) },
+        { fmtHex2, "NR13", mGameboy.apu.read(areg::NR13) },
+        { fmtHex2, "NR33", mGameboy.apu.read(areg::NR33) },
+        { fmtHex2, "NR14", mGameboy.apu.read(areg::NR14) },
+        { fmtHex2, "NR34", mGameboy.apu.read(areg::NR34) },
+        { fmtHex2, "NR21", mGameboy.apu.read(areg::NR21) },
+        { fmtHex2, "NR41", mGameboy.apu.read(areg::NR41) },
+        { fmtHex2, "NR22", mGameboy.apu.read(areg::NR22) },
+        { fmtHex2, "NR42", mGameboy.apu.read(areg::NR42) },
+        { fmtHex2, "NR23", mGameboy.apu.read(areg::NR23) },
+        { fmtHex2, "NR43", mGameboy.apu.read(areg::NR43) },
+        { fmtHex2, "NR24", mGameboy.apu.read(areg::NR24) },
+        { fmtHex2, "NR44", mGameboy.apu.read(areg::NR44) },
+    };
+
+    if (ImGui::BeginTable("apuChannelsRegsTable", 4, regsTableFlags))
+    {
+        ImGui::TableSetupColumn("Reg");
+        ImGui::TableSetupColumn("Val");
+        ImGui::TableSetupColumn("Reg");
+        ImGui::TableSetupColumn("Val");
+        ImGui::TableHeadersRow();
+
+        auto drawTableLine = [](const RegTableEntry& entry1, const RegTableEntry& entry2) {
+            ImGui::TableNextRow();
+
+            ImGui::TableSetColumnIndex(0);
+            ImGui::Text(entry1.name);
+            ImGui::TableSetColumnIndex(1);
+            ImGui::Text(entry1.fmt, entry1.val);
+            ImGui::TableSetColumnIndex(2);
+            ImGui::Text(entry2.name);
+            ImGui::TableSetColumnIndex(3);
+            ImGui::Text(entry2.fmt, entry2.val);
+        };
+
+        assert(IM_ARRAYSIZE(apuEntries) % 2 == 0);
+
+        for (uint32_t i = 0; i < IM_ARRAYSIZE(apuEntries); i += 2)
+            drawTableLine(apuEntries[i], apuEntries[i + 1]);
+
+        ImGui::EndTable();
+    }
+
+
+    static const ImGuiTableFlags apuRegsTableFlags = ImGuiTableFlags_Resizable | ImGuiTableFlags_Reorderable
+        | ImGuiTableFlags_Hideable | ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersV | ImGuiTableFlags_SizingStretchProp;
+
+    if (ImGui::BeginTable("apuCtrlRegsTable", 3, apuRegsTableFlags)) {
+        ImGui::TableSetupColumn("Reg", ImGuiTableColumnFlags_WidthStretch, 1.f);
+        ImGui::TableSetupColumn("Val", ImGuiTableColumnFlags_WidthStretch, 1.f);
+        ImGui::TableSetupColumn("Info", ImGuiTableColumnFlags_WidthStretch, 2.f);
+        ImGui::TableHeadersRow();
+
+        ImGui::TableNextRow();
+        auto nr50 = mGameboy.apu.read(areg::NR50);
+        ImGui::TableNextColumn();
+        ImGui::Text("NR50");
+        ImGui::TableNextColumn();
+        ImGui::Text(fmtHex2, nr50);
+        ImGui::TableNextColumn();
+        ImGui::Text("Lvol: %02u, Rvol: %02u", (nr50 >> 4) & 0x07, nr50 & 0x07);
+
+        ImGui::TableNextRow();
+        auto nr51 = mGameboy.apu.read(areg::NR51);
+        ImGui::TableNextColumn();
+        ImGui::Text("NR51");
+        ImGui::TableNextColumn();
+        ImGui::Text(fmtHex2, nr51);
+        ImGui::TableNextColumn();
+        ImGui::Text("L: %c%c%c%c, R: %c%c%c%c",
+            (nr51 & 0x80) ? '1' : '0', (nr51 & 0x40) ? '1' : '0', (nr51 & 0x20) ? '1' : '0', (nr51 & 0x10) ? '1' : '0',
+            (nr51 & 0x08) ? '1' : '0', (nr51 & 0x04) ? '1' : '0', (nr51 & 0x02) ? '1' : '0', (nr51 & 0x01) ? '1' : '0');
+
+        ImGui::TableNextRow();
+        auto nr52 = mGameboy.apu.read(areg::NR52);
+        ImGui::TableNextColumn();
+        ImGui::Text("NR52");
+        ImGui::TableNextColumn();
+        ImGui::Text(fmtHex2, nr52);
+        ImGui::TableNextColumn();
+        ImGui::Text("APU %s, %c%c%c%c", (nr52 & 0x80) ? " on" : "off",
+            (nr52 & 0x01) ? '1' : '0', (nr52 & 0x02) ? '1' : '0',
+            (nr52 & 0x04) ? '1' : '0', (nr52 & 0x08) ? '1' : '0');
+
+        ImGui::EndTable();
+    }
+}
 
 
 void App::UIDrawRegsTables()
@@ -1485,6 +1583,9 @@ void App::UIDrawRegsTables()
 
     ImGui::SeparatorText("PPU");
     UIDrawPpuRegTable();
+    
+    ImGui::SeparatorText("APU");
+    UIDrawApuRegTable();
 
     ImGui::End();
 }

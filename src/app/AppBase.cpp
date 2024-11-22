@@ -76,7 +76,7 @@ AppBase::AppBase()
 #endif
 
     // Create window with graphics context
-    mWindow = glfwCreateWindow(1280, 720, PROJECT_NAME_STR " - " VERSION_STR, nullptr, nullptr);
+    mWindow = glfwCreateWindow(1280, 800, PROJECT_NAME_STR " - " VERSION_STR, nullptr, nullptr);
     if (mWindow == nullptr)
         std::exit(1);
 
