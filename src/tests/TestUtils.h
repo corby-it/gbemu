@@ -7,6 +7,7 @@
 #include <vector>
 #include <filesystem>
 #include <functional>
+#include <fstream>
 
 std::filesystem::path getTestRoot();
 

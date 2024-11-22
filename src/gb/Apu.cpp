@@ -67,9 +67,13 @@ float ApuHpfFilter::process(float x0)
 // ------------------------------------------------------------------------------------------------
 
 APU::APU(uint32_t downsamplingFreq)
-    : mDownsamplingFreq(downsamplingFreq)
-    , mChannels{ &square1, &square2, &wave, &noise }
+    : square1(downsamplingFreq)
+    , square2(downsamplingFreq)
+    , wave(downsamplingFreq)
+    , noise(downsamplingFreq)
     , mEnableHpf(true)
+    , mChannels{ &square1, &square2, &wave, &noise }
+    , mDownsamplingFreq(downsamplingFreq)
 {
     // set cutoff frequency for the HPFs to 30 HZ
     mHpfR.setCutoff(30.f, (float)downsamplingFreq);

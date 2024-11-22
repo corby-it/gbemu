@@ -129,7 +129,7 @@ CEREAL_CLASS_VERSION(FrameSequencer, 1);
 
 class AudioChannelIf {
 public:
-    AudioChannelIf(uint16_t lengthTimerTarget);
+    AudioChannelIf(uint16_t lengthTimerTarget, uint32_t downsamplingFreq = 44100);
 
     virtual void reset();
 
@@ -231,7 +231,7 @@ CEREAL_CLASS_VERSION(AudioChannelIf, 1);
 
 class SquareWaveChannel : public AudioChannelIf {
 public:
-    SquareWaveChannel();
+    SquareWaveChannel(uint32_t downsamplingFreq = 44100);
 
     void enableSweepModulation(bool b) { mHasSweep = b; }
     
@@ -326,7 +326,7 @@ CEREAL_CLASS_VERSION(SquareWaveChannel, 1);
 
 class NoiseChannel : public AudioChannelIf {
 public:
-    NoiseChannel();
+    NoiseChannel(uint32_t downsamplingFreq = 44100);
 
     void reset() override;
 
@@ -404,7 +404,7 @@ CEREAL_CLASS_VERSION(NoiseChannel, 1);
 
 class UserWaveChannel : public AudioChannelIf {
 public:
-    UserWaveChannel();
+    UserWaveChannel(uint32_t downsamplingFreq = 44100);
 
     void reset() override;
     void resetWaveRam();

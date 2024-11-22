@@ -71,10 +71,10 @@ FrameSequencer::Event FrameSequencer::step()
 // AudioChannelIf
 // ------------------------------------------------------------------------------------------------
 
-AudioChannelIf::AudioChannelIf(uint16_t lengthTimerTarget)
-    : mUseInternalFrameSequencer(false)
-    , mLengthTimerTargetVal(lengthTimerTarget)
-    , mDownsamplingFreq(44100)
+AudioChannelIf::AudioChannelIf(uint16_t lengthTimerTarget, uint32_t downsamplingFreq)
+    : mLengthTimerTargetVal(lengthTimerTarget)
+    , mUseInternalFrameSequencer(false)
+    , mDownsamplingFreq(downsamplingFreq)
 {
     reset();
 }
@@ -208,10 +208,10 @@ const std::array<SquareWaveChannel::WaveTable, 4> SquareWaveChannel::wavetables{
     { 0,1,1,1,1,1,1,0 },    // 75% duty cycle
 } };
 
-SquareWaveChannel::SquareWaveChannel()
+SquareWaveChannel::SquareWaveChannel(uint32_t downsamplingFreq)
     // hasSweep is only relevent for the emulator so it doesn't need to be 
     // modified by the reset() function
-    : AudioChannelIf(64)
+    : AudioChannelIf(64, downsamplingFreq)
     , mHasSweep(false)
 {
     reset();
@@ -463,8 +463,8 @@ void SquareWaveChannel::onTrigger()
 // NoiseChannel
 // ------------------------------------------------------------------------------------------------
 
-NoiseChannel::NoiseChannel()
-    : AudioChannelIf(64)
+NoiseChannel::NoiseChannel(uint32_t downsamplingFreq)
+    : AudioChannelIf(64, downsamplingFreq)
 {
     reset();
 }
@@ -644,8 +644,8 @@ void NoiseChannel::onTrigger()
 // UserWaveChannel
 // ------------------------------------------------------------------------------------------------
 
-UserWaveChannel::UserWaveChannel()
-    : AudioChannelIf(256)
+UserWaveChannel::UserWaveChannel(uint32_t downsamplingFreq)
+    : AudioChannelIf(256, downsamplingFreq)
 {
     reset();
     resetWaveRam();
