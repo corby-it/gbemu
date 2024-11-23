@@ -3,37 +3,51 @@
 #ifndef GBEMU_SRC_GB_SERIAL_H_
 #define GBEMU_SRC_GB_SERIAL_H_
 
+#include "Bus.h"
 #include <cstdint>
+#include <functional>
 #include <cereal/cereal.hpp>
 
-// Dummy implementation
+
+typedef std::function<void(uint8_t)>    SerialDataReadyCb;
+
 
 class Serial {
 public:
-    Serial() {
-        reset();
-    }
+    Serial(Bus& bus);
 
-    void reset() {
-        mData = 0x00;
-        mCtrl = 0x7E;
-    }
+    void reset();
+    void step(uint32_t mCycles);
 
-    uint8_t readData() const { return mData; }
-    uint8_t readCtrl() const { return mCtrl; }
+    void setSerialDataReadyCb(SerialDataReadyCb cb) { mDataReadyCb = cb; }
 
-    void writeData(uint8_t val) { mData = val; }
-    void writeCtrl(uint8_t val) { mCtrl = val; }
+
+    uint8_t readData() const { return mRegData; }
+    uint8_t readCtrl() const;
+
+    void writeData(uint8_t val) { mRegData = val; }
+    void writeCtrl(uint8_t val);
 
     template<class Archive>
     void serialize(Archive& ar, uint32_t const /*version*/) {
-        ar(mData, mCtrl);
+        ar(mRegData);
     }
 
 private:
-    uint8_t mData;
-    uint8_t mCtrl;
 
+    Bus* mBus;
+
+    uint32_t mClockCounter;
+    uint32_t mShiftCounter;
+
+    bool mEnable;
+    bool mClockSelect;
+
+    uint8_t mRegData;
+    
+    uint8_t mTransferredOut;
+
+    SerialDataReadyCb mDataReadyCb;
 };
 
 CEREAL_CLASS_VERSION(Serial, 1);

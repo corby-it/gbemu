@@ -80,10 +80,12 @@ const char* const plotRequiredFrames = "RequiredFrames";
 
 void App::startup()
 {
+    // setup tracy stuff
     TracyPlotConfig(plotOvershootPlotName, tracy::PlotFormatType::Number, false, false, 0);
     TracyPlotConfig(plotTimeSinceLastEmulateCall, tracy::PlotFormatType::Number, false, false, 0);
     TracyPlotConfig(plotRequiredFrames, tracy::PlotFormatType::Number, false, false, 0);
 
+    // setup audio stuff
     mAudioInitSuccess = mAudioHandler.initialize();
     mAudioHandler.setResamplingRatio(getResamplingRatio(mConfig.emulationSpeed));
     mAudioHandler.setVolume(mConfig.audioVolume);
@@ -92,6 +94,9 @@ void App::startup()
     mAudioHandler.enablePlayedFileOutput();*/
 
     mGameboy.apu.setSampleCallback(std::bind(&AudioHandler::onAudioSampleReady, &mAudioHandler, _1, _2));
+
+    // setup serial stuff
+    mGameboy.serial.setSerialDataReadyCb(std::bind(&App::onSerialData, this, _1));
 }
 
 
@@ -316,6 +321,7 @@ void App::updateUI()
     UIDrawBackgroundViewerWindow();
     UIDrawInputConfigWindow();
     UIDrawAudioVisualWindow();
+    UIDrawSerialLogWindow();
 }
 
 
@@ -388,6 +394,7 @@ void App::UIDrawMenu()
             ImGui::MenuItem("Background viewer", nullptr, &mConfig.showBackgroundViewer);
             ImGui::MenuItem("Audio visualizer", nullptr, &mConfig.showAudioVisual);
             ImGui::MenuItem("Input configuration", nullptr, &mConfig.showInputConfigWindow);
+            ImGui::MenuItem("Serial log", nullptr, &mConfig.showSerialLog);
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("About")) {
@@ -436,6 +443,11 @@ bool App::loadRomFile(const std::filesystem::path& path)
         mConfig.recentRomsFolder = path.parent_path();
         return true;
     }
+}
+
+void App::onSerialData(uint8_t byte)
+{
+    mSerialLog.AddLog("[%1.f] - 0x%02x\n", ImGui::GetTime(), byte);
 }
 
 float App::getResamplingRatio(EmulationSpeed speed)
@@ -1339,6 +1351,14 @@ void App::UIDrawAudioVisualWindow()
     ImPlot::PopColormap();
 
     ImGui::End();
+}
+
+void App::UIDrawSerialLogWindow()
+{
+    if (!mConfig.showSerialLog)
+        return;
+
+    mSerialLog.Draw("Serial transfer log", &mConfig.showSerialLog);
 }
 
 

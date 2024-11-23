@@ -67,5 +67,6 @@ AppConfig::AppConfig()
     , showBackgroundViewer(false)
     , showInputConfigWindow(false)
     , showAudioVisual(false)
+    , showSerialLog(false)
 {}
 

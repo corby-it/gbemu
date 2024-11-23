@@ -59,7 +59,7 @@ GameBoyClassic::GameBoyClassic()
     , timer(*this)
     , joypad(*this)
     , apu()
-    , serial()
+    , serial(*this)
     , hiRam(mmap::hiram::start)
     , status(Status::Stopped)
     , mStepInstruction(false)
@@ -228,6 +228,7 @@ GbStepRes GameBoyClassic::gbStep()
     dma.step(cpuRes.cycles);
     bool frameReady = ppu.step(cpuRes.cycles);
     timer.step(cpuRes.cycles, cpu.isStopped());
+    serial.step(cpuRes.cycles);
     joypad.step(cpuRes.cycles);
     apu.step(cpuRes.cycles);
 

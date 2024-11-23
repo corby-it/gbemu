@@ -108,6 +108,7 @@ public:
     bool showBackgroundViewer;
     bool showInputConfigWindow;
     bool showAudioVisual;
+    bool showSerialLog;
 
 };
 

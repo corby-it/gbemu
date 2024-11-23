@@ -6,6 +6,7 @@
 #include "AppBase.h"
 #include "AppConfig.h"
 #include "AudioHandler.h"
+#include "LogWindow.h"
 #include "gb/GameBoyCore.h"
 #include "gb/Matrix.h"
 #include <optional>
@@ -46,6 +47,7 @@ private:
     void UIDrawBackgroundViewerWindow();
     void UIDrawInputConfigWindow();
     void UIDrawAudioVisualWindow();
+    void UIDrawSerialLogWindow();
     
     void UIDrawRegsTables();
     void UIDrawCpuRegTable();
@@ -55,6 +57,8 @@ private:
     void UIDrawApuRegTable();
 
     bool loadRomFile(const std::filesystem::path& path);
+
+    void onSerialData(uint8_t byte);
 
     static float getResamplingRatio(EmulationSpeed speed);
 
@@ -74,6 +78,8 @@ private:
 
     bool mAudioInitSuccess;
     AudioHandler mAudioHandler;
+
+    LogWindow mSerialLog;
 
 };
 
