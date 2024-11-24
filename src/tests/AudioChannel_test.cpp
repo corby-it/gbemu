@@ -10,7 +10,7 @@ namespace fs = std::filesystem;
 
 
 // when this macro is defined the samples audio files will be generated
-#define GENERATE_AUDIO_FILES
+//#define GENERATE_AUDIO_FILES
 
 
 // set the sample rate at 44.1khz for the tests and
@@ -222,8 +222,8 @@ TEST_CASE("Square wave channel")
     }
 
 #ifdef GENERATE_AUDIO_FILES
-    //audioVecToFileMono<uint8_t>(generatedAudio, testName);
-    //audioVecToFileMono<float>(generatedAudio, testName, ".txt", convertForAudacity);
+    audioVecToFileMono<uint8_t>(generatedAudio, testName);
+    audioVecToFileMono<float>(generatedAudio, testName, ".txt", convertForAudacity);
 #endif // GENERATE_AUDIO_FILES
 
 
@@ -310,8 +310,8 @@ TEST_CASE("Noise channel")
     }
 
 #ifdef GENERATE_AUDIO_FILES
-    //audioVecToFileMono<uint8_t>(generatedAudio, testName);
-    //audioVecToFileMono<float>(generatedAudio, testName, ".txt", convertForAudacity);
+    audioVecToFileMono<uint8_t>(generatedAudio, testName);
+    audioVecToFileMono<float>(generatedAudio, testName, ".txt", convertForAudacity);
 #endif // GENERATE_AUDIO_FILES
 
     // read the corresponding test file and compare the results
@@ -392,8 +392,8 @@ TEST_CASE("User wave channel")
     }
 
 #ifdef GENERATE_AUDIO_FILES
-    //audioVecToFileMono<uint8_t>(generatedAudio, testName);
-    //audioVecToFileMono<float>(generatedAudio, testName, ".txt", convertForAudacity);
+    audioVecToFileMono<uint8_t>(generatedAudio, testName);
+    audioVecToFileMono<float>(generatedAudio, testName, ".txt", convertForAudacity);
 #endif // GENERATE_AUDIO_FILES
 
 

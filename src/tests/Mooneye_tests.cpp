@@ -16,7 +16,7 @@ using hr_clock = std::chrono::high_resolution_clock;
 
 
 static const fs::path testFilesRoot = getTestRoot();
-static const fs::path mooneyeFilesRoot = testFilesRoot / "mts-20240127";
+static const fs::path mooneyeFilesRoot = testFilesRoot / "mts-20240926-1737-443f6e1";
 static const fs::path mooneyeResFilesRoot = testFilesRoot / "mts-results";
 
 
