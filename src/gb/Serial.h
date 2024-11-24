@@ -30,7 +30,9 @@ public:
 
     template<class Archive>
     void serialize(Archive& ar, uint32_t const /*version*/) {
-        ar(mRegData);
+        ar(mClockCounter, mClockCounterTarget, mShiftCounter);
+        ar(mEnable, mClockSpeed, mClockIsMaster);
+        ar(mRegData, mTransferredOut);
     }
 
 private:
@@ -38,10 +40,12 @@ private:
     Bus* mBus;
 
     uint32_t mClockCounter;
+    uint32_t mClockCounterTarget;
     uint32_t mShiftCounter;
 
     bool mEnable;
-    bool mClockSelect;
+    bool mClockSpeed;
+    bool mClockIsMaster;
 
     uint8_t mRegData;
     
