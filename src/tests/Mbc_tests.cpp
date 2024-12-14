@@ -448,6 +448,184 @@ TEST_CASE("MBC2") {
 
 
 
+TEST_CASE("Test RTC")
+{
+    RTC rtc;
+
+    rtc.latch();
+
+    rtc.writeSec(30);
+    std::this_thread::sleep_for(1s);
+    rtc.latch();
+    auto sec = rtc.readSec();
+
+    CHECK(sec == 31);
+
+    rtc.writeSec(59);
+    std::this_thread::sleep_for(1s);
+    rtc.latch();
+    sec = rtc.readSec();
+
+    CHECK(sec == 0);
+}
+
+
+
+TEST_CASE("Test MBC3")
+{
+    SUBCASE("Test different rom sizes") {
+
+        Mbc3 mbc;
+
+        SUBCASE("64KB rom") { mbc = Mbc3(64_KB, 0); }
+        SUBCASE("128KB rom") { mbc = Mbc3(128_KB, 0); }
+        SUBCASE("256KB rom") { mbc = Mbc3(256_KB, 0); }
+        SUBCASE("512KB rom") { mbc = Mbc3(512_KB, 0); }
+        SUBCASE("1MB rom") { mbc = Mbc3(1_MB, 0); }
+        SUBCASE("2MB rom") { mbc = Mbc3(2_MB, 0); }
+
+        size_t romSize = mbc.rom.size();
+        size_t bankCount = mbc.rom.size() / MbcInterface::romBankSize;
+
+        // write the bank number at the beginning of each bank
+        for (uint32_t bank = 0; bank < bankCount; ++bank) {
+            mbc.rom[romBankAddr(bank)] = uint8_t(bank);
+        }
+
+        CAPTURE(romSize);
+        CAPTURE(bankCount);
+
+        // check reading from bank 0
+        auto val = mbc.read8(mmap::rom::bank0::start);
+
+        CHECK(val == 0);
+
+        // access all rom banks and check the value
+        for (uint32_t bank = 0; bank < bankCount; ++bank) {
+
+            // the bank number must be written using an address in the range 0x2000 - 0x3FFF 
+            // that has bit 8 set
+            mbc.write8(0x2100, uint8_t(bank));
+
+            // read a value from rom and check it against the expected bank number
+            val = mbc.read8(mmap::rom::bankN::start);
+
+            // bank 0 is not accessible in this address range
+            if (bank == 0)
+                CHECK(val == 1);
+            else
+                CHECK(val == bank);
+        }
+    }
+
+    SUBCASE("Test ram (only 32KB are supported)") {
+        Mbc3 mbc(64_KB, 32_KB);
+
+        size_t bankCount = mbc.ram.size() / MbcInterface::ramBankSize;
+
+        // fill the first byte of each bank with the corresponding number
+        for (uint32_t bank = 0; bank < bankCount; ++bank) {
+            mbc.ram[ramBankAddr(bank)] = uint8_t(bank);
+        }
+
+        // check read with ram/RTC disabled
+        auto val = mbc.read8(mmap::external_ram::start);
+
+        CHECK(val == 0xff);
+
+        // enable ram/RTC
+        mbc.write8(0x0000, 0x0A);
+
+        // for each bank read the first byt, check its value then try to modify it
+        // and read it again to check that writes are working
+        for (uint32_t bank = 0; bank < bankCount; ++bank) {
+            // select the bank
+            mbc.write8(0x4000, uint8_t(bank));
+            // read the value
+            val = mbc.read8(mmap::external_ram::start);
+            CHECK(val == bank);
+
+            // write a new value
+            mbc.write8(mmap::external_ram::start, val | 0x80);
+
+            // read it back and check it
+            auto newVal = mbc.read8(mmap::external_ram::start);
+            CHECK(newVal == (val | 0x80));
+        }
+    }
+
+    SUBCASE("Test RTC") {
+        Mbc3 mbc(64_KB, 32_KB);
+
+        // write some random values into the 
+        mbc.rtc.writeSec(30);
+        mbc.rtc.writeMin(20);
+        mbc.rtc.writeHours(12);
+        mbc.rtc.writeDaysL(112);
+        mbc.rtc.writeDaysH(1);
+
+        // check read with ram/RTC disabled
+
+        mbc.write8(0x4000, 0x08); // select seconds
+        CHECK(mbc.read8(mmap::external_ram::start) == 0xff);
+
+        mbc.write8(0x4000, 0x09); // select minutes
+        CHECK(mbc.read8(mmap::external_ram::start) == 0xff);
+
+        mbc.write8(0x4000, 0x0A); // select hours
+        CHECK(mbc.read8(mmap::external_ram::start) == 0xff);
+
+        mbc.write8(0x4000, 0x0B); // select days L
+        CHECK(mbc.read8(mmap::external_ram::start) == 0xff);
+
+        mbc.write8(0x4000, 0x0C); // select days H
+        CHECK(mbc.read8(mmap::external_ram::start) == 0xff);
+
+        // enable ram/RTC
+        mbc.write8(0x0000, 0x0A);
+
+        mbc.write8(0x4000, 0x08); // select seconds
+        CHECK(mbc.read8(mmap::external_ram::start) == 30);
+
+        mbc.write8(0x4000, 0x09); // select minutes
+        CHECK(mbc.read8(mmap::external_ram::start) == 20);
+
+        mbc.write8(0x4000, 0x0A); // select hours
+        CHECK(mbc.read8(mmap::external_ram::start) == 12);
+
+        mbc.write8(0x4000, 0x0B); // select days L
+        CHECK(mbc.read8(mmap::external_ram::start) == 112);
+
+        mbc.write8(0x4000, 0x0C); // select days H
+        CHECK(mbc.read8(mmap::external_ram::start) == 1);
+
+        // select wrong bank/register
+        mbc.write8(0x4000, 0x05); 
+        CHECK(mbc.read8(mmap::external_ram::start) == 0xff);
+
+
+        // check latching
+        mbc.write8(0x6000, 0);
+        mbc.write8(0x6000, 1);
+
+        mbc.write8(0x4000, 0x08); // select seconds
+        auto secVal = mbc.read8(mmap::external_ram::start);
+
+        std::this_thread::sleep_for(1s);
+
+        // latch again
+        mbc.write8(0x6000, 0);
+        mbc.write8(0x6000, 1);
+
+        auto newSecVal = mbc.read8(mmap::external_ram::start);
+
+        CHECK(newSecVal == ((secVal + 1) % 60));
+    }
+
+}
+
+
+
 
 TEST_CASE("Test MBC5")
 {
@@ -509,7 +687,7 @@ TEST_CASE("Test MBC5")
         size_t ramSize = mbc.ram.size();
         size_t bankCount = mbc.ram.size() / MbcInterface::ramBankSize;
 
-        // fill teh first byte of each bank with the corresponding number
+        // fill the first byte of each bank with the corresponding number
         for (uint32_t bank = 0; bank < bankCount; ++bank) {
             mbc.ram[ramBankAddr(bank)] = uint8_t(bank);
         }
@@ -546,24 +724,3 @@ TEST_CASE("Test MBC5")
 
 
 
-
-TEST_CASE("Test RTC")
-{
-    RTC rtc;
-
-    rtc.latch();
-
-    rtc.writeSec(30);
-    std::this_thread::sleep_for(1s);
-    rtc.latch();
-    auto sec = rtc.readSec();
-
-    CHECK(sec == 31);
-
-    rtc.writeSec(59);
-    std::this_thread::sleep_for(1s);
-    rtc.latch();
-    sec = rtc.readSec();
-    
-    CHECK(sec == 0);
-}

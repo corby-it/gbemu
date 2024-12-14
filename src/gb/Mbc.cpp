@@ -396,14 +396,13 @@ uint8_t Mbc3::read8(uint16_t addr) const
 
             return ram[ramAddr];
         }
-        case 0x08: return mRamRtcEnabled ? mRtc.readSec() : 0xFF; break;
-        case 0x09: return mRamRtcEnabled ? mRtc.readMin() : 0xFF; break;
-        case 0x0A: return mRamRtcEnabled ? mRtc.readHours() : 0xFF; break;
-        case 0x0B: return mRamRtcEnabled ? mRtc.readDaysL() : 0xFF; break;
-        case 0x0C: return mRamRtcEnabled ? mRtc.readDaysH() : 0xFF; break;
+        case 0x08: return mRamRtcEnabled ? rtc.readSec() : 0xFF; break;
+        case 0x09: return mRamRtcEnabled ? rtc.readMin() : 0xFF; break;
+        case 0x0A: return mRamRtcEnabled ? rtc.readHours() : 0xFF; break;
+        case 0x0B: return mRamRtcEnabled ? rtc.readDaysL() : 0xFF; break;
+        case 0x0C: return mRamRtcEnabled ? rtc.readDaysH() : 0xFF; break;
         default:
-            // shouldn't happen
-            assert(false);
+            // selecting other "banks" returns FF
             return 0xFF;
         }
     }
@@ -460,7 +459,7 @@ void Mbc3::write8(uint16_t addr, uint8_t val)
 
         if(mRtcLatchReg == 0 && val == 1) {
             mRtcLatchReg = 1;
-            mRtc.latch();
+            rtc.latch();
         }
         else if(val == 0) {
             mRtcLatchReg = 0;
@@ -485,11 +484,11 @@ void Mbc3::write8(uint16_t addr, uint8_t val)
                 }
                 break;
             }
-            case 0x08: mRtc.writeSec(val); break;
-            case 0x09: mRtc.writeMin(val); break;
-            case 0x0A: mRtc.writeHours(val); break;
-            case 0x0B: mRtc.writeDaysL(val); break;
-            case 0x0C: mRtc.writeDaysH(val); break;
+            case 0x08: rtc.writeSec(val); break;
+            case 0x09: rtc.writeMin(val); break;
+            case 0x0A: rtc.writeHours(val); break;
+            case 0x0B: rtc.writeDaysL(val); break;
+            case 0x0C: rtc.writeDaysH(val); break;
         }
     }
 }

@@ -208,8 +208,12 @@ public:
     template<class Archive>
     void serialize(Archive& ar, uint32_t const /*version*/) {
         ar(cereal::base_class<MbcInterface>(this));
-        ar(mRomMask, mRamMask, mRtc, mRtcLatchReg, mRamRtcEnabled);
+        ar(mRomMask, mRamMask, rtc, mRtcLatchReg, mRamRtcEnabled);
     }
+
+
+    RTC rtc;
+
 
 private:
 
@@ -218,7 +222,6 @@ private:
     uint16_t mRomMask;
     uint16_t mRamMask;
 
-    RTC mRtc;
     uint8_t mRtcLatchReg;
 
     bool mRamRtcEnabled;
