@@ -387,7 +387,7 @@ void SquareWaveChannel::envelopeTick()
 
 void SquareWaveChannel::sweepTick()
 {
-    if (!mHasSweep || !mSweepEnabled)
+    if (!mHasSweep)
         return;
 
     // every time the sweep clock ticks we have to update the periods
@@ -395,29 +395,37 @@ void SquareWaveChannel::sweepTick()
     // where it will be picked up by the period counter on its next loop
 
     mSweepCounter++;
-    if (mSweepCounter == mSweepPace) {
+    if (mSweepCounter >= mSweepPace) {
         mSweepCounter = 0;
 
-        uint16_t newPeriod = sweepCompute();
+        if (mSweepEnabled) {
 
-        if (newPeriod > 0x7FF) {
-            // new period overflow, disable the channel
-            mChEnabled = false;
-            mSweepEnabled = false;
-        }
-        else {
-            // new period is ok, write the values back to the registers
-            // and to the shadow period register
-            mSweepShadowPeriod = newPeriod;
-            mPeriodL = newPeriod & 0xff;
-            mPeriodH = (newPeriod >> 8) & 0x07;
-
-            // compute a new period again using the new value and perform the overflow check again
-            // why check again? who knows
-            // source: https://gbdev.gg8.se/wiki/articles/Gameboy_sound_hardware#Frequency_Sweep
-            if (sweepCompute() > 0x7ff) {
+            // the first overflow check is applied when sweeping is enabled, even if the channel is not 
+            // actually sweeping because sweep pace is 0
+            uint16_t newPeriod = sweepCompute();
+            if (newPeriod > 0x7FF) {
+                // new period overflow, disable the channel and return
                 mChEnabled = false;
                 mSweepEnabled = false;
+                return;
+            }
+
+            // if the new frequency is ok then it is applied only if:
+            // - sweep pace is != 0 AND 
+            // - sweep step is != 0
+            if (mSweepPace != 0 && mSweepStep != 0) {
+                // write the values back to the registers and to the shadow period register
+                mSweepShadowPeriod = newPeriod;
+                mPeriodL = newPeriod & 0xff;
+                mPeriodH = (newPeriod >> 8) & 0x07;
+
+                // compute a new period again using the new value and perform the overflow check again
+                // why check again? who knows
+                // source: https://gbdev.gg8.se/wiki/articles/Gameboy_sound_hardware#Frequency_Sweep
+                if (sweepCompute() > 0x7FF) {
+                    mChEnabled = false;
+                    mSweepEnabled = false;
+                }
             }
         }
     }
@@ -454,6 +462,15 @@ void SquareWaveChannel::onTrigger()
     mSweepShadowPeriod = mPeriodL | (mPeriodH << 8);
     mSweepCounter = 0;
     mSweepEnabled = (mSweepPace > 0) || (mSweepStep > 0);
+
+    // if sweep step is != 0 the sweep computation and overflow check are performed immediately
+    if (mSweepStep != 0) {
+        if (sweepCompute() > 0x7FF) {
+            // new period overflow, disable the channel
+            mChEnabled = false;
+            mSweepEnabled = false;
+        }
+    }
 }
 
 
