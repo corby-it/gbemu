@@ -27,11 +27,8 @@ void Serial::reset()
 
 void Serial::step(uint32_t mCycles)
 {
-    // in the classic gameboy the internal clock used by the serial transfer is
-    // fixed at 8192 HZ (~1KB/s), the external clock can be anything up to 500KHz
-    // to divide the main ~1MHz clock down to 8192 we have to count up to 128
-
-    while (--mCycles) {
+  
+    while (mCycles--) {
 
         if (++mClockCounter >= mClockCounterTarget) {
             mClockCounter = 0;
@@ -95,7 +92,7 @@ uint8_t Serial::readCtrl() const
         val &= ~0x80;
     if (!mClockSpeed)
         val &= ~0x02;
-    if(!mClockIsMaster)
+    if (!mClockIsMaster)
         val &= ~0x01;
 
     return val;
