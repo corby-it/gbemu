@@ -20,6 +20,11 @@ namespace fs = std::filesystem;
 using hr_clock = std::chrono::high_resolution_clock;
 
 
+
+// ------------------------------------------------------------------------------------------------
+// App
+// ------------------------------------------------------------------------------------------------
+
 App::App()
     : mConfigSavePath(fs::current_path() / "appConfig.json")
     , mDisplayBuffer(Display::w, Display::h)
@@ -96,7 +101,7 @@ void App::startup()
     mGameboy.apu.setSampleCallback(std::bind(&AudioHandler::onAudioSampleReady, &mAudioHandler, _1, _2));
 
     // setup serial stuff
-    mGameboy.serial.setSerialDataReadyCb(std::bind(&App::onSerialData, this, _1));
+    mGameboy.serial.setSerialDataReadyCb(std::bind(&SerialLogWindow::OnSerialData, &mSerialLog, _1));
 }
 
 
@@ -445,10 +450,6 @@ bool App::loadRomFile(const std::filesystem::path& path)
     }
 }
 
-void App::onSerialData(uint8_t byte)
-{
-    mSerialLog.AddLog("[%1.f] - 0x%02x\n", ImGui::GetTime(), byte);
-}
 
 float App::getResamplingRatio(EmulationSpeed speed)
 {
@@ -1663,3 +1664,4 @@ void App::UIDrawRegsTables()
 
     ImGui::End();
 }
+

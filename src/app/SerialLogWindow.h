@@ -3,47 +3,46 @@
 #define GBEMU_SRC_APP_LOGWINDOW_H_
 
 #include <imgui.h>
+#include <string>
+#include <cstdint>
 
 
-// from imgui_demo.cpp
+// copied and modified from the example in imgui_demo.cpp
 
 // Usage:
 //  static ExampleAppLog my_log;
 //  my_log.AddLog("Hello %d world\n", 123);
 //  my_log.Draw("title");
-struct LogWindow
-{
-    ImGuiTextBuffer     Buf;
-    ImGuiTextFilter     Filter;
-    ImVector<int>       LineOffsets; // Index to lines offset. We maintain this with AddLog() calls.
-    bool                AutoScroll;  // Keep scrolling if already at the bottom.
+class SerialLogWindow {
+public:
 
-    LogWindow()
+    SerialLogWindow()
     {
-        AutoScroll = true;
+        mAutoScroll = true;
+        mRawOutput = false;
         Clear();
     }
 
-    void    Clear()
+    void Clear()
     {
-        Buf.clear();
-        LineOffsets.clear();
-        LineOffsets.push_back(0);
+        mBuf.clear();
+        mLineOffsets.clear();
+        mLineOffsets.push_back(0);
     }
 
-    void    AddLog(const char* fmt, ...) IM_FMTARGS(2)
+    void AddLog(const char* fmt, ...) IM_FMTARGS(2)
     {
-        int old_size = Buf.size();
+        int old_size = mBuf.size();
         va_list args;
         va_start(args, fmt);
-        Buf.appendfv(fmt, args);
+        mBuf.appendfv(fmt, args);
         va_end(args);
-        for (int new_size = Buf.size(); old_size < new_size; old_size++)
-            if (Buf[old_size] == '\n')
-                LineOffsets.push_back(old_size + 1);
+        for (int new_size = mBuf.size(); old_size < new_size; old_size++)
+            if (mBuf[old_size] == '\n')
+                mLineOffsets.push_back(old_size + 1);
     }
 
-    void    Draw(const char* title, bool* p_open = NULL)
+    void Draw(const char* title, bool* p_open = NULL)
     {
         if (!ImGui::Begin(title, p_open))
         {
@@ -54,7 +53,7 @@ struct LogWindow
         // Options menu
         if (ImGui::BeginPopup("Options"))
         {
-            ImGui::Checkbox("Auto-scroll", &AutoScroll);
+            ImGui::Checkbox("Auto-scroll", &mAutoScroll);
             ImGui::EndPopup();
         }
 
@@ -66,7 +65,9 @@ struct LogWindow
         ImGui::SameLine();
         bool copy = ImGui::Button("Copy");
         ImGui::SameLine();
-        Filter.Draw("Filter", -100.0f);
+        mFilter.Draw("Filter", -100.0f);
+        ImGui::SameLine();
+        ImGui::Checkbox("Raw", &mRawOutput);
 
         ImGui::Separator();
 
@@ -78,19 +79,19 @@ struct LogWindow
                 ImGui::LogToClipboard();
 
             ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
-            const char* buf = Buf.begin();
-            const char* buf_end = Buf.end();
-            if (Filter.IsActive())
+            const char* buf = mBuf.begin();
+            const char* buf_end = mBuf.end();
+            if (mFilter.IsActive())
             {
-                // In this example we don't use the clipper when Filter is enabled.
+                // In this example we don't use the clipper when mFilter is enabled.
                 // This is because we don't have random access to the result of our filter.
                 // A real application processing logs with ten of thousands of entries may want to store the result of
                 // search/filter.. especially if the filtering function is not trivial (e.g. reg-exp).
-                for (int line_no = 0; line_no < LineOffsets.Size; line_no++)
+                for (int line_no = 0; line_no < mLineOffsets.Size; line_no++)
                 {
-                    const char* line_start = buf + LineOffsets[line_no];
-                    const char* line_end = (line_no + 1 < LineOffsets.Size) ? (buf + LineOffsets[line_no + 1] - 1) : buf_end;
-                    if (Filter.PassFilter(line_start, line_end))
+                    const char* line_start = buf + mLineOffsets[line_no];
+                    const char* line_end = (line_no + 1 < mLineOffsets.Size) ? (buf + mLineOffsets[line_no + 1] - 1) : buf_end;
+                    if (mFilter.PassFilter(line_start, line_end))
                         ImGui::TextUnformatted(line_start, line_end);
                 }
             }
@@ -110,13 +111,13 @@ struct LogWindow
                 // anymore, which is why we don't use the clipper. Storing or skimming through the search result would make
                 // it possible (and would be recommended if you want to search through tens of thousands of entries).
                 ImGuiListClipper clipper;
-                clipper.Begin(LineOffsets.Size);
+                clipper.Begin(mLineOffsets.Size);
                 while (clipper.Step())
                 {
                     for (int line_no = clipper.DisplayStart; line_no < clipper.DisplayEnd; line_no++)
                     {
-                        const char* line_start = buf + LineOffsets[line_no];
-                        const char* line_end = (line_no + 1 < LineOffsets.Size) ? (buf + LineOffsets[line_no + 1] - 1) : buf_end;
+                        const char* line_start = buf + mLineOffsets[line_no];
+                        const char* line_end = (line_no + 1 < mLineOffsets.Size) ? (buf + mLineOffsets[line_no + 1] - 1) : buf_end;
                         ImGui::TextUnformatted(line_start, line_end);
                     }
                 }
@@ -126,12 +127,43 @@ struct LogWindow
 
             // Keep up at the bottom of the scroll region if we were already at the bottom at the beginning of the frame.
             // Using a scrollbar or mouse-wheel will take away from the bottom edge.
-            if (AutoScroll && ImGui::GetScrollY() >= ImGui::GetScrollMaxY())
+            if (mAutoScroll && ImGui::GetScrollY() >= ImGui::GetScrollMaxY())
                 ImGui::SetScrollHereY(1.0f);
         }
         ImGui::EndChild();
         ImGui::End();
     }
+
+    void OnSerialData(uint8_t data)
+    {
+        if (mRawOutput) {
+            if (!mSerialBuf.empty()) {
+                AddLog("[%1.f] - %s\n", ImGui::GetTime(), mSerialBuf.c_str());
+                mSerialBuf.clear();
+            }
+
+            AddLog("[%1.f] - 0x%02x\n", ImGui::GetTime(), data);
+        }
+        else {
+            if (data == '\n') {
+                AddLog("[%1.f] - %s\n", ImGui::GetTime(), mSerialBuf.c_str());
+                mSerialBuf.clear();
+            }
+            else {
+                mSerialBuf.push_back(data);
+            }
+        }
+    }
+
+
+private:
+    ImGuiTextBuffer mBuf;
+    ImGuiTextFilter mFilter;
+    ImVector<int> mLineOffsets; // Index to lines offset. We maintain this with AddLog() calls.
+    bool mAutoScroll;  // Keep scrolling if already at the bottom.
+
+    std::string mSerialBuf;
+    bool mRawOutput;
 };
 
 

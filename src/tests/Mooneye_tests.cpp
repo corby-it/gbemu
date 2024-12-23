@@ -5,9 +5,6 @@
 #include "doctest/doctest.h"
 #include <chrono>
 
-#define STB_IMAGE_WRITE_IMPLEMENTATION
-#include <stb/stb_image_write.h>
-
 
 
 namespace fs = std::filesystem;
@@ -19,8 +16,10 @@ static const fs::path testFilesRoot = getTestRoot();
 static const fs::path mooneyeFilesRoot = testFilesRoot / "mts-20240926-1737-443f6e1";
 static const fs::path mooneyeResFilesRoot = testFilesRoot / "mts-results";
 
+// mooneye test shouldn't run for more than 120 emulated seconds:
+// source: https://github.com/Gekkio/mooneye-gb/blob/master/core/tests/mooneye_suite.rs
 
-static constexpr uint32_t stepLimit = 10000000; // 10 million
+static constexpr uint64_t cyclesLimit = GameBoyClassic::timeToCycles(120s);
 
 
 enum class MooneyeRes : int32_t {
@@ -48,126 +47,111 @@ MooneyeRes checkMooneyeResult(const GameBoyClassic& gb)
         return MooneyeRes::Unrecognized;
 }
 
-void saveDisplayToFile(const GameBoyClassic& gb, fs::path romRelPath)
-{
-    auto pngPath = (mooneyeResFilesRoot / romRelPath).replace_extension("png");
+
+
+
+TEST_CASE("Mooneye test roms") {
     
-    if (fs::exists(pngPath)) {
-        fs::remove(pngPath);
+    fs::path romRelPath = "";
+
+    //SUBCASE("") { romRelPath = "acceptance/add_sp_e_timing.gb"; }
+    //SUBCASE("") { romRelPath = "acceptance/boot_div-dmg0.gb"; }
+    //SUBCASE("") { romRelPath = "acceptance/boot_div-dmgABCmgb.gb"; }
+    //SUBCASE("") { romRelPath = "acceptance/boot_hwio-dmg0.gb"; }
+    //SUBCASE("") { romRelPath = "acceptance/boot_hwio-dmgABCmgb.gb"; }
+    //SUBCASE("") { romRelPath = "acceptance/boot_regs-dmg0.gb"; }
+    //SUBCASE("") { romRelPath = "acceptance/boot_regs-dmgABC.gb"; }
+    //SUBCASE("") { romRelPath = "acceptance/call_cc_timing.gb"; }
+    //SUBCASE("") { romRelPath = "acceptance/call_cc_timing2.gb"; }
+    //SUBCASE("") { romRelPath = "acceptance/call_timing.gb"; }
+    //SUBCASE("") { romRelPath = "acceptance/call_timing2.gb"; }
+    //SUBCASE("") { romRelPath = "acceptance/di_timing-GS.gb"; }
+    SUBCASE("") { romRelPath = "acceptance/div_timing.gb"; }
+    //SUBCASE("") { romRelPath = "acceptance/ei_sequence.gb"; }
+    //SUBCASE("") { romRelPath = "acceptance/ei_timing.gb"; }
+    //SUBCASE("") { romRelPath = "acceptance/halt_ime0_ei.gb"; }
+    //SUBCASE("") { romRelPath = "acceptance/halt_ime0_nointr_timing.gb"; }
+    //SUBCASE("") { romRelPath = "acceptance/halt_ime1_timing.gb"; }
+    //SUBCASE("") { romRelPath = "acceptance/halt_ime1_timing2-GS.gb"; }
+    //SUBCASE("") { romRelPath = "acceptance/if_ie_registers.gb"; }
+    //SUBCASE("") { romRelPath = "acceptance/intr_timing.gb"; }
+    //SUBCASE("") { romRelPath = "acceptance/jp_cc_timing.gb"; }
+    //SUBCASE("") { romRelPath = "acceptance/jp_timing.gb"; }
+    //SUBCASE("") { romRelPath = "acceptance/ld_hl_sp_e_timing.gb"; }
+    //SUBCASE("") { romRelPath = "acceptance/oam_dma_start.gb"; }
+    //SUBCASE("") { romRelPath = "acceptance/oam_dma_restart.gb"; }
+    //SUBCASE("") { romRelPath = "acceptance/oam_dma_timing.gb"; }
+    //SUBCASE("") { romRelPath = "acceptance/pop_timing.gb"; }
+    //SUBCASE("") { romRelPath = "acceptance/push_timing.gb"; }
+    //SUBCASE("") { romRelPath = "acceptance/rapid_di_ei.gb"; }
+    //SUBCASE("") { romRelPath = "acceptance/ret_cc_timing.gb"; }
+    //SUBCASE("") { romRelPath = "acceptance/ret_timing.gb"; }
+    //SUBCASE("") { romRelPath = "acceptance/reti_intr_timing.gb"; }
+    //SUBCASE("") { romRelPath = "acceptance/reti_timing.gb"; }
+    //SUBCASE("") { romRelPath = "acceptance/rst_timing.gb"; }
+    
+    // Mooneye tests for MBC1
+    SUBCASE("") { romRelPath = "emulator-only/mbc1/bits_bank1.gb"; }
+    SUBCASE("") { romRelPath = "emulator-only/mbc1/bits_bank2.gb"; }
+    SUBCASE("") { romRelPath = "emulator-only/mbc1/bits_mode.gb"; }
+    SUBCASE("") { romRelPath = "emulator-only/mbc1/bits_ramg.gb"; }
+    SUBCASE("") { romRelPath = "emulator-only/mbc1/ram_64kb.gb"; }
+    SUBCASE("") { romRelPath = "emulator-only/mbc1/ram_256kb.gb"; }
+    SUBCASE("") { romRelPath = "emulator-only/mbc1/rom_512kb.gb"; }
+    SUBCASE("") { romRelPath = "emulator-only/mbc1/rom_1Mb.gb"; }
+    SUBCASE("") { romRelPath = "emulator-only/mbc1/rom_2Mb.gb"; }
+    SUBCASE("") { romRelPath = "emulator-only/mbc1/rom_4Mb.gb"; }
+    SUBCASE("") { romRelPath = "emulator-only/mbc1/rom_8Mb.gb"; }
+    SUBCASE("") { romRelPath = "emulator-only/mbc1/rom_16Mb.gb"; }
+
+    // Mooneye tests for MBC2
+    SUBCASE("") { romRelPath = "emulator-only/mbc2/bits_ramg.gb"; }
+    SUBCASE("") { romRelPath = "emulator-only/mbc2/bits_romb.gb"; }
+    SUBCASE("") { romRelPath = "emulator-only/mbc2/bits_unused.gb"; }
+    SUBCASE("") { romRelPath = "emulator-only/mbc2/ram.gb"; }
+    SUBCASE("") { romRelPath = "emulator-only/mbc2/rom_512kb.gb"; }
+    SUBCASE("") { romRelPath = "emulator-only/mbc2/rom_1Mb.gb"; }
+    SUBCASE("") { romRelPath = "emulator-only/mbc2/rom_2Mb.gb"; }
+
+    // Mooneye tests for MBC5
+    SUBCASE("") { romRelPath = "emulator-only/mbc5/rom_512kb.gb"; }
+    SUBCASE("") { romRelPath = "emulator-only/mbc5/rom_1Mb.gb"; }
+    SUBCASE("") { romRelPath = "emulator-only/mbc5/rom_2Mb.gb"; }
+    SUBCASE("") { romRelPath = "emulator-only/mbc5/rom_4Mb.gb"; }
+    SUBCASE("") { romRelPath = "emulator-only/mbc5/rom_8Mb.gb"; }
+    SUBCASE("") { romRelPath = "emulator-only/mbc5/rom_16Mb.gb"; }
+    SUBCASE("") { romRelPath = "emulator-only/mbc5/rom_32Mb.gb"; }
+    SUBCASE("") { romRelPath = "emulator-only/mbc5/rom_64Mb.gb"; }
+
+
+    auto romPath = mooneyeFilesRoot / romRelPath; 
+        
+    GameBoyClassic gb; 
+    REQUIRE(gb.loadCartridge(romPath) == CartridgeLoadingRes::Ok); 
+        
+    gb.dbg.breakOnLdbb = true; 
+    gb.play(); 
+        
+    uint64_t cycles = 0; 
+    auto startTp = hr_clock::now(); 
+    while (cycles < cyclesLimit && gb.status == GameBoyClassic::Status::Running) {    
+        auto [stillGoing, stepsRes] = gb.emulate();
+        cycles += stepsRes.cpuRes.cycles;
     }
-    else {
-        fs::create_directories(pngPath.parent_path());
-    }
+    auto elapsed = duration_cast<microseconds>(hr_clock::now() - startTp).count(); 
+                
+    auto result = checkMooneyeResult(gb); 
+    
+    INFO("Test name: ", romRelPath.string());
+    INFO("This test took ", elapsed, "us"); 
+    INFO("Executed ", cycles, " cycles"); 
+                
+    CHECK(cycles < cyclesLimit); 
+    CHECK(result == MooneyeRes::Pass); 
 
-    fs::create_directories(pngPath.parent_path());
+    auto pngPath = (mooneyeResFilesRoot / romRelPath).replace_extension("png");
 
-    static const auto w = Display::w;
-    static const auto h = Display::h;
-
-    RgbaBuffer buf(w, h);
-    gb.ppu.display.getFrontBuf().fillRgbaBuffer(buf);
-
-    stbi_write_png(pngPath.string().c_str(), w, h, 4, static_cast<const void*>(buf.ptr()), w * 4);
+    saveDisplayToFile(gb, pngPath); 
 }
 
-
-#define CREATE_MOONEYE_TEST(cartPath)   \
-TEST_CASE("Mooneye tests - " cartPath){  \
-    fs::path romRelPath = cartPath;\
-    auto romPath = mooneyeFilesRoot / romRelPath;\
-\
-    GameBoyClassic gb;\
-    REQUIRE(gb.loadCartridge(romPath) == CartridgeLoadingRes::Ok);\
-\
-    gb.dbg.breakOnLdbb = true;\
-    gb.play();\
-\
-    uint32_t steps = 0;\
-    auto startTp = hr_clock::now();\
-    for (steps = 0; steps < stepLimit && gb.status == GameBoyClassic::Status::Running; ++steps) {\
-        gb.emulate();\
-    }\
-    auto elapsed = duration_cast<microseconds>(hr_clock::now() - startTp).count();\
-\
-    auto result = checkMooneyeResult(gb);\
-\
-    INFO("This test took ", elapsed, "us");\
-    INFO("Executed ", steps, " steps");\
-\
-    CHECK(steps < stepLimit);\
-    CHECK(result == MooneyeRes::Pass);\
-\
-    saveDisplayToFile(gb, romRelPath);\
-}\
-
-
-//CREATE_MOONEYE_TEST("acceptance/add_sp_e_timing.gb")
-//CREATE_MOONEYE_TEST("acceptance/boot_div-dmg0.gb")
-//CREATE_MOONEYE_TEST("acceptance/boot_div-dmgABCmgb.gb")
-//CREATE_MOONEYE_TEST("acceptance/boot_hwio-dmg0.gb")
-//CREATE_MOONEYE_TEST("acceptance/boot_hwio-dmgABCmgb.gb")
-//CREATE_MOONEYE_TEST("acceptance/boot_regs-dmg0.gb")
-//CREATE_MOONEYE_TEST("acceptance/boot_regs-dmgABC.gb")
-//CREATE_MOONEYE_TEST("acceptance/call_cc_timing.gb")
-//CREATE_MOONEYE_TEST("acceptance/call_cc_timing2.gb")
-//CREATE_MOONEYE_TEST("acceptance/call_timing.gb")
-//CREATE_MOONEYE_TEST("acceptance/call_timing2.gb")
-//CREATE_MOONEYE_TEST("acceptance/di_timing-GS.gb")
-CREATE_MOONEYE_TEST("acceptance/div_timing.gb")
-//CREATE_MOONEYE_TEST("acceptance/ei_sequence.gb")
-//CREATE_MOONEYE_TEST("acceptance/ei_timing.gb")
-//CREATE_MOONEYE_TEST("acceptance/halt_ime0_ei.gb")
-//CREATE_MOONEYE_TEST("acceptance/halt_ime0_nointr_timing.gb")
-//CREATE_MOONEYE_TEST("acceptance/halt_ime1_timing.gb")
-//CREATE_MOONEYE_TEST("acceptance/halt_ime1_timing2-GS.gb")
-//CREATE_MOONEYE_TEST("acceptance/if_ie_registers.gb")
-//CREATE_MOONEYE_TEST("acceptance/intr_timing.gb")
-//CREATE_MOONEYE_TEST("acceptance/jp_cc_timing.gb")
-//CREATE_MOONEYE_TEST("acceptance/jp_timing.gb")
-//CREATE_MOONEYE_TEST("acceptance/ld_hl_sp_e_timing.gb")
-//CREATE_MOONEYE_TEST("acceptance/oam_dma_start.gb")
-//CREATE_MOONEYE_TEST("acceptance/oam_dma_restart.gb")
-//CREATE_MOONEYE_TEST("acceptance/oam_dma_timing.gb")
-//CREATE_MOONEYE_TEST("acceptance/pop_timing.gb")
-//CREATE_MOONEYE_TEST("acceptance/push_timing.gb")
-//CREATE_MOONEYE_TEST("acceptance/rapid_di_ei.gb")
-//CREATE_MOONEYE_TEST("acceptance/ret_cc_timing.gb")
-//CREATE_MOONEYE_TEST("acceptance/ret_timing.gb")
-//CREATE_MOONEYE_TEST("acceptance/reti_intr_timing.gb")
-//CREATE_MOONEYE_TEST("acceptance/reti_timing.gb")
-//CREATE_MOONEYE_TEST("acceptance/rst_timing.gb")
-
-
-// Mooneye tests for MBC1
-CREATE_MOONEYE_TEST("emulator-only/mbc1/bits_bank1.gb")
-CREATE_MOONEYE_TEST("emulator-only/mbc1/bits_bank2.gb")
-CREATE_MOONEYE_TEST("emulator-only/mbc1/bits_mode.gb")
-CREATE_MOONEYE_TEST("emulator-only/mbc1/bits_ramg.gb")
-CREATE_MOONEYE_TEST("emulator-only/mbc1/ram_64kb.gb")
-CREATE_MOONEYE_TEST("emulator-only/mbc1/ram_256kb.gb")
-CREATE_MOONEYE_TEST("emulator-only/mbc1/rom_512kb.gb")
-CREATE_MOONEYE_TEST("emulator-only/mbc1/rom_1Mb.gb")
-CREATE_MOONEYE_TEST("emulator-only/mbc1/rom_2Mb.gb")
-CREATE_MOONEYE_TEST("emulator-only/mbc1/rom_4Mb.gb")
-CREATE_MOONEYE_TEST("emulator-only/mbc1/rom_8Mb.gb")
-CREATE_MOONEYE_TEST("emulator-only/mbc1/rom_16Mb.gb")
-
-// Mooneye tests for MBC2
-CREATE_MOONEYE_TEST("emulator-only/mbc2/bits_ramg.gb")
-CREATE_MOONEYE_TEST("emulator-only/mbc2/bits_romb.gb")
-CREATE_MOONEYE_TEST("emulator-only/mbc2/bits_unused.gb")
-CREATE_MOONEYE_TEST("emulator-only/mbc2/ram.gb")
-CREATE_MOONEYE_TEST("emulator-only/mbc2/rom_512kb.gb")
-CREATE_MOONEYE_TEST("emulator-only/mbc2/rom_1Mb.gb")
-CREATE_MOONEYE_TEST("emulator-only/mbc2/rom_2Mb.gb")
-
-// Mooneye tests for MBC5
-CREATE_MOONEYE_TEST("emulator-only/mbc5/rom_512kb.gb")
-CREATE_MOONEYE_TEST("emulator-only/mbc5/rom_1Mb.gb")
-CREATE_MOONEYE_TEST("emulator-only/mbc5/rom_2Mb.gb")
-CREATE_MOONEYE_TEST("emulator-only/mbc5/rom_4Mb.gb")
-CREATE_MOONEYE_TEST("emulator-only/mbc5/rom_8Mb.gb")
-CREATE_MOONEYE_TEST("emulator-only/mbc5/rom_16Mb.gb")
-CREATE_MOONEYE_TEST("emulator-only/mbc5/rom_32Mb.gb")
-CREATE_MOONEYE_TEST("emulator-only/mbc5/rom_64Mb.gb")
 

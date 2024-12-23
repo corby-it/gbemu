@@ -6,7 +6,7 @@
 #include "AppBase.h"
 #include "AppConfig.h"
 #include "AudioHandler.h"
-#include "LogWindow.h"
+#include "SerialLogWindow.h"
 #include "gb/GameBoyCore.h"
 #include "gb/Matrix.h"
 #include <optional>
@@ -17,6 +17,10 @@
 
 
 
+
+// ------------------------------------------------------------------------------------------------
+// App
+// ------------------------------------------------------------------------------------------------
 
 class App : public AppBase {
 public:
@@ -58,8 +62,7 @@ private:
 
     bool loadRomFile(const std::filesystem::path& path);
 
-    void onSerialData(uint8_t byte);
-
+    
     static float getResamplingRatio(EmulationSpeed speed);
 
     AppConfig mConfig;
@@ -79,7 +82,7 @@ private:
     bool mAudioInitSuccess;
     AudioHandler mAudioHandler;
 
-    LogWindow mSerialLog;
+    SerialLogWindow mSerialLog;
 
 };
 

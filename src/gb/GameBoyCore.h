@@ -107,6 +107,12 @@ public:
     static constexpr std::chrono::nanoseconds clockPeriod = std::chrono::nanoseconds(238);
     static constexpr std::chrono::nanoseconds machinePeriod = std::chrono::nanoseconds(954);
 
+    template<typename TimeT>
+    static constexpr uint64_t timeToCycles(TimeT t) {
+        auto nanos = std::chrono::duration_cast<std::chrono::nanoseconds>(t);
+        return nanos / machinePeriod;
+    }
+
 private:
 
     void gbReset();

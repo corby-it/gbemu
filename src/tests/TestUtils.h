@@ -4,6 +4,7 @@
 #define GBEMU_SRC_TESTS_TESTUTILS_H_
 
 #include "gb/Ppu.h"
+#include "gb/GameBoyCore.h"
 #include <vector>
 #include <filesystem>
 #include <functional>
@@ -87,6 +88,12 @@ std::vector<SampleT> audioFileToVecMono(const std::string& testName, uint32_t sa
 
 std::vector<float> audioFileToVecStereo(const std::string& testName, uint32_t sampleCount);
 
+
+
+
+void saveDisplayToFile(const GameBoyClassic& gb, std::filesystem::path pngPath);
+
+bool compareDisplayWithFile(const GameBoyClassic& gb, std::filesystem::path pngPath);
 
 
 #endif // GBEMU_SRC_TESTS_TESTUTILS_H_
