@@ -200,8 +200,13 @@ void APU::write(uint16_t addr, uint8_t val)
         }
         else {
             // when the apu is not enabled only register NR52 is writable
-            if (addr == areg::NR52)
-                writeReg2(val);
+            // as stated in Blargg's tests, on monochrome models writing to NR41 is also possible 
+            switch (addr) {
+            case areg::NR41: noise.writeReg1(val); break;
+            case areg::NR52: writeReg2(val); break;
+            default:
+                break;
+            }
         }
     }
 }
@@ -258,17 +263,40 @@ uint8_t APU::readReg1() const
 void APU::writeReg2(uint8_t val)
 {
     // only bit 7 is writable (apu on/off)
-    mApuEnabled = val & 0x80;
+    bool newEnable = val & 0x80;
 
-    if (!mApuEnabled) {
-        // when the APU is turned off we reset all channels, reset all registers
-        // and make all the registers (except for NR52) read-only
-        // wave ram is unaffected
-        for (auto ch : mChannels)
-            ch->reset();
+    // wave ram is not affected by powering the apu on or off
+
+    if (mApuEnabled && !newEnable) {
+        // When powered off:
+        // - all registers (NR10-NR51) are instantly written with zero
+        // - any writes to those registers are ignored while power remains off 
+        //      (except on the DMG, where NR41 is unaffected by power and 
+        //      can still be written while off)
+        for (auto ch : mChannels) {
+            ch->writeReg0(0);
+            ch->writeReg1(0);
+            ch->writeReg2(0);
+            ch->writeReg3(0);
+            ch->writeReg4(0);
+        }
 
         writeReg0(0);
         writeReg1(0);
+
+        mApuEnabled = false;
+    }
+    else if (!mApuEnabled && newEnable) {
+        // When powered on:
+        // - the frame sequencer is reset so that the next step will be 0
+        // - the square duty units are reset to the first step of the waveform
+        // - the wave channel's sample buffer is reset to 0
+        mFrameSeq.resetFrameCounter();
+        square1.resetSampleIdx();
+        square2.resetSampleIdx();
+        wave.resetSampleBuffer();
+
+        mApuEnabled = true;
     }
 }
 
@@ -296,6 +324,10 @@ bool APU::step(uint32_t mCycles)
 
     while (mCycles--) {
 
+        // clock the frame sequencer (the counter doesn't stop
+        // when the apu is disabled)
+        auto frameSeqEvt = mFrameSeq.step();
+
         if (mApuEnabled) {
             std::array<bool, chCount> outputReady;
 
@@ -304,8 +336,6 @@ bool APU::step(uint32_t mCycles)
                 outputReady[i] = mChannels[i]->onStep();
 
             // run the frame sequencer
-            auto frameSeqEvt = mFrameSeq.step();
-
             for (auto ch : mChannels) {
                 switch (frameSeqEvt) {
                 case FrameSequencer::Event::LengthTimer:

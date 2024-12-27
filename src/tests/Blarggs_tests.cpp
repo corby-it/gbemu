@@ -62,7 +62,7 @@ public:
             }
             else if (tmp == "Failed\n") {
                 status = TestStatus::Failed;
-                failedTest = 1;
+                failedTest = -1;
             }
             else if (sscanf(tmp.c_str(), "Failed #%d\n", &failedTest) == 1) {
                 status = TestStatus::Failed;
@@ -231,13 +231,13 @@ TEST_CASE("Blargg's test roms - Memory monitor roms") {
     SUBCASE("") { romRelPath = "dmg_sound/rom_singles/02-len ctr.gb"; }
     //SUBCASE("") { romRelPath = "dmg_sound/rom_singles/03-trigger.gb"; }
     SUBCASE("") { romRelPath = "dmg_sound/rom_singles/04-sweep.gb"; }
-    //SUBCASE("") { romRelPath = "dmg_sound/rom_singles/05-sweep details.gb"; }
+    SUBCASE("") { romRelPath = "dmg_sound/rom_singles/05-sweep details.gb"; }
     SUBCASE("") { romRelPath = "dmg_sound/rom_singles/06-overflow on trigger.gb"; }
-    //SUBCASE("") { romRelPath = "dmg_sound/rom_singles/07-len sweep period sync.gb"; }
+    SUBCASE("") { romRelPath = "dmg_sound/rom_singles/07-len sweep period sync.gb"; }
     //SUBCASE("") { romRelPath = "dmg_sound/rom_singles/08-len ctr during power.gb"; }
     //SUBCASE("") { romRelPath = "dmg_sound/rom_singles/09-wave read while on.gb"; }
     //SUBCASE("") { romRelPath = "dmg_sound/rom_singles/10-wave trigger while on.gb"; }
-    //SUBCASE("") { romRelPath = "dmg_sound/rom_singles/11-regs after power.gb"; }
+    SUBCASE("") { romRelPath = "dmg_sound/rom_singles/11-regs after power.gb"; }
     //SUBCASE("") { romRelPath = "dmg_sound/rom_singles/12-wave write while on.gb"; }
 
     // Memory timing test roms

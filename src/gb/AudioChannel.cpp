@@ -223,7 +223,7 @@ void SquareWaveChannel::reset()
 
     // Reg 0
     mSweepPace = 0;
-    mSweepDir = false;
+    mSweepDir = SweepDir::Add;
     mSweepStep = 0;
     // Reg 1
     mDutyCycleIdx = 0;
@@ -237,6 +237,7 @@ void SquareWaveChannel::reset()
     mPeriodH = 0;
 
     mSampleIdx = 0;
+    mSampleBuf = 0;
     mVolume = 0;
 
     mPeriodCounter = 0;
@@ -245,6 +246,7 @@ void SquareWaveChannel::reset()
     mSweepEnabled = false;
     mSweepShadowPeriod = 0;
     mSweepCounter = 0;
+    mSweepSubtractionComputed = false;
 }
 
 
@@ -260,8 +262,16 @@ void SquareWaveChannel::writeReg0(uint8_t val)
     // bits 4-6 are the sweep pace
     // bit 7 is unused
     mSweepStep = val & 0x07;
-    mSweepDir = val & 0x08;
+    auto oldDir = mSweepDir;
+    mSweepDir = val & 0x08 ? SweepDir::Sub : SweepDir::Add;
     mSweepPace = (val & 0x70) >> 4;
+
+    // obscure behavior of the sweep functionality
+    // when switching from subtraction to addition, if a sweep computation already
+    // happened the channel turns off
+    if (mSweepDir == SweepDir::Add && oldDir == SweepDir::Sub && mSweepSubtractionComputed) {
+        mChEnabled = false;
+    }
 }
 
 uint8_t SquareWaveChannel::readReg0() const
@@ -269,8 +279,10 @@ uint8_t SquareWaveChannel::readReg0() const
     if (!mHasSweep)
         return 0xff;
 
-    // the top bit is unused so we assume it reads as 1
-    return 0x80 | (mSweepStep & 0x07) | (mSweepDir << 3) | ((mSweepPace & 0x07) << 4);
+    // the top bit is unused so it reads as 1
+    return 0x80 | (mSweepStep & 0x07) 
+        | (static_cast<uint8_t>(mSweepDir) << 3) 
+        | ((mSweepPace & 0x07) << 4);
 }
 
 void SquareWaveChannel::writeReg1(uint8_t val)
@@ -337,12 +349,15 @@ bool SquareWaveChannel::onStep()
     // for the explanation of why the period counter works like this
 
     mPeriodCounter++;
-    if (mPeriodCounter == 2048) {
+    if (mPeriodCounter >= 2048) {
         // reset the period counter using the values in the registers
         mPeriodCounter = mPeriodL | (mPeriodH << 8);
 
         // advance the sample index by 1 and wrap around when in reaches 8
         mSampleIdx = (mSampleIdx + 1) & 0x07;
+        // copy the sample from the currently selected waveform in the sample buffer 
+        // which will be used to compute the output
+        mSampleBuf = wavetables[mDutyCycleIdx][mSampleIdx];
 
         // new output value available
         return true;
@@ -353,10 +368,10 @@ bool SquareWaveChannel::onStep()
 
 uint8_t SquareWaveChannel::computeChannelOutput()
 {
-    // the current sample is picked from the currently selected wavetable
-    // and multiplied by the current volume value
+    // the output is computed using the current value of
+    // the sample buffer multiplied by the current volume value
     
-    return wavetables[mDutyCycleIdx][mSampleIdx] * mVolume;
+    return mSampleBuf * mVolume;
 }
 
 
@@ -394,11 +409,13 @@ void SquareWaveChannel::sweepTick()
     // the sweep functionality writes the new period value directly to the period registers
     // where it will be picked up by the period counter on its next loop
 
-    mSweepCounter++;
-    if (mSweepCounter >= mSweepPace) {
-        mSweepCounter = 0;
+    mSweepCounter--;
+    if (mSweepCounter == 0) {
+        // for some reason if the sweep pace value is 0 the counter is reloaded with 8 instead
+        // see: https://gbdev.io/pandocs/Audio_details.html#obscure-behavior
+        mSweepCounter = mSweepPace == 0 ? 8 : mSweepPace;
 
-        if (mSweepEnabled) {
+        if (mSweepEnabled && mSweepPace > 0) {
 
             // the first overflow check is applied when sweeping is enabled, even if the channel is not 
             // actually sweeping because sweep pace is 0
@@ -436,10 +453,13 @@ uint16_t SquareWaveChannel::sweepCompute()
     uint16_t tmp = mSweepShadowPeriod >> mSweepStep;
     
     uint16_t newPeriod = 0;
-    if (mSweepDir)
-        newPeriod = mSweepShadowPeriod - tmp;
-    else 
+    if (mSweepDir == SweepDir::Add) {
         newPeriod = mSweepShadowPeriod + tmp;
+    }
+    else {
+        mSweepSubtractionComputed = true;
+        newPeriod = mSweepShadowPeriod - tmp;
+    }
 
     return newPeriod;
 }
@@ -447,9 +467,14 @@ uint16_t SquareWaveChannel::sweepCompute()
 void SquareWaveChannel::onTrigger()
 {
     // when a channel is triggered it becomes enabled and
-    // it starts playing its waveform from the beginning
+    // it starts playing
     mChEnabled = true;
-    mSampleIdx = 0;
+
+    // the sample idx is never reset, except when the apu is turned off and 
+    // on again. on the other hand, the output sample is set to 0 when the channel
+    // is triggered so it always outputs 0 when enabled
+    // mSampleIdx = 0;
+    mSampleBuf = 0;
 
     // update the period counter with the current value
     mPeriodCounter = mPeriodL | (mPeriodH << 8);
@@ -460,8 +485,11 @@ void SquareWaveChannel::onTrigger()
 
     // reset sweep stuff
     mSweepShadowPeriod = mPeriodL | (mPeriodH << 8);
-    mSweepCounter = 0;
+    // for some reason if the sweep pace value is 0 the counter is reloaded with 8 instead
+    // see: https://gbdev.io/pandocs/Audio_details.html#obscure-behavior
+    mSweepCounter = mSweepPace == 0 ? 8 : mSweepPace;
     mSweepEnabled = (mSweepPace > 0) || (mSweepStep > 0);
+    mSweepSubtractionComputed = false;
 
     // if sweep step is != 0 the sweep computation and overflow check are performed immediately
     if (mSweepStep != 0) {
@@ -680,8 +708,9 @@ void UserWaveChannel::reset()
     mPeriodH = 0;
     
     // wave ram is not affected by a reset of the channel
-    // but the index is
+    // but the index and the sample buf are
     mWaveRamIdx = 0;
+    mWaveRamSampleBuf = 0;
 
     mPeriodCounter = 0;
 }
@@ -759,12 +788,22 @@ void UserWaveChannel::writeWaveRam(uint16_t addr, uint8_t val)
     // the ram is 16 bytes long = 32 4-bit samples
     // reading starts from the high nibble of byte 0, then its low nibble, then
     // the high nibble of byte 1, etc.
-
+    
     uint8_t hi = val >> 4;
     uint8_t lo = val & 0x0f;
 
-    mWaveRam[addr * 2] = hi;
-    mWaveRam[addr * 2  + 1] = lo;
+    if (mChEnabled) {
+        // when the channel is enabled, writes should not be possible
+
+        // TODO: due to bugs it's actually possible to write wave ram but those are not
+        // implemented in this case
+    }
+    else {
+        // when the channel is disabled, wave ram can be accessed freely as 
+        // any other ram location
+        mWaveRam[addr * 2] = hi;
+        mWaveRam[addr * 2 + 1] = lo;
+    }
 }
 
 uint8_t UserWaveChannel::readWaveRam(uint16_t addr) const
@@ -773,10 +812,19 @@ uint8_t UserWaveChannel::readWaveRam(uint16_t addr) const
 
     addr -= mmap::regs::audio::wave_ram::start;
 
-    uint8_t hi = mWaveRam[addr * 2];
-    uint8_t lo = mWaveRam[addr * 2 + 1];
+    if (mChEnabled) {
+        // when the channel is enabled, reading wave ram is not possible and reads return 0xFF
 
-    return lo | (hi << 4);
+        // TODO: due to bugs it's actually possible to read wave ram but those are not
+        // implemented in this case
+        return 0xff;
+    }
+    else {
+        uint8_t hi = mWaveRam[addr * 2];
+        uint8_t lo = mWaveRam[addr * 2 + 1];
+
+        return lo | (hi << 4);
+    }
 }
 
 
@@ -798,6 +846,13 @@ bool UserWaveChannel::onStep()
         // advance the sample index by 1 and wrap around when it reaches 32
         mWaveRamIdx = (mWaveRamIdx + 1) & 0x1F;
 
+        // update the internal sample buffer ONLY when the index is advanced by 1
+        // the channel output value is picked from wave ram
+        // the ram is 16 bytes long = 32 4-bit samples
+        // reading starts from the high nibble of byte 0, then its low nibble, then
+        // the high nibble of byte 1, etc.
+        mWaveRamSampleBuf = mWaveRam[mWaveRamIdx];
+
         // new output value available
         return true;
     }
@@ -807,13 +862,6 @@ bool UserWaveChannel::onStep()
 
 uint8_t UserWaveChannel::computeChannelOutput()
 {
-    // the channel output value is picked from wave ram
-    // the ram is 16 bytes long = 32 4-bit samples
-    // reading starts from the high nibble of byte 0, the its low nibble, then
-    // the high nibble of byte 1, etc.
-
-    auto sample = mWaveRam[mWaveRamIdx];
-
     // in this channel volume only has 4 levels:
     // 00   mute (shift sample value right by 4)
     // 01   100 % volume (use sample value as is)
@@ -831,7 +879,7 @@ uint8_t UserWaveChannel::computeChannelOutput()
         break;
     }
 
-    return sample >> shift;
+    return mWaveRamSampleBuf >> shift;
 }
 
 void UserWaveChannel::onTrigger()
@@ -842,6 +890,10 @@ void UserWaveChannel::onTrigger()
     // be incremented one time before emitting the first sample)
     mChEnabled = true;
     mWaveRamIdx = 0;
+
+    // the sample value used for the output (stored in mWaveRamSampleBuf)
+    // IS NOT RESET and maintains the value it had! it's only reset to 0 
+    // when the entire channel is reset!
 
     // update the period counter with the current value
     mPeriodCounter = mPeriodL | (mPeriodH << 8);

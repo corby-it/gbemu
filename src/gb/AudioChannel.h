@@ -100,6 +100,8 @@ public:
     FrameSequencer();
 
     void reset();
+    void resetFrameCounter() { mFrameSequencerCounter = 0; }
+
     Event step();
 
 
@@ -237,6 +239,8 @@ public:
     
     void reset() override;
 
+    void resetSampleIdx() { mSampleIdx = 0; }
+
 
     void writeReg0(uint8_t val) override;
     uint8_t readReg0() const override;
@@ -264,12 +268,15 @@ public:
         ar(cereal::base_class<AudioChannelIf>(this));
         ar(mHasSweep, mSweepPace, mSweepDir, mSweepStep);
         ar(mDutyCycleIdx, mEnvInitialVol, mEnvDir, mEnvPace);
-        ar(mPeriodL, mPeriodH, mSampleIdx, mVolume, mPeriodCounter);
-        ar(mEnvPaceCounter, mSweepEnabled, mSweepShadowPeriod, mSweepCounter);
+        ar(mPeriodL, mPeriodH, mSampleIdx, mSampleBuf, mVolume, mPeriodCounter);
+        ar(mEnvPaceCounter, mSweepEnabled, mSweepShadowPeriod, mSweepCounter, mSweepSubtractionComputed);
     }
 
 
 private:
+
+    enum class SweepDir : uint8_t { Add = 0, Sub = 1 };
+
     bool onStep() override;
     uint8_t computeChannelOutput() override;
 
@@ -285,7 +292,7 @@ private:
 
     // Reg 0 - sweep control
     uint8_t mSweepPace;
-    bool mSweepDir;
+    SweepDir mSweepDir;
     uint8_t mSweepStep;
 
     // Reg 1 - length timer and duty cycle
@@ -304,6 +311,7 @@ private:
     
     // counters and other internal stuff
     uint8_t mSampleIdx;
+    uint8_t mSampleBuf;
     uint8_t mVolume;
 
     // subticks
@@ -314,6 +322,7 @@ private:
     bool mSweepEnabled;
     uint16_t mSweepShadowPeriod;
     uint8_t mSweepCounter;
+    bool mSweepSubtractionComputed;
 };
 
 CEREAL_CLASS_VERSION(SquareWaveChannel, 1);
@@ -408,6 +417,7 @@ public:
 
     void reset() override;
     void resetWaveRam();
+    void resetSampleBuffer() { mWaveRamSampleBuf = 0; }
 
     
     void writeReg0(uint8_t val) override;
@@ -434,7 +444,7 @@ public:
     {
         ar(cereal::base_class<AudioChannelIf>(this));
         ar(mOutputVolume, mPeriodL, mPeriodH);
-        ar(mWaveRam, mWaveRamIdx, mPeriodCounter);
+        ar(mWaveRam, mWaveRamIdx, mWaveRamSampleBuf, mPeriodCounter);
     }
 
 
@@ -444,6 +454,7 @@ private:
     uint8_t computeChannelOutput() override;
 
     void onTrigger() override;
+
 
     // Reg 0 - DAC enable
     // Reg 1 - length timer initial val
@@ -460,6 +471,7 @@ private:
     // counters and other internal stuff
     std::array<uint8_t, 32> mWaveRam;
     uint8_t mWaveRamIdx;
+    uint8_t mWaveRamSampleBuf;
     
     uint16_t mPeriodCounter;
 
