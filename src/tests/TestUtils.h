@@ -90,10 +90,4 @@ std::vector<float> audioFileToVecStereo(const std::string& testName, uint32_t sa
 
 
 
-
-void saveDisplayToFile(const GameBoyClassic& gb, std::filesystem::path pngPath);
-
-bool compareDisplayWithFile(const GameBoyClassic& gb, std::filesystem::path pngPath);
-
-
 #endif // GBEMU_SRC_TESTS_TESTUTILS_H_

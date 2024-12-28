@@ -42,6 +42,8 @@ workspace(project_name)
         src_base .. "/gb/**.h",
         src_base .. "/gbdebug/**.h",
         src_base .. "/gbdebug/**.cpp",
+        src_base .. "/utils/**.cpp",
+        src_base .. "/utils/**.h",
     }
 
     includedirs {

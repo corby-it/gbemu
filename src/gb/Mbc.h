@@ -3,7 +3,7 @@
 #ifndef GBEMU_SRC_GB_MBC_H_
 #define GBEMU_SRC_GB_MBC_H_
 
-#include "Utils.h"
+#include "Rtc.h"
 #include "GbCommons.h"
 #include <cstdint>
 #include <vector>

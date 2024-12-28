@@ -2,7 +2,7 @@
 
 #include "gb/Mbc.h"
 #include "gb/GbCommons.h"
-#include "gb/Utils.h"
+#include "gb/Rtc.h"
 #include <thread>
 #include <chrono>
 #include <doctest/doctest.h>

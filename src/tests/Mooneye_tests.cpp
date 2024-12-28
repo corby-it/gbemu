@@ -1,6 +1,7 @@
 
 
 #include "TestUtils.h"
+#include "utils/Utils.h"
 #include "gb/GameBoyCore.h"
 #include "doctest/doctest.h"
 #include <chrono>

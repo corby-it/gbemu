@@ -1,6 +1,7 @@
 
 
 #include "App.h"
+#include "utils/Utils.h"
 #include <imgui/imgui_internal.h>
 #include <ImGuiFileDialog/ImGuiFileDialog.h>
 #include <imgui_memory_editor.h>
@@ -364,7 +365,7 @@ void App::UIDrawMenu()
     if (ImGui::BeginMainMenuBar())
     {
         if (ImGui::BeginMenu("File")) {
-            if (ImGui::MenuItem("Open rom file...", "CTRL+O")) {
+            if (ImGui::MenuItem("Open rom file...")) {
                 IGFD::FileDialogConfig config;
 
                 if (mConfig.recentRomsFolder.empty())
@@ -373,7 +374,7 @@ void App::UIDrawMenu()
                     config.path = mConfig.recentRomsFolder.string().c_str();
 
                 config.flags = ImGuiFileDialogFlags_Modal;
-                ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose Rom File", ".gb,.gbc", config);
+                ImGuiFileDialog::Instance()->OpenDialog("ChooseRomFileDlgKey", "Choose Rom File", ".gb,.gbc", config);
             }
             if (ImGui::BeginMenu("Open Recent...")) {
                 if (mConfig.recentRomsPath.empty()) {
@@ -390,7 +391,7 @@ void App::UIDrawMenu()
                 ImGui::EndMenu();
             }
             ImGui::Separator();
-            if (ImGui::MenuItem("Quit", "Alt+F4")) { closeWindow(); }
+            if (ImGui::MenuItem("Quit")) { closeWindow(); }
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Tools")) {
@@ -400,6 +401,12 @@ void App::UIDrawMenu()
             ImGui::MenuItem("Audio visualizer", nullptr, &mConfig.showAudioVisual);
             ImGui::MenuItem("Input configuration", nullptr, &mConfig.showInputConfigWindow);
             ImGui::MenuItem("Serial log", nullptr, &mConfig.showSerialLog);
+            if (ImGui::MenuItem("Save screenshot")) {
+                IGFD::FileDialogConfig config;
+                config.path = ".";
+                config.flags = ImGuiFileDialogFlags_Modal | ImGuiFileDialogFlags_ConfirmOverwrite;
+                ImGuiFileDialog::Instance()->OpenDialog("SaveScreenshotDlgKey", "Save screenshot", ".png", config);
+            }
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("About")) {
@@ -409,8 +416,8 @@ void App::UIDrawMenu()
         ImGui::EndMainMenuBar();
     }
 
-    // handle file dialog
-    if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey", ImGuiWindowFlags_NoCollapse, ImVec2{ 350, 250 })) {
+    // handle rom file dialog
+    if (ImGuiFileDialog::Instance()->Display("ChooseRomFileDlgKey", ImGuiWindowFlags_NoCollapse, ImVec2{ 350, 250 })) {
         if (ImGuiFileDialog::Instance()->IsOk()) {
             // action if OK
             if (loadRomFile(ImGuiFileDialog::Instance()->GetFilePathName())) {
@@ -431,6 +438,18 @@ void App::UIDrawMenu()
             ImGui::CloseCurrentPopup();
         }
         ImGui::EndPopup();
+    }
+
+
+    // handle save screenshot file dialog
+    if (ImGuiFileDialog::Instance()->Display("SaveScreenshotDlgKey", ImGuiWindowFlags_NoCollapse, ImVec2{ 350, 250 })) {
+        if (ImGuiFileDialog::Instance()->IsOk()) { // action if OK
+
+            saveDisplayToFile(mGameboy, ImGuiFileDialog::Instance()->GetFilePathName(), 2);
+
+        }
+
+        ImGuiFileDialog::Instance()->Close();
     }
 }
 
