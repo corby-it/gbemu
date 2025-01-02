@@ -26,7 +26,7 @@ TEST_CASE("Square wave channel")
     APU apu(sampleRate);
     
     
-    SUBCASE("Generate two square waves at different frequencies pannel L and R") {
+    SUBCASE("Generate two square waves at different frequencies panned L and R") {
         testName = "apu01-682hz-left-170hz-right";
 
         // enable the apu

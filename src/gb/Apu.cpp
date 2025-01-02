@@ -171,23 +171,23 @@ void APU::write(uint16_t addr, uint8_t val)
             case areg::NR11: square1.writeReg1(val); break;
             case areg::NR12: square1.writeReg2(val); break;
             case areg::NR13: square1.writeReg3(val); break;
-            case areg::NR14: square1.writeReg4(val); break;
+            case areg::NR14: square1.writeReg4(val, mFrameSeq.currentFrame()); break;
 
             case areg::NR21: square2.writeReg1(val); break;
             case areg::NR22: square2.writeReg2(val); break;
             case areg::NR23: square2.writeReg3(val); break;
-            case areg::NR24: square2.writeReg4(val); break;
+            case areg::NR24: square2.writeReg4(val, mFrameSeq.currentFrame()); break;
 
             case areg::NR30: wave.writeReg0(val); break;
             case areg::NR31: wave.writeReg1(val); break;
             case areg::NR32: wave.writeReg2(val); break;
             case areg::NR33: wave.writeReg3(val); break;
-            case areg::NR34: wave.writeReg4(val); break;
+            case areg::NR34: wave.writeReg4(val, mFrameSeq.currentFrame()); break;
 
             case areg::NR41: noise.writeReg1(val); break;
             case areg::NR42: noise.writeReg2(val); break;
             case areg::NR43: noise.writeReg3(val); break;
-            case areg::NR44: noise.writeReg4(val); break;
+            case areg::NR44: noise.writeReg4(val, mFrameSeq.currentFrame()); break;
 
             case areg::NR50: writeReg0(val); break;
             case areg::NR51: writeReg1(val); break;

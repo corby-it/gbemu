@@ -104,6 +104,8 @@ public:
 
     Event step();
 
+    uint8_t currentFrame() const { return mFrameSequencerCounter; }
+
 
     template<class Archive>
     void serialize(Archive& ar)
@@ -158,8 +160,8 @@ public:
     virtual void writeReg3(uint8_t /*val*/) { }
     virtual uint8_t readReg3() const { return 0xff; }
 
-    virtual void writeReg4(uint8_t /*val*/) {}
-    virtual uint8_t readReg4() const { return 0xff; }
+    void writeReg4(uint8_t val, uint8_t currentFrameSeqStep = 0);
+    uint8_t readReg4() const;
 
     
     virtual void envelopeTick() {}
@@ -180,7 +182,7 @@ public:
     void serialize(Archive& ar)
     {
         ar(mChEnabled, mDacEnabled, mCurrOutput);
-        ar(mLengthTimerEnable, mLengthTimerCounter, mLengthTimerTargetVal);
+        ar(mLengthTimerEnable, mLengthTimerCounter, mLengthTimerMax);
         ar(mUseInternalFrameSequencer, mFrameSeq);
         ar(mTimeCounter, mDownsamplingFreq);
     }
@@ -189,15 +191,14 @@ public:
 
 protected:
 
+    virtual void onWriteReg4(uint8_t /*val*/) {}
+    
     virtual uint8_t computeChannelOutput() = 0;
 
-    void trigger();
+    // channel specific stuff that happens during a trigger event
     virtual void onTrigger() = 0;
 
-    // length timer counter value can be changed at any time
-    void setLengthTimerCounter(uint16_t val) { mLengthTimerCounter = val; }
-    void enableLengthTimer(bool b) { mLengthTimerEnable = b; }
-    bool isLengthTimerEnabled() const { return mLengthTimerEnable; }
+    void setLengthTimerCounter(uint16_t val);
 
     bool mChEnabled;
     bool mDacEnabled;
@@ -210,7 +211,7 @@ private:
     // length timer stuff
     bool mLengthTimerEnable;
     uint16_t mLengthTimerCounter;
-    uint16_t mLengthTimerTargetVal;
+    uint16_t mLengthTimerMax;
 
     // frame sequencer stuff
     bool mUseInternalFrameSequencer;
@@ -254,9 +255,7 @@ public:
     void writeReg3(uint8_t val) override { mPeriodL = val; }
     uint8_t readReg3() const override { return mPeriodL; }
 
-    void writeReg4(uint8_t val) override;
-    uint8_t readReg4() const override;
-
+    
 
     void envelopeTick() override;
     void sweepTick() override;
@@ -274,6 +273,8 @@ public:
 
 
 private:
+
+    void onWriteReg4(uint8_t val) override;
 
     enum class SweepDir : uint8_t { Add = 0, Sub = 1 };
 
@@ -351,9 +352,8 @@ public:
     void writeReg3(uint8_t val) override;
     uint8_t readReg3() const override;
 
-    void writeReg4(uint8_t val) override;
-    uint8_t readReg4() const override;
-
+    // the noise channel doesn't need to override the reg write function
+        
     
     void envelopeTick() override;
 
@@ -432,8 +432,6 @@ public:
     void writeReg3(uint8_t val) override { mPeriodL = val; }
     uint8_t readReg3() const override { return mPeriodL; }
 
-    void writeReg4(uint8_t val) override;
-    uint8_t readReg4() const override;
 
     void writeWaveRam(uint16_t addr, uint8_t val);
     uint8_t readWaveRam(uint16_t addr) const;
@@ -449,6 +447,8 @@ public:
 
 
 private:
+
+    void onWriteReg4(uint8_t val) override;
 
     bool onStep() override;
     uint8_t computeChannelOutput() override;

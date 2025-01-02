@@ -71,8 +71,8 @@ FrameSequencer::Event FrameSequencer::step()
 // AudioChannelIf
 // ------------------------------------------------------------------------------------------------
 
-AudioChannelIf::AudioChannelIf(uint16_t lengthTimerTarget, uint32_t downsamplingFreq)
-    : mLengthTimerTargetVal(lengthTimerTarget)
+AudioChannelIf::AudioChannelIf(uint16_t lengthTimerMax, uint32_t downsamplingFreq)
+    : mLengthTimerMax(lengthTimerMax)
     , mUseInternalFrameSequencer(false)
     , mDownsamplingFreq(downsamplingFreq)
 {
@@ -153,41 +153,95 @@ void AudioChannelIf::updateChannelOutput()
     }
 }
 
-void AudioChannelIf::trigger()
+
+void AudioChannelIf::writeReg4(uint8_t val, uint8_t /*currentFrameSeqStep*/)
 {
-    // on a trigger event, if the length timer counter is elapsed it's automatically set to 
-    // the maximum value, that is 0
-    if (mLengthTimerCounter == mLengthTimerTargetVal)
-        mLengthTimerCounter = 0;
+    // bits 0-2 are the high bits of the period on square and wave channels
+    // bits 3-5 are unused
+    // bit 6 enables the length timer
+    // bit 7 triggers the channel
 
-    // call the onTrigger function of the implementation 
-    onTrigger();
+    bool triggered = val & 0x80;
+    
+    //bool wasLengthEnabled = mLengthTimerEnable;
+    mLengthTimerEnable = val & 0x40;
+    
+    // allow the channels to read the period high bits
+    onWriteReg4(val);
 
-    // if the dac is off the channel is disabled again
-    if (!mDacEnabled)
-        mChEnabled = false;
+    // More obscure behavior, if:
+    // - a write to reg 4 happens when the next frame of the apu frame sequencer is one that 
+    //      DOESN'T trigger the length counter tick and (even steps)
+    // - the length timer was previously disabled and now is enabled and
+    // - length counter is not zero
+    // then, one extra clock happens for the length timer (that is, it's decremented)
+    // if the decrement makes the counter 0 and the channel is not triggered 
+    // then the channel is disabled
+    // see: https://gbdev.io/pandocs/Audio_details.html#obscure-behavior
+
+    //bool nextFrameTicksLength = currentFrameSeqStep & 0x01;
+
+    //if (!nextFrameTicksLength && !wasLengthEnabled && mLengthTimerEnable && mLengthTimerCounter > 0) {
+    //    mLengthTimerCounter--;
+
+    //    if (mLengthTimerCounter == 0 && !triggered) 
+    //        mChEnabled = false;
+    //}
+
+
+    if (triggered) {
+        // on a trigger event, if the length timer counter is elapsed it's automatically set to 
+        // the maximum value
+        if (mLengthTimerCounter == 0) {
+            mLengthTimerCounter = mLengthTimerMax;
+            
+            /*if (mLengthTimerEnable && !nextFrameTicksLength)
+                mLengthTimerCounter--;*/
+        }
+
+        // when a channel is triggered it becomes enabled and it starts playing
+        // only if the DAC is enabled as well
+        if(mDacEnabled)
+            mChEnabled = true;
+
+        // call the onTrigger function of the single channels
+        onTrigger();
+    }
 }
 
+uint8_t AudioChannelIf::readReg4() const
+{
+    // the only readable bit in this register is the length enable bit
+    return 0xff & (mLengthTimerEnable << 6);
+}
+
+void AudioChannelIf::setLengthTimerCounter(uint16_t val) 
+{
+    // length timer counter value can be modified at any time
+    // and is set at max - value
+    // for the square and noise channels max is 64
+    // for the wave channel max is 256
+
+    mLengthTimerCounter = mLengthTimerMax - val; 
+}
 
 void AudioChannelIf::lengthTimerTick()
 {
-    // for every tick of the length timer we increase it by 1
-    // when the counter reaches target value the channel is turned off
-    // square wave and noise channels use 64 as target value
-    // user wave channel use 256 as target value
+    // for every tick the length timer counter is decreased it by 1
+    // when the counter reaches 0 channel is turned off
+    
     // NOTES:
     //  - the length timer keeps ticking even if the channel is disabled
-    //  - reaching the target val does not disable the counter
+    //  - reaching 0 does not disable the counter (that is, the enable flag will still
+    //      read as 1 when read from register 4 of the channel)
     //  - the current counter value can be changed at any time
     
-    if (mLengthTimerEnable && mLengthTimerCounter < mLengthTimerTargetVal)
-        mLengthTimerCounter++;
-    
-    if (mLengthTimerCounter == mLengthTimerTargetVal) {
-        // the timer elapsed, if it was enabled we also 
-        // turn off the channel
-        if (mLengthTimerEnable)
+    if (mLengthTimerEnable && mLengthTimerCounter > 0) {
+        if (--mLengthTimerCounter == 0) {
+            // the length timer elapsed, if length timer was enabled 
+            // the channel must be turned off
             mChEnabled = false;
+        }
     }
 }
 
@@ -322,25 +376,12 @@ uint8_t SquareWaveChannel::readReg2() const
     return (mEnvPace & 0x07) | (mEnvDir << 3) | (mEnvInitialVol << 4);
 }
 
-void SquareWaveChannel::writeReg4(uint8_t val)
+void SquareWaveChannel::onWriteReg4(uint8_t val)
 {
     // bits 0-2 are the high bits of the period
-    // bits 3-5 are unused
-    // bit 6 enables the length timer
-    // bit 7 triggers the channel
     mPeriodH = val & 0x07;
-    
-    if (val & 0x80)
-        trigger();
-
-    enableLengthTimer(val & 0x40);
 }
 
-uint8_t SquareWaveChannel::readReg4() const
-{
-    // the only readable bit in this register is the length enable bit
-    return 0xff & (isLengthTimerEnabled() << 6);
-}
 
 bool SquareWaveChannel::onStep()
 {
@@ -466,10 +507,6 @@ uint16_t SquareWaveChannel::sweepCompute()
 
 void SquareWaveChannel::onTrigger()
 {
-    // when a channel is triggered it becomes enabled and
-    // it starts playing
-    mChEnabled = true;
-
     // the sample idx is never reset, except when the apu is turned off and 
     // on again. on the other hand, the output sample is set to 0 when the channel
     // is triggered so it always outputs 0 when enabled
@@ -591,23 +628,6 @@ uint8_t NoiseChannel::readReg3() const
     return (mClockDivider & 0x07) | (mLfsrWidthIs7 << 3) | (mClockShift << 4);
 }
 
-void NoiseChannel::writeReg4(uint8_t val)
-{
-    // bits 0-5 are unused
-    // bit 6 enables the length timer
-    // bit 7 triggers the channel
-    if (val & 0x80)
-        trigger();
-
-    enableLengthTimer(val & 0x40);
-}
-
-uint8_t NoiseChannel::readReg4() const
-{
-    // the only readable bit in this register is the length enable bit
-    return 0xff & (isLengthTimerEnabled() << 6);
-}
-
 
 bool NoiseChannel::onStep()
 {
@@ -667,10 +687,6 @@ void NoiseChannel::envelopeTick()
 
 void NoiseChannel::onTrigger()
 {
-    // when a channel is triggered it becomes enabled and
-    // it starts playing noise
-    mChEnabled = true;
-
     // reset the clock counter target using the clock divider and the shift values
     /*static constexpr uint8_t dividers[8] = { 8, 16, 32, 48, 64, 80, 96, 112 };*/
     static constexpr uint8_t dividers[8] = { 4, 8, 16, 24, 32, 40, 48, 56 };
@@ -759,25 +775,12 @@ uint8_t UserWaveChannel::readReg2() const
     return 0xff & (mOutputVolume << 5);
 }
 
-void UserWaveChannel::writeReg4(uint8_t val)
+void UserWaveChannel::onWriteReg4(uint8_t val)
 {
     // bits 0-2 are the high bits of the period
-    // bits 3-5 are unused
-    // bit 6 enables the length timer
-    // bit 7 triggers the channel
     mPeriodH = val & 0x07;
-    
-    if (val & 0x80)
-        trigger();
-
-    enableLengthTimer(val & 0x40);
 }
 
-uint8_t UserWaveChannel::readReg4() const
-{
-    // the only readable bit in this register is the length enable bit
-    return 0xff & (isLengthTimerEnabled() << 6);
-}
 
 void UserWaveChannel::writeWaveRam(uint16_t addr, uint8_t val)
 {
@@ -884,11 +887,9 @@ uint8_t UserWaveChannel::computeChannelOutput()
 
 void UserWaveChannel::onTrigger()
 {
-    // when a channel is triggered it becomes enabled and
-    // it starts playing its waveform from the beginning, in this case 
-    // the wave channel starts playing from sample 1 instead of 0 (idx will
-    // be incremented one time before emitting the first sample)
-    mChEnabled = true;
+    // when a channel is triggered it starts playing its waveform from the beginning,
+    // in this case the wave channel starts playing from sample 1 instead of 0 
+    // (idx will be incremented one time before emitting the first sample)
     mWaveRamIdx = 0;
 
     // the sample value used for the output (stored in mWaveRamSampleBuf)
