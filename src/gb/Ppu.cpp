@@ -349,18 +349,29 @@ void PPU::writeLCDC(uint8_t val)
 
     regs.LCDC.fromU8(val);
 
-    // when the lcd is turned off we reset the ppu and we stop stepping
-    // when lcd enable will go back to true, everything will start working again
-    // using the step() function
-    if (old.lcdEnable && !regs.LCDC.lcdEnable)
-        onDisabled();
+
+    if (old.lcdEnable != regs.LCDC.lcdEnable) {
+        // when the lcd is turned on or off dot counter and LY are reset to 0 
+        // and STAT is updated
+        mDotCounter = 0;
+        regs.LY = 0;
+
+        if (!regs.LCDC.lcdEnable) {
+            mOamScanRegister.reset();
+            mFirstStep = true;
+            display.clear();
+        }
+
+        updateSTAT();
+    }
+
 }
 
 
 void PPU::lockRamAreas(bool lock)
 {
     if (lock) {
-        // ram areas are lock depending on the current ppu mode
+        // ram areas are locked depending on the current ppu mode
         switch (regs.STAT.ppuMode) {
         default:
         case PPUMode::HBlank:
@@ -448,19 +459,6 @@ PPU::OAMDataPtrList PPU::findCurrOams(uint32_t currX) const
     }
 
     return oams;
-}
-
-void PPU::onDisabled()
-{
-    // when the ppu and lcd are disabled we have to unlock all ram areas, reset the internals,
-    // registers won't be touched
-    mDotCounter = 0;
-    mOamScanRegister.reset();
-    mFirstStep = true;
-
-    display.clear();
-
-    updateSTAT();
 }
 
 

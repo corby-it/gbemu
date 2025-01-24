@@ -504,7 +504,6 @@ private:
     void oamScan();
     OAMDataPtrList findCurrOams(uint32_t currX) const;
 
-    void onDisabled();
 
     void renderPixel(uint32_t dispX);
     uint8_t renderPixelGetBgVal(uint32_t dispX);
