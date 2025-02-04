@@ -32,7 +32,7 @@ App::App()
     , mLastEmulateCall(-1ns)
     , mAudioInitSuccess(false)
 {
-    // read configuration from file, oin failure restart from default values
+    // read configuration from file, on failure restart from default values
     try {
         std::ifstream ifs(mConfigSavePath);
         if (ifs) {

@@ -79,6 +79,7 @@ public:
     SaveStateError loadState(const std::filesystem::path& path);
 
     CartridgeLoadingRes loadCartridge(const std::filesystem::path& path);
+    CartridgeLoadingRes loadCartridge(const uint8_t* data, size_t size);
 
     std::filesystem::path romFilePath;
 

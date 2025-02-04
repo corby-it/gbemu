@@ -338,6 +338,8 @@ void GameBoyClassic::stepReturn()
 
 CartridgeLoadingRes GameBoyClassic::loadCartridge(const std::filesystem::path& path)
 {
+    // load cartridge from file
+
     auto res = cartridge.loadRomFile(path);
 
     if (res == CartridgeLoadingRes::Ok) {
@@ -347,6 +349,24 @@ CartridgeLoadingRes GameBoyClassic::loadCartridge(const std::filesystem::path& p
 
     // also try to load debug symbols (if any)
     dbg.symTable->parseSymbolFile(path);
+
+    return res;
+}
+
+CartridgeLoadingRes GameBoyClassic::loadCartridge(const uint8_t* data, size_t size)
+{
+    // load cartridge from memory
+
+    auto res = cartridge.loadRomData(data, size);
+
+    if (res == CartridgeLoadingRes::Ok) {
+        // loading from memory, we don't know where the rom file is
+        romFilePath.clear();
+        gbReset();
+    }
+
+    // we don't have debug symbols so clear the sym table
+    dbg.symTable->reset();
 
     return res;
 }

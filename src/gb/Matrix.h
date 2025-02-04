@@ -17,6 +17,10 @@ struct RgbaPixel {
     uint8_t G;
     uint8_t B;
     uint8_t A;
+
+    uint32_t asU32() const {
+        return (R << 24) | (G << 16) | (B << 8) | A;
+    }
 };
 
 

@@ -2,6 +2,7 @@
 project_name = "gbemu"
 app_name = project_name
 tests_name = project_name .. "-tests"
+retro_core_name = project_name .. "-core"
 
 
 workspace(project_name)
@@ -208,3 +209,29 @@ workspace(project_name)
             optimize "debug"
             buildoptions { "--coverage" }
             linkoptions { "--coverage" }
+
+
+    project(retro_core_name)
+        kind "SharedLib"
+        language "C++"
+        cppdialect "C++17"
+
+        removeconfigurations { "profiling" }
+
+        defines {
+            "PROJECT_NAME=" .. retro_core_name
+        }
+
+        -- all src files for the libretro core are in the "retro" folder
+        files {
+            src_base .. "/retro/**.h",
+            src_base .. "/retro/**.cpp",
+        }
+
+        includedirs {
+            src_base .. "/retro"
+        }
+
+        externalincludedirs {
+            src_base .. "/third-party/libretro-common/include",
+        }

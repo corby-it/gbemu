@@ -16,12 +16,13 @@ class SymTable {
 public:
     SymTable();
 
+    void reset();
+
     bool parseSymbolFile(std::filesystem::path romPath);
 
     const std::string* getSymbol(uint16_t currRomBank, uint16_t currRamBank, uint16_t addr);
 
 private:
-    void reset();
 
     BankSymTable* getTable(uint16_t bank, uint16_t addr);
 

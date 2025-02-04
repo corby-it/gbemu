@@ -140,6 +140,7 @@ private:
 
 enum class CartridgeLoadingRes {
     Ok,
+    FileError,
     FileTooSmall,
     HeaderRomSizeFileSizeMismatch,
     HeaderVerificationFailed,
@@ -157,6 +158,7 @@ public:
     void reset();
 
     CartridgeLoadingRes loadRomFile(const std::filesystem::path& romPath);
+    CartridgeLoadingRes loadRomData(const uint8_t* data, size_t size);
 
 
     uint8_t read8(uint16_t addr) const {
@@ -182,6 +184,7 @@ public:
     std::unique_ptr<MbcInterface> mbc;
 
     CartridgeHeader header;
+
 };
 
 CEREAL_CLASS_VERSION(Cartridge, 1);

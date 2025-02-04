@@ -613,6 +613,7 @@ const char* cartridgeLoadingResToStr(CartridgeLoadingRes lr)
     switch (lr) {
     default:
     case CartridgeLoadingRes::Ok: return "Ok";
+    case CartridgeLoadingRes::FileError: return "Error accessing the file";
     case CartridgeLoadingRes::FileTooSmall: return "Rom file is too small";
     case CartridgeLoadingRes::HeaderRomSizeFileSizeMismatch: return "Header ROM size and file size don't match";
     case CartridgeLoadingRes::HeaderVerificationFailed: return "Header verification failed";
@@ -647,27 +648,45 @@ void Cartridge::reset()
 
 CartridgeLoadingRes Cartridge::loadRomFile(const fs::path& romPath)
 {
-    // read a rom file from disk and set it up into this cartridge instance 
-    auto romFileSize = fs::file_size(romPath);
+    // read a rom file from disk and set it up into this cartridge instance
+    std::error_code ec;
+    auto romFileSize = fs::file_size(romPath, ec);
+
+    if(ec)
+        return CartridgeLoadingRes::FileError;
 
     // the smallest possible rom must be at least 32K
     if(romFileSize < 32_KB)
         return CartridgeLoadingRes::FileTooSmall;
 
-    // read the first 0x150 bytes to parse the cartridge header
-    std::array<uint8_t, CartridgeHeader::headerSize> firstBytes;
-
+    // read the entire file into memory
     std::ifstream ifs(romPath, std::ios::in | std::ios::binary);
-    ifs.read((char*)firstBytes.data(), firstBytes.size());
+    if(!ifs)
+        return CartridgeLoadingRes::FileError;
 
-    CartridgeHeader tmpHeader(firstBytes.data());
+    std::vector<uint8_t> romData(romFileSize);
+    ifs.read((char*)romData.data(), romFileSize);
+
+    // continue from loadRomData
+    return loadRomData(romData.data(), romData.size());
+}
+
+
+CartridgeLoadingRes Cartridge::loadRomData(const uint8_t* data, size_t size)
+{
+    // the smallest possible rom must be at least 32K
+    if (size < 32_KB)
+        return CartridgeLoadingRes::FileTooSmall;
+
+    // create a temporary header and check a few things first
+    CartridgeHeader tmpHeader(data);
 
     // the rom file size must be the same as the one we read
     // from the cartridge header, otherwise something is corrupted
     // we also have to check if the header doesn't contain garbage ram or rom sizes
-    if (tmpHeader.romSize() != romFileSize)
+    if (tmpHeader.romSize() != size)
         return CartridgeLoadingRes::HeaderRomSizeFileSizeMismatch;
-        
+
     if (!tmpHeader.canLoad())
         return CartridgeLoadingRes::HeaderVerificationFailed;
 
@@ -703,7 +722,7 @@ CartridgeLoadingRes Cartridge::loadRomFile(const fs::path& romPath)
     case CartridgeType::MBC5RumbleRamBattery:
         mbc = std::make_unique<Mbc5>(tmpHeader.romSize(), tmpHeader.ramSize());
         break;
-    
+
     default:
         // MBC type not supported yet
         return CartridgeLoadingRes::MbcNotSupported;
@@ -711,9 +730,8 @@ CartridgeLoadingRes Cartridge::loadRomFile(const fs::path& romPath)
 
     mbc->reset();
 
-    // read rom file content into mbc rom
-    ifs.seekg(0);
-    ifs.read((char*)mbc->rom.data(), tmpHeader.romSize());
+    // copy rom data into mbc rom
+    memcpy((char*)mbc->rom.data(), data, size);
 
     // update the actual cartridge header
     header = CartridgeHeader(mbc->rom.data());

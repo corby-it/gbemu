@@ -11,3 +11,6 @@
 [submodule "src/third-party/implot"]
 	path = src/third-party/implot
 	url = https://github.com/epezent/implot.git
+[submodule "src/third-party/libretro-common"]
+	path = src/third-party/libretro-common
+	url = https://github.com/libretro/libretro-common.git
