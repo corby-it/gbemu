@@ -106,6 +106,35 @@
             "dependsOn": "premake gmake"
         },
         {
+            "label": "Build libretro core",
+            "type": "shell",
+            "group": "test",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": false
+            },
+            "command": "make",
+            "args": [
+                "-C",
+                "build",
+                "gbemu-core",
+                "config=release",
+                "-j8"
+            ],
+            "problemMatcher": {
+                "base": "$gcc",
+                "fileLocation": [
+                    "relative",
+                    "${workspaceFolder}/src"
+                ]
+            },
+            "dependsOn": "premake gmake"
+        },
+        {
 			"label": "Build and run tests",
 			"type": "process",
 			"group": "build",
