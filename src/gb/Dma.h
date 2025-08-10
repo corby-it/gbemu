@@ -7,15 +7,20 @@
 #include <cereal/cereal.hpp>
 
 
-class DMA {
+class DMA : public ReadWriteIf {
 public:
     DMA(Bus& bus);
 
     void reset();
     void step(uint32_t mCycles);
 
-    uint8_t read() const { return mReg; }
-    void write(uint8_t val);
+    
+    uint8_t read8(uint16_t addr) const override { 
+        assert(addr == mmap::regs::lcd::dma);
+        return mReg;
+    }
+
+    void write8(uint16_t addr, uint8_t val) override;
 
     bool isTransferring() const { return mIsTransferring; }
     bool isScheduled() const { return mIsScheduled; }

@@ -108,7 +108,7 @@ CpuStepRes CPU::step()
             // as soon as an interrupt is serviced the IME flags is reset and the corresponding
             // bit in the IF register is reset as well
             irqs.ime = false;
-            irqs.writeIF(irqs.readIF() & ~Irqs::mask(irqType));
+            irqs.write8(mmap::regs::IF, irqs.read8(mmap::regs::IF) & ~Irqs::mask(irqType));
 
             // calling an interrupt has the same effect as a CALL instruction
             auto cycles = opCallIrq(irqType);

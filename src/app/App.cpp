@@ -1404,9 +1404,9 @@ void App::UIDrawCpuRegTable()
         { fmtHex4, "BC", mGameboy.cpu.regs.BC() },
         { fmtHex4, "PC", mGameboy.cpu.regs.PC },
         { fmtHex4, "DE", mGameboy.cpu.regs.DE() },
-        { fmtHex2, "IE", mGameboy.cpu.irqs.readIE()},
+        { fmtHex2, "IE", mGameboy.cpu.irqs.read8(mmap::IE)},
         { fmtHex4, "HL", mGameboy.cpu.regs.HL() },
-        { fmtHex2, "IF", mGameboy.cpu.irqs.readIF()},
+        { fmtHex2, "IF", mGameboy.cpu.irqs.read8(mmap::regs::IF)},
     };
 
     if (ImGui::BeginTable("cpuRegsTable", 4, regsTableFlags))
@@ -1478,10 +1478,10 @@ void App::UIDrawCpuFlagsTable()
 void App::UIDrawTimerRegTable()
 {
     RegTableEntry timerEntries[] = {
-         { fmtHex2, "DIV", mGameboy.timer.readDIV() },
-         { fmtHex2, "TIMA", mGameboy.timer.readTIMA() },
-         { fmtHex2, "TMA", mGameboy.timer.readTMA() },
-         { fmtHex2, "TAC", mGameboy.timer.readTAC() }
+         { fmtHex2, "DIV", mGameboy.timer.read8(mmap::regs::timer::DIV) },
+         { fmtHex2, "TIMA", mGameboy.timer.read8(mmap::regs::timer::TIMA) },
+         { fmtHex2, "TMA", mGameboy.timer.read8(mmap::regs::timer::TMA) },
+         { fmtHex2, "TAC", mGameboy.timer.read8(mmap::regs::timer::TAC) }
     };
 
     if (ImGui::BeginTable("timerRegsTable", 4, regsTableFlags))
@@ -1514,20 +1514,24 @@ void App::UIDrawTimerRegTable()
     }
 }
 
+
+
+namespace lcdreg = mmap::regs::lcd;
+
 void App::UIDrawPpuRegTable()
 {
     RegTableEntry ppuEntries[] = {
-        { fmtHex2, "LCDC", mGameboy.ppu.readLCDC() },
-        { fmtHex2, "BGP", mGameboy.ppu.readBGP() },
-        { fmtHex2, "STAT", mGameboy.ppu.readSTAT() },
-        { fmtHex2, "OBP0", mGameboy.ppu.readOBP0() },
-        { fmtHex2, "LY", mGameboy.ppu.readLY() },
-        { fmtHex2, "OBP1", mGameboy.ppu.readOBP1() },
-        { fmtHex2, "LYC", mGameboy.ppu.readLYC() },
-        { fmtHex2, "WX", mGameboy.ppu.readWX() },
-        { fmtHex2, "SCX", mGameboy.ppu.readSCX() },
-        { fmtHex2, "WY", mGameboy.ppu.readWY() },
-        { fmtHex2, "SCY", mGameboy.ppu.readSCY() },
+        { fmtHex2, "LCDC", mGameboy.ppu.read8(lcdreg::lcdc) },
+        { fmtHex2, "BGP", mGameboy.ppu.read8(lcdreg::bgp) },
+        { fmtHex2, "STAT", mGameboy.ppu.read8(lcdreg::stat) },
+        { fmtHex2, "OBP0", mGameboy.ppu.read8(lcdreg::obp0) },
+        { fmtHex2, "LY", mGameboy.ppu.read8(lcdreg::ly) },
+        { fmtHex2, "OBP1", mGameboy.ppu.read8(lcdreg::obp1) },
+        { fmtHex2, "LYC", mGameboy.ppu.read8(lcdreg::lyc) },
+        { fmtHex2, "WX", mGameboy.ppu.read8(lcdreg::wx) },
+        { fmtHex2, "SCX", mGameboy.ppu.read8(lcdreg::scx) },
+        { fmtHex2, "WY", mGameboy.ppu.read8(lcdreg::wy) },
+        { fmtHex2, "SCY", mGameboy.ppu.read8(lcdreg::scy) },
         { "%u", "currDot", mGameboy.ppu.getDotCounter() },
     };
 
@@ -1566,24 +1570,24 @@ namespace areg = mmap::regs::audio;
 void App::UIDrawApuRegTable()
 {
     RegTableEntry apuEntries[] = {
-        { fmtHex2, "NR10", mGameboy.apu.read(areg::NR10) },
-        { fmtHex2, "NR30", mGameboy.apu.read(areg::NR30) },
-        { fmtHex2, "NR11", mGameboy.apu.read(areg::NR11) },
-        { fmtHex2, "NR31", mGameboy.apu.read(areg::NR31) },
-        { fmtHex2, "NR12", mGameboy.apu.read(areg::NR12) },
-        { fmtHex2, "NR32", mGameboy.apu.read(areg::NR32) },
-        { fmtHex2, "NR13", mGameboy.apu.read(areg::NR13) },
-        { fmtHex2, "NR33", mGameboy.apu.read(areg::NR33) },
-        { fmtHex2, "NR14", mGameboy.apu.read(areg::NR14) },
-        { fmtHex2, "NR34", mGameboy.apu.read(areg::NR34) },
-        { fmtHex2, "NR21", mGameboy.apu.read(areg::NR21) },
-        { fmtHex2, "NR41", mGameboy.apu.read(areg::NR41) },
-        { fmtHex2, "NR22", mGameboy.apu.read(areg::NR22) },
-        { fmtHex2, "NR42", mGameboy.apu.read(areg::NR42) },
-        { fmtHex2, "NR23", mGameboy.apu.read(areg::NR23) },
-        { fmtHex2, "NR43", mGameboy.apu.read(areg::NR43) },
-        { fmtHex2, "NR24", mGameboy.apu.read(areg::NR24) },
-        { fmtHex2, "NR44", mGameboy.apu.read(areg::NR44) },
+        { fmtHex2, "NR10", mGameboy.apu.read8(areg::NR10) },
+        { fmtHex2, "NR30", mGameboy.apu.read8(areg::NR30) },
+        { fmtHex2, "NR11", mGameboy.apu.read8(areg::NR11) },
+        { fmtHex2, "NR31", mGameboy.apu.read8(areg::NR31) },
+        { fmtHex2, "NR12", mGameboy.apu.read8(areg::NR12) },
+        { fmtHex2, "NR32", mGameboy.apu.read8(areg::NR32) },
+        { fmtHex2, "NR13", mGameboy.apu.read8(areg::NR13) },
+        { fmtHex2, "NR33", mGameboy.apu.read8(areg::NR33) },
+        { fmtHex2, "NR14", mGameboy.apu.read8(areg::NR14) },
+        { fmtHex2, "NR34", mGameboy.apu.read8(areg::NR34) },
+        { fmtHex2, "NR21", mGameboy.apu.read8(areg::NR21) },
+        { fmtHex2, "NR41", mGameboy.apu.read8(areg::NR41) },
+        { fmtHex2, "NR22", mGameboy.apu.read8(areg::NR22) },
+        { fmtHex2, "NR42", mGameboy.apu.read8(areg::NR42) },
+        { fmtHex2, "NR23", mGameboy.apu.read8(areg::NR23) },
+        { fmtHex2, "NR43", mGameboy.apu.read8(areg::NR43) },
+        { fmtHex2, "NR24", mGameboy.apu.read8(areg::NR24) },
+        { fmtHex2, "NR44", mGameboy.apu.read8(areg::NR44) },
     };
 
     if (ImGui::BeginTable("apuChannelsRegsTable", 4, regsTableFlags))
@@ -1626,7 +1630,7 @@ void App::UIDrawApuRegTable()
         ImGui::TableHeadersRow();
 
         ImGui::TableNextRow();
-        auto nr50 = mGameboy.apu.read(areg::NR50);
+        auto nr50 = mGameboy.apu.read8(areg::NR50);
         ImGui::TableNextColumn();
         ImGui::Text("NR50");
         ImGui::TableNextColumn();
@@ -1635,7 +1639,7 @@ void App::UIDrawApuRegTable()
         ImGui::Text("Lvol: %02u, Rvol: %02u", (nr50 >> 4) & 0x07, nr50 & 0x07);
 
         ImGui::TableNextRow();
-        auto nr51 = mGameboy.apu.read(areg::NR51);
+        auto nr51 = mGameboy.apu.read8(areg::NR51);
         ImGui::TableNextColumn();
         ImGui::Text("NR51");
         ImGui::TableNextColumn();
@@ -1646,7 +1650,7 @@ void App::UIDrawApuRegTable()
             (nr51 & 0x08) ? '1' : '0', (nr51 & 0x04) ? '1' : '0', (nr51 & 0x02) ? '1' : '0', (nr51 & 0x01) ? '1' : '0');
 
         ImGui::TableNextRow();
-        auto nr52 = mGameboy.apu.read(areg::NR52);
+        auto nr52 = mGameboy.apu.read8(areg::NR52);
         ImGui::TableNextColumn();
         ImGui::Text("NR52");
         ImGui::TableNextColumn();

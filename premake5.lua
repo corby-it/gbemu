@@ -200,6 +200,10 @@ workspace(project_name)
             src_base .. "/tests"
         }
 
+        externalincludedirs {
+            src_base .. "/third-party/nanobench-4.3.11",
+        }
+
         -- code coverage uses gcov + lcov which is not available on windows
         filter { "system:windows" }
             removeconfigurations { "coverage" }

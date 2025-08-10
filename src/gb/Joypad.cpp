@@ -42,9 +42,10 @@ void Joypad::step(uint32_t mCycles)
     }
 }
 
-
-void Joypad::write(uint8_t val)
+void Joypad::write8(uint16_t addr, uint8_t val)
 {
+    assert(addr == mmap::regs::joypad);
+
     // only bits 4 and 5 are actually writable, the other bits are discarded
     
     // bit5 bit4    Result
@@ -79,8 +80,11 @@ void Joypad::write(uint8_t val)
     mSelection = newSelection;
 }
 
-uint8_t Joypad::read() const
+
+uint8_t Joypad::read8(uint16_t addr) const
 {
+    assert(addr == mmap::regs::joypad);
+
     // bits 6 and 7 are not used and will read 0
     // bits 4 and 5 will read as the corresponding value from the selection variable
     // bits 0, 1, 2 and 3 will report the value of the corresponding buttons 
@@ -143,7 +147,7 @@ void Joypad::release(Btn bt)
 
     if (inCurrentSelection(bt)) {
         // if the button is released and all the bits in its group are 1 we have to stop the counter
-        if ((Joypad::read() & 0x0F) == 0x0F) {
+        if ((Joypad::read8(mmap::regs::joypad) & 0x0F) == 0x0F) {
             mCounterEnabled = false;
             mCyclesCounter = 0;
         }

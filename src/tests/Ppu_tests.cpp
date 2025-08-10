@@ -557,9 +557,12 @@ TEST_CASE("PPU test disabling the display")
     TestBus bus;
     PPU p(bus);
 
-    auto lcdc = p.readLCDC();
+    static constexpr auto addrLCDC = mmap::regs::lcd::lcdc;
+
+
+    auto lcdc = p.read8(addrLCDC);
     lcdc &= ~(1 << 7);
-    p.writeLCDC(lcdc);
+    p.write8(addrLCDC, lcdc);
 
     // step for a random number of lines and steps
     p.stepLine(45);
@@ -584,15 +587,17 @@ TEST_CASE("PPU test disabling the display")
 
 TEST_CASE("DMA transfer")
 {
+    static constexpr auto addrDMA = mmap::regs::lcd::dma;
+
     TestBus bus;
     DMA dma(bus);
 
     SUBCASE("Check read/write and scheduled/transferring flags") {
         CHECK_FALSE(dma.isTransferring());
         
-        dma.write(0x80);
+        dma.write8(addrDMA, 0x80);
 
-        CHECK(dma.read() == 0x80);
+        CHECK(dma.read8(addrDMA) == 0x80);
         // the transfer does not begin immediately
         CHECK_FALSE(dma.isTransferring());
         CHECK(dma.isScheduled());
@@ -622,22 +627,22 @@ TEST_CASE("DMA transfer")
         bus.write8(mmap::oam::end + 1, 0xFE);
         
         // start the transfer
-        dma.write(0xC0);
+        dma.write8(addrDMA, 0xC0);
 
-        CHECK(dma.read() == 0xC0);
+        CHECK(dma.read8(addrDMA) == 0xC0);
         CHECK_FALSE(dma.isTransferring());
         CHECK(dma.isScheduled());
 
         // step through the transfer process
         dma.step(80);
 
-        CHECK(dma.read() == 0xC0);
+        CHECK(dma.read8(addrDMA) == 0xC0);
         CHECK(dma.isTransferring());
         CHECK_FALSE(dma.isScheduled());
 
         dma.step(82);
 
-        CHECK(dma.read() == 0xC0);
+        CHECK(dma.read8(addrDMA) == 0xC0);
         CHECK_FALSE(dma.isTransferring());
 
         // verify if the data has been copied correctly
@@ -670,16 +675,16 @@ TEST_CASE("DMA transfer")
         bus.write8(mmap::oam::end + 1, 0xFE);
 
         // start the transfer
-        dma.write(0xC0);
+        dma.write8(addrDMA, 0xC0);
 
-        CHECK(dma.read() == 0xC0);
+        CHECK(dma.read8(addrDMA) == 0xC0);
         CHECK_FALSE(dma.isTransferring());
         CHECK(dma.isScheduled());
 
         // step through the transfer process
         dma.step(80);
 
-        CHECK(dma.read() == 0xC0);
+        CHECK(dma.read8(addrDMA) == 0xC0);
         CHECK(dma.isTransferring());
         CHECK_FALSE(dma.isScheduled());
 
@@ -692,9 +697,9 @@ TEST_CASE("DMA transfer")
         }
 
         // start a new transfer
-        dma.write(0xD0);
+        dma.write8(addrDMA, 0xD0);
 
-        CHECK(dma.read() == 0xD0);
+        CHECK(dma.read8(addrDMA) == 0xD0);
         CHECK(dma.isTransferring());
         CHECK(dma.isScheduled());
 
@@ -709,7 +714,7 @@ TEST_CASE("DMA transfer")
         // step through the end of the transfer
         dma.step(160);
 
-        CHECK(dma.read() == 0xD0);
+        CHECK(dma.read8(addrDMA) == 0xD0);
         CHECK_FALSE(dma.isTransferring());
 
         // verify if the data has been copied correctly

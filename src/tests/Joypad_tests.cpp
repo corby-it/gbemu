@@ -12,6 +12,7 @@ static const uint8_t dpadMask = 0x20;
 static const uint8_t btnsMask = 0x10;
 static const uint8_t disableMask = 0x30;
 
+static const uint16_t addrJP = mmap::regs::joypad;
 
 
 TEST_CASE("Joypad test writing disabled")
@@ -19,9 +20,9 @@ TEST_CASE("Joypad test writing disabled")
     TestBus bus;
     Joypad jp(bus);
     
-    jp.write(disableMask);
+    jp.write8(addrJP, disableMask);
 
-    auto val = jp.read();
+    auto val = jp.read8(addrJP);
     CHECK(val == 0xCF);
 
     // press a few buttons
@@ -29,7 +30,7 @@ TEST_CASE("Joypad test writing disabled")
     jp.press(Joypad::Btn::Start);
     jp.press(Joypad::Btn::Down);
 
-    val = jp.read();
+    val = jp.read8(addrJP);
     CHECK(val == 0xCF);
 }
 
@@ -38,9 +39,9 @@ TEST_CASE("Joypad test writing enabled")
     TestBus bus;
     Joypad jp(bus);
 
-    jp.write(disableMask);
+    jp.write8(addrJP, disableMask);
 
-    auto val = jp.read();
+    auto val = jp.read8(addrJP);
     CHECK(val == 0xCF);
 
     // press A and Start, we must read 0b11010110 (0xD6) when we
@@ -54,15 +55,15 @@ TEST_CASE("Joypad test writing enabled")
     jp.press(Joypad::Btn::Left);
 
     // enable buttons
-    jp.write(btnsMask);
+    jp.write8(addrJP, btnsMask);
 
-    val = jp.read();
+    val = jp.read8(addrJP);
     CHECK(val == 0xD6);
 
     // enable dpad
-    jp.write(dpadMask);
+    jp.write8(addrJP, dpadMask);
 
-    val = jp.read();
+    val = jp.read8(addrJP);
     CHECK(val == 0xE9);
 }
 
@@ -75,15 +76,15 @@ TEST_CASE("Joypad test interrupt trigger")
 
     constexpr auto jpIrqMask = Irqs::mask(Irqs::Type::Joypad);
 
-    jp.write(dpadMask);
+    jp.write8(addrJP, dpadMask);
 
-    auto val = jp.read();
+    auto val = jp.read8(addrJP);
     CHECK(val == 0xEF);
 
     // press a few buttons
     jp.press(Joypad::Btn::Down);
 
-    val = jp.read();
+    val = jp.read8(addrJP);
     CHECK(val == 0xE7);
 
     // step for 2 cycles, the interrupt must still be disabled
@@ -105,15 +106,15 @@ TEST_CASE("Joypad test interrupt counter reset")
 
     constexpr auto jpIrqMask = Irqs::mask(Irqs::Type::Joypad);
 
-    jp.write(dpadMask);
+    jp.write8(addrJP, dpadMask);
 
-    auto val = jp.read();
+    auto val = jp.read8(addrJP);
     CHECK(val == 0xEF);
 
     // press a few buttons
     jp.press(Joypad::Btn::Down);
 
-    val = jp.read();
+    val = jp.read8(addrJP);
     CHECK(val == 0xE7);
 
     // step for 2 cycles, the interrupt must still be disabled

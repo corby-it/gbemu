@@ -9,7 +9,7 @@
 // reference for how the joypad works in the gameboy: https://gbdev.io/pandocs/Joypad_Input.html
 
 
-class Joypad {
+class Joypad : public ReadWriteIf {
 public:
     enum class Btn {
         Start, Select, B, A,
@@ -48,8 +48,8 @@ public:
     void step(uint32_t mCycles);
 
     // GB side
-    void write(uint8_t val);
-    uint8_t read() const;
+    uint8_t read8(uint16_t addr) const override;
+    void write8(uint16_t addr, uint8_t val) override;
 
     // UI side
     void press(Btn bt);

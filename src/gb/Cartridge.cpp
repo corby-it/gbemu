@@ -408,7 +408,7 @@ CGBFlag CartridgeHeader::cgbFlag() const
     auto val = mRomBaseAddr[0x143];
     if (val == 0x00)
         return CGBFlag::CGBIncompatible;
-    if (val == 0x80)
+    else if (val == 0x80)
         return CGBFlag::CGBCompatible;
     else if (val == 0xC0)
         return CGBFlag::CGBOnly;

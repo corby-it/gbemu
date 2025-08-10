@@ -5,7 +5,6 @@
 
 #include "Ram.h"
 #include "GbCommons.h"
-#include <cereal/cereal.hpp>
 
 
 // the GB has a 16-bit address bus that connects the CPU to everything else.
@@ -16,14 +15,12 @@
 // Bus
 // ------------------------------------------------------------------------------------------------
 
-class Bus {
+class Bus : public ReadWriteIf {
 public:
     virtual ~Bus() {}
 
-    virtual uint8_t read8(uint16_t addr) const = 0;
     uint16_t read16(uint16_t addr) const;
     
-    virtual void write8(uint16_t addr, uint8_t val) = 0;
     void write16(uint16_t addr, uint16_t val);
 
 };
@@ -35,7 +32,7 @@ public:
 // ------------------------------------------------------------------------------------------------
 
 // the TestBus class is used for testing, it doesn't map the addresses to actual peripherals,
-// it only have a 64kB ram where things can be read from and written to freely
+// it only has a 64kB ram where things can be read from and written to freely
 class TestBus : public Bus {
 public:
 

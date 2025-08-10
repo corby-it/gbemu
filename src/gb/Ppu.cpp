@@ -174,6 +174,10 @@ const char* bgHelperTileAddressingToStr(BgHelperTileAddressing bghta)
 // PPU
 // ------------------------------------------------------------------------------------------------
 
+namespace lcdreg = mmap::regs::lcd;
+
+
+
 PPU::PPU(Bus& bus)
     : mBus(&bus)
 {
@@ -197,6 +201,48 @@ void PPU::reset()
     // lock ram to correctly reflect the current ppu mode and the lcd enable status
     lockRamAreas(regs.LCDC.lcdEnable);
 }
+
+
+uint8_t PPU::read8(uint16_t addr) const
+{
+    switch (addr) {
+    case lcdreg::lcdc: return regs.LCDC.asU8();
+    case lcdreg::stat: return regs.STAT.asU8();
+    case lcdreg::scy: return regs.SCY;
+    case lcdreg::scx: return regs.SCX;
+    case lcdreg::ly: return regs.LY;
+    case lcdreg::lyc: return regs.LYC;
+    case lcdreg::bgp: return regs.BGP.asU8();
+    case lcdreg::obp0: return regs.OBP0.asU8();
+    case lcdreg::obp1: return regs.OBP1.asU8();
+    case lcdreg::wy: return regs.WY;
+    case lcdreg::wx: return regs.WX;
+    default:
+        return 0xff;
+    }
+}
+
+void PPU::write8(uint16_t addr, uint8_t val)
+{
+    switch (addr) {
+    case lcdreg::lcdc: writeLCDC(val); break;
+    case lcdreg::stat: regs.STAT.fromU8(val); break;
+    case lcdreg::scx: regs.SCX = val; break;
+    case lcdreg::scy: regs.SCY = val; break;
+    case lcdreg::ly: break; // LY is read-only
+    case lcdreg::lyc: regs.LYC = val; break;
+    case lcdreg::bgp: regs.BGP.fromU8(val); break;
+    case lcdreg::obp0: regs.OBP0.fromU8(val); break;
+    case lcdreg::obp1: regs.OBP1.fromU8(val); break;
+    case lcdreg::wy: regs.WY = val; break;
+    case lcdreg::wx: regs.WX = val; break;
+    default:
+        break;
+    }
+}
+
+
+
 
 
 void PPU::stepLine(uint32_t n)

@@ -65,6 +65,31 @@ void Timer::step(uint32_t mCycles, bool isCpuStopped)
     }
 }
 
+uint8_t Timer::read8(uint16_t addr) const
+{
+    switch (addr) {
+    case mmap::regs::timer::DIV: return mDiv >> 8;
+    case mmap::regs::timer::TIMA: return mTima & 0x00FF;
+    case mmap::regs::timer::TMA: return mTma;
+    case mmap::regs::timer::TAC: return mTacVal;
+    default:
+        return 0xff;
+    }
+}
+
+void Timer::write8(uint16_t addr, uint8_t val)
+{
+    switch (addr) {
+    case mmap::regs::timer::DIV: mDiv = 0; break;
+    case mmap::regs::timer::TIMA: mTima = val; break;
+    case mmap::regs::timer::TMA: mTma = val; break;
+    case mmap::regs::timer::TAC: writeTAC(val); break;
+    default:
+        break;
+    }
+}
+
+
 void Timer::writeTAC(uint8_t val)
 {
     mTacVal = val & 0xF8;

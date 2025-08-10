@@ -12,7 +12,7 @@
 typedef std::function<void(uint8_t)>    SerialDataReadyCb;
 
 
-class Serial {
+class Serial : public ReadWriteIf {
 public:
     Serial(Bus& bus);
 
@@ -22,11 +22,9 @@ public:
     void setSerialDataReadyCb(SerialDataReadyCb cb) { mDataReadyCb = cb; }
 
 
-    uint8_t readData() const { return mRegData; }
-    uint8_t readCtrl() const;
+    uint8_t read8(uint16_t addr) const override;
+    void write8(uint16_t addr, uint8_t val) override;
 
-    void writeData(uint8_t val) { mRegData = val; }
-    void writeCtrl(uint8_t val);
 
     template<class Archive>
     void serialize(Archive& ar, uint32_t const /*version*/) {
@@ -35,7 +33,12 @@ public:
         ar(mRegData, mTransferredOut);
     }
 
+
 private:
+
+    uint8_t readCtrl() const;
+    void writeCtrl(uint8_t val);
+
 
     Bus* mBus;
 

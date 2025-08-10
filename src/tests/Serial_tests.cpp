@@ -4,6 +4,10 @@
 #include <doctest/doctest.h>
 
 
+static const auto addrData = mmap::regs::serial_data;
+static const auto addrCtrl = mmap::regs::serial_ctrl;
+
+
 TEST_CASE("Serial tests")
 {
     TestBus bus;
@@ -17,7 +21,7 @@ TEST_CASE("Serial tests")
 
     sr.setSerialDataReadyCb(callback);
 
-    sr.writeData(0x42);
+    sr.write8(addrData, 0x42);
 
     uint32_t counterVal = 0;
     uint8_t ctrlLowNibbleMask = 0x00;
@@ -25,13 +29,13 @@ TEST_CASE("Serial tests")
     SUBCASE("Slow speed (8192 Hz)") {
         // start transfer as master, slow clock speed (128 clock cycles to transfer 1 bit)
         counterVal = 128;
-        sr.writeCtrl(0x81);
+        sr.write8(addrCtrl, 0x81);
         ctrlLowNibbleMask = 0x0d;
     }
     SUBCASE("High speed (262144 Hz)") {
         // start transfer as master, high clock speed (4 clock cycles to transfer 1 bit)
         counterVal = 4;
-        sr.writeCtrl(0x83);
+        sr.write8(addrCtrl, 0x83);
         ctrlLowNibbleMask = 0x0f;
     }
 
@@ -39,12 +43,12 @@ TEST_CASE("Serial tests")
     sr.step(counterVal);
 
     // should still be enabled (unused bits are all set)
-    CHECK(sr.readCtrl() == (0xf0 | ctrlLowNibbleMask));
+    CHECK(sr.read8(addrCtrl) == (0xf0 | ctrlLowNibbleMask));
 
-    // trasnfer the remaining 7 bits
+    // transfer the remaining 7 bits
     sr.step(counterVal * 7);
 
     // it must be disabled now and the value should be in transferred
-    CHECK(sr.readCtrl() == (0x70 | ctrlLowNibbleMask));
+    CHECK(sr.read8(addrCtrl) == (0x70 | ctrlLowNibbleMask));
     CHECK(transferred == 0x42);
 }

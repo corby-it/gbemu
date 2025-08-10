@@ -7,7 +7,7 @@
 #include <cereal/cereal.hpp>
 
 
-class Timer {
+class Timer : public ReadWriteIf {
 public:
     enum class ClockSelect : uint8_t {
         N1024 = 0,
@@ -25,15 +25,8 @@ public:
 
     void step(uint32_t mCycles, bool isCpuStopped = false);
 
-    uint8_t readDIV() const { return mDiv >> 8; }
-    uint8_t readTIMA() const { return mTima & 0x00FF; }
-    uint8_t readTMA() const { return mTma; }
-    uint8_t readTAC() const { return mTacVal; }
-
-    void writeDIV(uint8_t /*val*/) { mDiv = 0; }
-    void writeTIMA(uint8_t val) { mTima = val; }
-    void writeTMA(uint8_t val) { mTma = val; }
-    void writeTAC(uint8_t val);
+    uint8_t read8(uint16_t addr) const override;
+    void write8(uint16_t addr, uint8_t val) override;
 
 
     // helpers
@@ -51,6 +44,8 @@ public:
 
 
 private:
+    void writeTAC(uint8_t val);
+    
     Bus* mBus;
 
     // REGISTERS

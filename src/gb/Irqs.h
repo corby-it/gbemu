@@ -3,12 +3,13 @@
 #define GBEMU_SRC_GB_IRQS_H_
 
 
+#include "GbCommons.h"
 #include <cstdint>
 #include <cassert>
 #include <optional>
 
 
-struct Irqs {
+struct Irqs : public ReadWriteIf {
 
     // There are 5 possible interrupts, all of them can be disabled (there are no NMIs)
     // - Vertical blanking interrupt: TODO
@@ -69,20 +70,37 @@ struct Irqs {
         }
     }
 
-    bool ime;
 
-    uint8_t readIF() const { return IF | 0xE0; }
-    uint8_t readIE() const { return IE | 0xE0; } // top unused bits are always 1
-
-    void writeIF(uint8_t val) { IF = val; }
-    void writeIE(uint8_t val) { IE = val | 0xE0; }
-
-    
+    Irqs()
+        : ime(false), IF(0), IE(0)
+    {}
+  
     void reset() {
         ime = false;
         IF = 0;
-        IE = 0;;
+        IE = 0;
     }
+
+
+    uint8_t read8(uint16_t addr) const override {
+        // top unused bits are always 1
+        switch (addr) {
+        case mmap::regs::IF: return IF | 0xE0;
+        case mmap::IE: return IE | 0xE0;
+        default:
+            return 0xff;
+        }
+    }
+
+    void write8(uint16_t addr, uint8_t val) override {
+        switch (addr) {
+        case mmap::regs::IF: IF = val; break;
+        case mmap::IE: IE = val | 0xE0; break;
+        default:
+            break;
+        }
+    }
+
 
     std::optional<Irqs::Type> getCurrentIrq()
     {
@@ -117,6 +135,9 @@ struct Irqs {
         ar(ime, IE, IF);
     }
 
+
+
+    bool ime;
 
 private:
     uint8_t IF;

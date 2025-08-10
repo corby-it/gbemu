@@ -114,7 +114,7 @@ void APU::reset()
     mTimeCounter = 0ns;
 }
 
-uint8_t APU::read(uint16_t addr) const
+uint8_t APU::read8(uint16_t addr) const
 {
     assert(addr >= areg::start && addr <= areg::end);
 
@@ -157,7 +157,7 @@ uint8_t APU::read(uint16_t addr) const
     }
 }
 
-void APU::write(uint16_t addr, uint8_t val)
+void APU::write8(uint16_t addr, uint8_t val)
 {
     assert(addr >= areg::start && addr <= areg::end);
 

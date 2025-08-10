@@ -59,6 +59,28 @@ void Serial::step(uint32_t mCycles)
     }
 }
 
+
+uint8_t Serial::read8(uint16_t addr) const
+{
+    switch (addr) {
+    case mmap::regs::serial_data: return mRegData;
+    case mmap::regs::serial_ctrl: return readCtrl();
+    default:
+        return 0xff;
+    }
+}
+
+void Serial::write8(uint16_t addr, uint8_t val)
+{
+    switch (addr) {
+    case mmap::regs::serial_data: mRegData = val; break;
+    case mmap::regs::serial_ctrl: writeCtrl(val); break;
+    default:
+        break;
+    }
+}
+
+
 void Serial::writeCtrl(uint8_t val)
 {
     // bit 0 is clock select (master or slave)

@@ -29,7 +29,7 @@ enum class  MbcType {
 };
 
 
-class MbcInterface {
+class MbcInterface : public ReadWriteIf {
 public:
     MbcInterface(MbcType type, size_t romSize, size_t ramSize);
     virtual ~MbcInterface() {}
@@ -37,9 +37,6 @@ public:
     virtual std::unique_ptr<MbcInterface> clone() const = 0;
 
     void reset();
-
-    virtual uint8_t read8(uint16_t addr) const = 0;
-    virtual void write8(uint16_t addr, uint8_t val) = 0;
 
     MbcType type() const { return mType; }
 

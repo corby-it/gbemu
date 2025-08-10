@@ -57,14 +57,14 @@ CEREAL_CLASS_VERSION(ApuHpfFilter, 1);
 typedef std::function<void(float, float)>   OnSampleReadyCallback;
 
 
-class APU {
+class APU : public ReadWriteIf {
 public:
     APU(uint32_t downsamplingFreq = 44100);
 
     void reset();
 
-    uint8_t read(uint16_t addr) const;
-    void write(uint16_t addr, uint8_t val);
+    uint8_t read8(uint16_t addr) const override;
+    void write8(uint16_t addr, uint8_t val) override;
 
     bool step(uint32_t mCycles);
 

@@ -30,30 +30,30 @@ TEST_CASE("Square wave channel")
         testName = "apu01-682hz-left-170hz-right";
 
         // enable the apu
-        apu.write(aregs::NR52, 0x80);
+        apu.write8(aregs::NR52, 0x80);
         // set channel 1 to the left and channel 2 to the right
-        apu.write(aregs::NR51, 0x12);
+        apu.write8(aregs::NR51, 0x12);
         // set volumes to 7, both L and R
-        apu.write(aregs::NR50, 0x77);
+        apu.write8(aregs::NR50, 0x77);
 
         // setup channel 1 to produce a 682hz square wave no sweep
-        apu.write(aregs::NR10, 0x00);
+        apu.write8(aregs::NR10, 0x00);
         // write to reg NR11 to select 50% duty cycle, timer length is 0
-        apu.write(aregs::NR11, 0x80);
+        apu.write8(aregs::NR11, 0x80);
         // write to reg 2 to set the initial volume at F with no envelope and enable the dac
-        apu.write(aregs::NR12, 0xf0);
+        apu.write8(aregs::NR12, 0xf0);
         // write to reg 3 and 4 to set the period and trigger the channel (period is 0x740)
-        apu.write(aregs::NR13, 0x40);
-        apu.write(aregs::NR14, 0x87);
+        apu.write8(aregs::NR13, 0x40);
+        apu.write8(aregs::NR14, 0x87);
 
         // setup channel 2 to produce a 170hz square wave
         // write to reg 1 to select 50% duty cycle, timer length is 0
-        apu.write(aregs::NR21, 0x80);
+        apu.write8(aregs::NR21, 0x80);
         // write to reg 2 to set the initial volume at F with no envelope and enable the dac
-        apu.write(aregs::NR22, 0xf0);
+        apu.write8(aregs::NR22, 0xf0);
         // write to reg 3 and 4 to set the period and trigger the channel (period is 0x500)
-        apu.write(aregs::NR23, 0x00);
-        apu.write(aregs::NR24, 0x85);
+        apu.write8(aregs::NR23, 0x00);
+        apu.write8(aregs::NR24, 0x85);
     }
 
 

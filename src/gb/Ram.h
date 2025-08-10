@@ -2,6 +2,7 @@
 #ifndef GBEMU_SRC_GB_RAM_H_
 #define GBEMU_SRC_GB_RAM_H_
 
+#include "GbCommons.h"
 #include <cstdint>
 #include <cstring>
 #include <cassert>
@@ -13,7 +14,7 @@
 
 
 template<size_t Size>
-class Ram {
+class Ram : public ReadWriteIf {
 public:
     Ram(uint16_t startAddr = 0)
         : mStartAddr(startAddr)
@@ -39,14 +40,14 @@ public:
 
     virtual ~Ram() {}
 
-    virtual uint8_t read8(uint16_t addr) const
+    virtual uint8_t read8(uint16_t addr) const override
     {
         addr -= mStartAddr;
         assert(addr < Size);
         return mData[addr];
     }
 
-    virtual void write8(uint16_t addr, uint8_t val)
+    virtual void write8(uint16_t addr, uint8_t val) override
     {
         addr -= mStartAddr;
         assert(addr < Size);

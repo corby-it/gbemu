@@ -24,8 +24,10 @@ void DMA::reset()
 }
 
 
-void DMA::write(uint8_t val)
+void DMA::write8(uint16_t addr, uint8_t val)
 {
+    assert(addr == mmap::regs::lcd::dma);
+
     // the value written in the DMA register is the high byte of a 16-bit address from where 
     // the copy will start, the low byte always starts at 0x00. The DMA chip will always copy 
     // 160 bytes, no matter what and the transfer cannot be stopped or monitored

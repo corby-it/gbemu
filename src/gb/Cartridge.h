@@ -149,7 +149,9 @@ enum class CartridgeLoadingRes {
 
 const char* cartridgeLoadingResToStr(CartridgeLoadingRes lr);
 
-class Cartridge {
+
+
+class Cartridge : public ReadWriteIf {
 public:
     Cartridge();
     Cartridge(const Cartridge& other);
@@ -161,11 +163,11 @@ public:
     CartridgeLoadingRes loadRomData(const uint8_t* data, size_t size);
 
 
-    uint8_t read8(uint16_t addr) const {
+    uint8_t read8(uint16_t addr) const override {
         return mbc->read8(addr);
     }
 
-    void write8(uint16_t addr, uint8_t val) {
+    void write8(uint16_t addr, uint8_t val) override {
         mbc->write8(addr, val);
     }
 
