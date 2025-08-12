@@ -407,29 +407,6 @@ public:
     void write8(uint16_t addr, uint8_t val) override;
 
 
-    /*uint8_t readLCDC() const { return regs.LCDC.asU8(); }
-    uint8_t readSTAT() const { return regs.STAT.asU8(); }
-    uint8_t readSCY() const { return regs.SCY; }
-    uint8_t readSCX() const { return regs.SCX; }
-    uint8_t readLY() const { return regs.LY; }
-    uint8_t readLYC() const { return regs.LYC; }
-    uint8_t readBGP() const { return regs.BGP.asU8(); }
-    uint8_t readOBP0() const { return regs.OBP0.asU8(); }
-    uint8_t readOBP1() const { return regs.OBP1.asU8(); }
-    uint8_t readWY() const { return regs.WY; }
-    uint8_t readWX() const { return regs.WX; }*/
-
-    //void writeSTAT(uint8_t val) { regs.STAT.fromU8(val); }
-    //void writeSCY(uint8_t val) { regs.SCY = val; }
-    //void writeSCX(uint8_t val) { regs.SCX = val; }
-    //void writeLY(uint8_t /*val*/) { } // LY is read-only
-    //void writeLYC(uint8_t val) { regs.LYC = val; }
-    //void writeBGP(uint8_t val) { regs.BGP.fromU8(val); }
-    //void writeOBP0(uint8_t val) { regs.OBP0.fromU8(val); }
-    //void writeOBP1(uint8_t val) { regs.OBP1.fromU8(val); }
-    //void writeWY(uint8_t val) { regs.WY = val; }
-    //void writeWX(uint8_t val) { regs.WX = val; }
-
 
     template<class Archive>
     void save(Archive& ar, uint32_t const /*version*/) const {

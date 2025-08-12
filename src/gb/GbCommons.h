@@ -55,6 +55,7 @@ namespace mmap {
     }
     namespace wram {
         MMAP_T start = 0xC000;
+        MMAP_T half_start = 0xD000;
         MMAP_T end = 0xDFFF;
     }
     namespace echoram {
@@ -145,6 +146,8 @@ namespace mmap {
             MMAP_T wx = 0xFF4B;
             MMAP_T end = 0xFF4B;
         }
+
+        MMAP_T svbk = 0xFF70;
 
         MMAP_T end = 0xFF7F;
     }

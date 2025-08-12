@@ -54,7 +54,7 @@ const char* GameBoyIf::statusToStr(Status st)
 
 GameBoyIf::GameBoyIf()
     : cpu(*this)
-    , wram(mmap::wram::start)
+    , wram()
     , ppu(*this)
     , dma(*this)
     , cartridge()
@@ -201,6 +201,8 @@ CartridgeLoadingRes GameBoyIf::loadCartridge(const uint8_t* data, size_t size)
 GameBoyClassic::GameBoyClassic()
     : mAddrMap(initAddressMap())
 {
+    wram.setIsCgb(false);
+
     // make sure to reset everything 
     gbReset();
 }
@@ -224,8 +226,6 @@ void GameBoyClassic::gbReset()
 
 AddressMap GameBoyClassic::initAddressMap()
 {
-    // TODO implement echoram!
-
     AddressMap map = {
         // memory -------------------------------------------------------------
         { mmap::rom::start, &cartridge },
@@ -236,8 +236,8 @@ AddressMap GameBoyClassic::initAddressMap()
         { mmap::external_ram::end, &cartridge },
         { mmap::wram::start, &wram },
         { mmap::wram::end, &wram },
-        { mmap::echoram::start, nullptr },
-        { mmap::echoram::end, nullptr },
+        { mmap::echoram::start, &wram },
+        { mmap::echoram::end, &wram },
         { mmap::oam::start, &ppu.oamRam },
         { mmap::oam::end, &ppu.oamRam },
         { mmap::prohibited::start, nullptr },
