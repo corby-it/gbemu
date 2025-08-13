@@ -6,20 +6,44 @@
 #include <cassert>
 
 
-void Registers::reset()
+void Registers::reset(bool isCgb)
 {
-    // at reset we set all registers to 0, the actual hardware 
-    // set the values depending on the model (gameboy, gameboy color, etc.)
-    A = 0;
-    B = 0;
-    C = 0;
-    D = 0;
-    E = 0;
-    H = 0;
-    L = 0;
+    // at reset (and after boot code finished running) register values depend on the actual hardware 
+    // see: https://gbdev.io/pandocs/Power_Up_Sequence.html#cpu-registers
+
+    if (isCgb) {
+        // values for CGB
+        A = 0x11;
+        B = 0x00; 
+        C = 0x00;
+        D = 0xFF;
+        E = 0x56;
+        H = 0x00;
+        L = 0x0D;
+        flags.Z = 1;
+        flags.N = 0;
+        flags.H = 0;
+        flags.C = 0;
+    }
+    else {
+        // values for DMG
+        A = 0x01;
+        B = 0x00;
+        C = 0x13;
+        D = 0x00;
+        E = 0xD8;
+        H = 0x01;
+        L = 0x4D;
+        flags.Z = 1;
+        flags.N = 0;
+        flags.H = 1;
+        flags.C = 1;
+    }
+
+    // PC and SP always have the same value on all hardware
     PC = PCinitialValue;
     SP = SPinitialValue;
-    flags.fromU8(0);
+
 }
 
 bool Registers::equalSkipPC(const Registers& other)
@@ -47,6 +71,7 @@ bool Registers::equal(const Registers& other)
 
 CPU::CPU(Bus& bus)
     : mBus(&bus)
+    , mIsCgb(false)
 {
     reset();
 }
@@ -62,9 +87,43 @@ void CPU::reset()
     mCheckForHaltBug = false;
     mIsStopped = false;
 
-    regs.reset();
+    regs.reset(mIsCgb);
     irqs.reset();
+    key1.reset();
 }
+
+
+uint8_t CPU::read8(uint16_t addr) const
+{
+    // unused bits are always 1
+    switch (addr) {
+    case mmap::regs::IF: return irqs.readIF();
+    case mmap::IE: return irqs.readIE();
+    case mmap::regs::key1: 
+        return mIsCgb ? key1.asU8() : 0xFF;
+
+    default:
+        return 0xff;
+    }
+}
+
+void CPU::write8(uint16_t addr, uint8_t val)
+{
+    switch (addr) {
+    case mmap::regs::IF: irqs.writeIF(val); break;
+    case mmap::IE: irqs.writeIE(val); break;
+    
+    case mmap::regs::key1:
+        if(mIsCgb) 
+            key1.fromU8(val);
+        break;
+
+    default:
+        break;
+    }
+}
+
+
 
 CpuStepRes CPU::step()
 {
@@ -108,7 +167,7 @@ CpuStepRes CPU::step()
             // as soon as an interrupt is serviced the IME flags is reset and the corresponding
             // bit in the IF register is reset as well
             irqs.ime = false;
-            irqs.write8(mmap::regs::IF, irqs.read8(mmap::regs::IF) & ~Irqs::mask(irqType));
+            irqs.writeIF(irqs.readIF() & ~Irqs::mask(irqType));
 
             // calling an interrupt has the same effect as a CALL instruction
             auto cycles = opCallIrq(irqType);
@@ -2232,15 +2291,36 @@ uint8_t CPU::opStop()
     // the only way to go back to normal is to reset the system or to receive a low signal
     // on one of the joypad lines (not an interrupt, only the signal going low is enough!)
     // see the gameboy developer manual, page 23
+
+    // CGB ONLY:
+    // in the CGB the STOP instruction is used to trigger a clock speed switch, in that case 
+    // it doesn't STOP the gameboy as above but simply switches speed
     
     // technically STOP is 2-bytes long, even if the second byte is ignored
     regs.PC++;
 
-    mIsStopped = true;
+    if (mIsCgb && key1.scheduleSpeedSwitch) {
+        // when a speed switch is triggered:
+        // - the double speed flag is toggled
+        // - the schedule speed switch bit is reset
+        // - the cpu enters halt mode for 2050 machine cycles, after that will automatically go back to normal mode
+        // see: https://gbdev.io/pandocs/CGB_Registers.html#ff4d--key1spd-cgb-mode-only-prepare-speed-switch
+        
+        // considering that nothing happens during the speed switch (the CPU doesn't run, DIV doesn't tick, nothing works)
+        // except for some weird and not documented/unintended behavior/bugs, there is no need to emulate all that
+        // see: https://gbdev.io/pandocs/Reducing_Power_Consumption.html for more info on weird stuff
+        
+        key1.doubleSpeed = !key1.doubleSpeed;
+        key1.scheduleSpeedSwitch = false;
+    }
+    else {
+        mIsStopped = true;
+    }
 
     // the stop instruction also resets the div register in the timer
+    // both if it's just a stop and also if it's a speed change
     mBus->write8(mmap::regs::timer::DIV, 0);
-
+    
     return 1;
 }
 

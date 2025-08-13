@@ -116,7 +116,7 @@ struct Registers {
     }
 
 
-    void reset();
+    void reset(bool isCgb);
 
     bool equal(const Registers& other);
     bool equalSkipPC(const Registers& other);
@@ -142,11 +142,49 @@ struct CpuStepRes {
 
 
 
-class CPU {
+
+struct RegKey1 : public RegU8 {
+    // speed switch control register (CGB only)
+
+    void reset() {
+        doubleSpeed = false;
+        scheduleSpeedSwitch = false;
+    }
+
+    uint8_t asU8() const override {
+        // unused bits are set to 1
+        uint8_t ret = 0x7E;
+        if (doubleSpeed)
+            ret |= 0x80;
+        if (scheduleSpeedSwitch)
+            ret |= 0x01;
+
+        return ret;
+    }
+
+    void fromU8(uint8_t val) override {
+        // the only writable bit is bit 0
+        scheduleSpeedSwitch = val & 0x01;
+    }
+
+
+    bool doubleSpeed;
+    bool scheduleSpeedSwitch;
+
+};
+
+
+
+class CPU : public ReadWriteIf {
 public:
     CPU(Bus& bus);
 
     void reset();
+    void setIsCgb(bool val) { mIsCgb = val; }
+
+    uint8_t read8(uint16_t addr) const override;
+    void write8(uint16_t addr, uint8_t val) override;
+
 
     CpuStepRes step();
 
@@ -155,12 +193,13 @@ public:
     bool isHalted() const { return mIsHalted; }
     bool isStopped() const { return mIsStopped; }
     
-    Registers regs;
-    Irqs irqs;
-
     size_t irqNesting() const { return mIrqNesting.size(); }
     size_t callNesting() const { return mCallNesting.size(); }
 
+
+    Registers regs;
+    Irqs irqs;
+    RegKey1 key1;
 
     static constexpr uint32_t longestInstructionCycles = 6;
 
@@ -371,6 +410,8 @@ private:
     // Members ------------------------------------------------------------------------------------
 
     Bus* mBus;
+
+    bool mIsCgb;
 
     // each instruction of the gameboy uses a number of clock cycles that is 
     // divisible by 4, here we use that number already divided by 4 (usually called m-cycles,

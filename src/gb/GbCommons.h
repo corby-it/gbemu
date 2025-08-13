@@ -147,6 +147,7 @@ namespace mmap {
             MMAP_T end = 0xFF4B;
         }
 
+        MMAP_T key1 = 0xFF4D;
         MMAP_T svbk = 0xFF70;
 
         MMAP_T end = 0xFF7F;

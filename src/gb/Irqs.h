@@ -9,13 +9,13 @@
 #include <optional>
 
 
-struct Irqs : public ReadWriteIf {
+struct Irqs {
 
     // There are 5 possible interrupts, all of them can be disabled (there are no NMIs)
-    // - Vertical blanking interrupt: TODO
-    // - LCD status interrupt: TODO
+    // - Vertical blanking interrupt: triggered when the PPU enters VBlank mode
+    // - LCD status interrupt: triggered by some conditions related to the PPU STAT register
     // - Timer overflow: requested when the TIMA register in the timer overflows
-    // - Serial transfer completed: TODO
+    // - Serial transfer completed: triggered when the serial byte transfer is completed
     // - Joypad: triggered on the falling edge of P10-P13 input signal (a button has been pressed)
 
     // Interrupts are controlled using the following flags and regsiters:
@@ -82,24 +82,11 @@ struct Irqs : public ReadWriteIf {
     }
 
 
-    uint8_t read8(uint16_t addr) const override {
-        // top unused bits are always 1
-        switch (addr) {
-        case mmap::regs::IF: return IF | 0xE0;
-        case mmap::IE: return IE | 0xE0;
-        default:
-            return 0xff;
-        }
-    }
+    uint8_t readIF() const { return IF | 0xE0; }
+    uint8_t readIE() const { return IE | 0xE0; } // top unused bits are always 1
 
-    void write8(uint16_t addr, uint8_t val) override {
-        switch (addr) {
-        case mmap::regs::IF: IF = val; break;
-        case mmap::IE: IE = val | 0xE0; break;
-        default:
-            break;
-        }
-    }
+    void writeIF(uint8_t val) { IF = val; }
+    void writeIE(uint8_t val) { IE = val | 0xE0; }
 
 
     std::optional<Irqs::Type> getCurrentIrq()

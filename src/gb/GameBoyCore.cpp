@@ -19,6 +19,16 @@ namespace fs = std::filesystem;
 
 
 
+const char* gbTypeToStr(GbType type)
+{
+    switch (type) {
+    case GbType::DMG: return "DMG";
+    case GbType::CGB: return "CGB";
+    default:
+        return "unknown type";
+    }
+}
+
 const char* saveStateErrorToStr(SaveStateError err)
 {
     switch (err) {
@@ -52,7 +62,7 @@ const char* GameBoyIf::statusToStr(Status st)
 }
 
 
-GameBoyIf::GameBoyIf()
+GameBoyIf::GameBoyIf(GbType type)
     : cpu(*this)
     , wram()
     , ppu(*this)
@@ -64,6 +74,7 @@ GameBoyIf::GameBoyIf()
     , serial(*this)
     , hiRam(mmap::hiram::start)
     , status(Status::Stopped)
+    , mType(type)
     , mStepInstruction(false)
 {}
 
@@ -197,10 +208,15 @@ CartridgeLoadingRes GameBoyIf::loadCartridge(const uint8_t* data, size_t size)
 
 
 
+// ------------------------------------------------------------------------------------------------
+// GameBoyClassic
+// ------------------------------------------------------------------------------------------------
 
 GameBoyClassic::GameBoyClassic()
-    : mAddrMap(initAddressMap())
+    : GameBoyIf(GbType::DMG)
+    , mAddrMap(initAddressMap())
 {
+    cpu.setIsCgb(false);
     wram.setIsCgb(false);
 
     // make sure to reset everything 
@@ -252,7 +268,7 @@ AddressMap GameBoyClassic::initAddressMap()
         { mmap::regs::timer::end, &timer },
         { mmap::regs::timer::end + 1, nullptr },
         { mmap::regs::IF - 1, nullptr },
-        { mmap::regs::IF, &cpu.irqs },
+        { mmap::regs::IF, &cpu },
         { mmap::regs::audio::start, &apu },
         { mmap::regs::audio::end, &apu },
         { mmap::regs::lcd::start, &ppu },
@@ -264,7 +280,7 @@ AddressMap GameBoyClassic::initAddressMap()
         { mmap::hiram::start - 1, nullptr },
         { mmap::hiram::start, &hiRam },
         { mmap::hiram::end, &hiRam },
-        { mmap::IE, &cpu.irqs },
+        { mmap::IE, &cpu },
     };
 
     return map;
@@ -352,6 +368,235 @@ SaveStateError GameBoyClassic::saveState(const fs::path& path)
 }
 
 SaveStateError GameBoyClassic::loadState(const fs::path& path)
+{
+    std::ifstream ifs(path, std::ios::binary);
+    if (!ifs)
+        return SaveStateError::OpenFileError;
+
+    try {
+        cereal::BinaryInputArchive iar(ifs);
+
+        // first verify if the header of the currently loaded cartridge is compatible with
+        // the one contained in the save state
+        std::array<uint8_t, CartridgeHeader::headerSize> buf;
+        iar(buf);
+
+        if (cartridge.header != buf)
+            return SaveStateError::CartridgeMismatch;
+
+        // read everything from the archive into a copy of the current state
+
+        CPU tmpCpu = cpu;
+        WorkRam tmpWram = wram;
+        PPU tmpPpu = ppu;
+        DMA tmpDma = dma;
+        Cartridge tmpCart = cartridge;
+        Timer tmpTimer = timer;
+        Joypad tmpJoypad = joypad;
+        APU tmpApu = apu;
+        Serial tmpSerial = serial;
+        HiRam tmphiRam = hiRam;
+
+        iar(tmpCpu);
+        iar(tmpWram);
+        iar(tmpPpu);
+        iar(tmpDma);
+        iar(tmpCart);
+        iar(tmpTimer);
+        iar(tmpJoypad);
+        iar(tmpApu);
+        iar(tmpSerial);
+        iar(tmphiRam);
+
+        // if no execption got caught while deserializing we can copy back 
+        // the new state into the gameboy
+        cpu = tmpCpu;
+        wram = tmpWram;
+        ppu = tmpPpu;
+        dma = tmpDma;
+        cartridge = tmpCart;
+        timer = tmpTimer;
+        joypad = tmpJoypad;
+        apu = tmpApu;
+        serial = tmpSerial;
+        hiRam = tmphiRam;
+    }
+    catch (const cereal::Exception& /*ex*/) {
+        return SaveStateError::LoadingError;
+    }
+
+    return SaveStateError::NoError;
+}
+
+
+
+
+// ------------------------------------------------------------------------------------------------
+// GameBoyColor
+// ------------------------------------------------------------------------------------------------
+
+GameBoyColor::GameBoyColor()
+    : GameBoyIf(GbType::CGB)
+    , mAddrMap(initAddressMap())
+{
+    cpu.setIsCgb(true);
+    wram.setIsCgb(true);
+
+    // make sure to reset everything 
+    gbReset();
+}
+
+void GameBoyColor::gbReset()
+{
+    cpu.reset();
+    wram.reset();
+    ppu.reset();
+    dma.reset();
+    cartridge.reset();
+    timer.reset();
+    joypad.reset();
+    apu.reset();
+    serial.reset();
+    hiRam.reset();
+
+    dbg.updateInstructionToStr(*this);
+}
+
+
+AddressMap GameBoyColor::initAddressMap()
+{
+    // highlighted by comments are registers specific to the CGB
+
+    AddressMap map = {
+        // memory -------------------------------------------------------------
+        { mmap::rom::start, &cartridge },
+        { mmap::rom::end, &cartridge },
+        { mmap::vram::start, &ppu.vram },
+        { mmap::vram::end, &ppu.vram },
+        { mmap::external_ram::start, &cartridge },
+        { mmap::external_ram::end, &cartridge },
+        { mmap::wram::start, &wram },
+        { mmap::wram::end, &wram },
+        { mmap::echoram::start, &wram },
+        { mmap::echoram::end, &wram },
+        { mmap::oam::start, &ppu.oamRam },
+        { mmap::oam::end, &ppu.oamRam },
+        { mmap::prohibited::start, nullptr },
+        { mmap::prohibited::end, nullptr },
+
+        // control registers --------------------------------------------------
+        { mmap::regs::joypad, &joypad },
+        { mmap::regs::serial_data, &serial },
+        { mmap::regs::serial_ctrl, &serial },
+        { mmap::regs::serial_ctrl + 1, nullptr },
+        { mmap::regs::timer::start, &timer },
+        { mmap::regs::timer::end, &timer },
+        { mmap::regs::timer::end + 1, nullptr },
+        { mmap::regs::IF - 1, nullptr },
+        { mmap::regs::IF, &cpu },
+        { mmap::regs::audio::start, &apu },
+        { mmap::regs::audio::end, &apu },
+        { mmap::regs::lcd::start, &ppu },
+        { mmap::regs::lcd::lyc, &ppu },
+        { mmap::regs::lcd::dma, &dma },
+        { mmap::regs::lcd::bgp, &ppu },
+        { mmap::regs::lcd::end, &ppu },
+        { mmap::regs::lcd::end + 1, nullptr },
+        { mmap::regs::key1, &cpu },         // KEY1
+        { mmap::regs::key1 + 1, nullptr },  // KEY1
+        { mmap::regs::svbk - 1, nullptr },  // SVBK
+        { mmap::regs::svbk, &wram },        // SVBK
+        { mmap::hiram::start - 1, nullptr },
+        { mmap::hiram::start, &hiRam },
+        { mmap::hiram::end, &hiRam },
+        { mmap::IE, &cpu },
+    };
+
+    return map;
+}
+
+uint8_t GameBoyColor::read8(uint16_t addr) const
+{
+    auto it = mAddrMap.lower_bound(addr);
+    if (it == mAddrMap.end())
+        return 0xff;
+
+    return it->second ? it->second->read8(addr) : 0xff;
+}
+
+void GameBoyColor::write8(uint16_t addr, uint8_t val)
+{
+    auto it = mAddrMap.lower_bound(addr);
+    if (it == mAddrMap.end())
+        return;
+
+    if (auto* writeObj = it->second; writeObj) {
+        writeObj->write8(addr, val);
+    }
+}
+
+
+
+GbStepRes GameBoyColor::gbStep()
+{
+    ZoneScoped;
+
+    auto cpuRes = cpu.step();
+
+    dma.step(cpuRes.cycles);
+    bool frameReady = ppu.step(cpuRes.cycles);
+    timer.step(cpuRes.cycles, cpu.isStopped());
+    serial.step(cpuRes.cycles);
+    joypad.step(cpuRes.cycles);
+    apu.step(cpuRes.cycles);
+
+    if (status != Status::Running) {
+        ZoneScoped;
+        dbg.updateInstructionToStr(*this);
+    }
+
+    GbStepRes res;
+    res.cpuRes = cpuRes;
+    res.frameReady = frameReady;
+
+    return res;
+}
+
+
+
+
+SaveStateError GameBoyColor::saveState(const fs::path& path)
+{
+    std::ofstream ofs(path, std::ios::binary);
+    if (!ofs)
+        return SaveStateError::OpenFileError;
+
+    try {
+        cereal::BinaryOutputArchive oar(ofs);
+
+        // write the content of the cartridge header file first, this will be used to check
+        // if a save state is compatible with the currently loaded cartridge
+        oar(cartridge.header.asArray());
+
+        oar(cpu);
+        oar(wram);
+        oar(ppu);
+        oar(dma);
+        oar(cartridge);
+        oar(timer);
+        oar(joypad);
+        oar(apu);
+        oar(serial);
+        oar(hiRam);
+    }
+    catch (const cereal::Exception& /*ex*/) {
+        return SaveStateError::SavingError;
+    }
+
+    return SaveStateError::NoError;
+}
+
+SaveStateError GameBoyColor::loadState(const fs::path& path)
 {
     std::ifstream ifs(path, std::ios::binary);
     if (!ifs)

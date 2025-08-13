@@ -18,7 +18,7 @@ void WorkRam::reset()
 {
     Ram::reset();
 
-    mCurrBank = 1;
+    mCurrBank = 0;
 }
 
 void WorkRam::setIsCgb(bool val)

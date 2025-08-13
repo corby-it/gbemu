@@ -49,19 +49,19 @@ static std::string uintToHex(uint16_t val)
 }
 
 
-static std::string immValU8(const GameBoyClassic& gb, uint16_t pc)
+static std::string immValU8(const GameBoyIf& gb, uint16_t pc)
 {
     return uintToHex(gb.read8(pc));
 }
 
-static std::string immValS8(const GameBoyClassic& gb, uint16_t pc)
+static std::string immValS8(const GameBoyIf& gb, uint16_t pc)
 {
     return std::to_string((int8_t)gb.read8(pc));
 }
 
 
 
-std::string GBDebug::symbolOrU16(const GameBoyClassic& gb, uint16_t pc)
+std::string GBDebug::symbolOrU16(const GameBoyIf& gb, uint16_t pc)
 {
     uint16_t addr = gb.read16(pc);
 
@@ -70,7 +70,7 @@ std::string GBDebug::symbolOrU16(const GameBoyClassic& gb, uint16_t pc)
     return sym ? *sym : uintToHex(addr);
 }
 
-std::string GBDebug::symbolOrS8(const GameBoyClassic& gb, uint16_t pc)
+std::string GBDebug::symbolOrS8(const GameBoyIf& gb, uint16_t pc)
 {
     int8_t offset = (int8_t)gb.read8(pc++);
     uint16_t addr = pc + offset;
@@ -83,7 +83,7 @@ std::string GBDebug::symbolOrS8(const GameBoyClassic& gb, uint16_t pc)
 
 
 
-std::string GBDebug::updateInstructionToStr(const GameBoyClassic& gb)
+std::string GBDebug::updateInstructionToStr(const GameBoyIf& gb)
 {
     mCurrInstruction = instructionToStr(gb);
     return mCurrInstruction;
@@ -91,7 +91,7 @@ std::string GBDebug::updateInstructionToStr(const GameBoyClassic& gb)
 
 
 
-std::string GBDebug::instructionToStr(const GameBoyClassic& gb)
+std::string GBDebug::instructionToStr(const GameBoyIf& gb)
 {
     // opcode reference: 
     // - https://gbdev.io/gb-opcodes/optables/
@@ -400,7 +400,7 @@ std::string GBDebug::instructionToStr(const GameBoyClassic& gb)
 }
 
 
-std::string GBDebug::instructionCBToStr(const GameBoyClassic& gb)
+std::string GBDebug::instructionCBToStr(const GameBoyIf& gb)
 {
     // to correctly execute one of the instructions prefixed with CB we 
     // have to read another byte from PC to get the actual opcode

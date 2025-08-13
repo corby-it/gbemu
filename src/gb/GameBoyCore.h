@@ -21,6 +21,14 @@
 
 
 
+enum class GbType {
+    DMG,
+    CGB
+};
+
+const char* gbTypeToStr(GbType type);
+
+
 struct GbStepRes {
     bool frameReady;
     CpuStepRes cpuRes;
@@ -68,8 +76,9 @@ public:
     static const char* statusToStr(Status st);
 
 
-    GameBoyIf();
+    GameBoyIf(GbType type);
 
+    GbType type() const { return mType; }
 
     EmulateRes emulate();
 
@@ -128,6 +137,7 @@ private:
     virtual void gbReset() = 0;
     virtual GbStepRes gbStep() = 0;
 
+    GbType mType;
     bool mStepInstruction;
 
 };
@@ -166,6 +176,39 @@ private:
     const AddressMap mAddrMap;
 };
 
+
+
+// ------------------------------------------------------------------------------------------------
+// GameBoyColor
+// ------------------------------------------------------------------------------------------------
+
+class GameBoyColor : public GameBoyIf {
+public:
+
+    GameBoyColor();
+
+
+    uint8_t read8(uint16_t addr) const override;
+    void write8(uint16_t addr, uint8_t val) override;
+
+
+
+    SaveStateError saveState(const std::filesystem::path& path) override;
+    SaveStateError loadState(const std::filesystem::path& path) override;
+
+
+
+
+
+private:
+
+    void gbReset() override;
+    GbStepRes gbStep() override;
+
+    AddressMap initAddressMap();
+
+    const AddressMap mAddrMap;
+};
 
 
 

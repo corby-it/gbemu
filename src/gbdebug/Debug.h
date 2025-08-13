@@ -8,7 +8,7 @@
 #include <memory>
 
 
-class GameBoyClassic;
+class GameBoyIf;
 
 
 class GBDebug {
@@ -26,14 +26,14 @@ public:
 
     const std::string& currInstructionStr() const { return mCurrInstruction; }
 
-    std::string updateInstructionToStr(const GameBoyClassic& gb);
+    std::string updateInstructionToStr(const GameBoyIf& gb);
 
 private:
-    std::string instructionToStr(const GameBoyClassic& gb);
-    std::string instructionCBToStr(const GameBoyClassic& gb);
+    std::string instructionToStr(const GameBoyIf& gb);
+    std::string instructionCBToStr(const GameBoyIf& gb);
 
-    std::string symbolOrU16(const GameBoyClassic& gb, uint16_t pc);
-    std::string symbolOrS8(const GameBoyClassic& gb, uint16_t pc);
+    std::string symbolOrU16(const GameBoyIf& gb, uint16_t pc);
+    std::string symbolOrS8(const GameBoyIf& gb, uint16_t pc);
 
     std::string mCurrInstruction;
 };
