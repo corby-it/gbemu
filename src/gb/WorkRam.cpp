@@ -47,7 +47,7 @@ uint8_t WorkRam::read8(uint16_t addr) const
         addr -= mmap::wram::start;
         return Ram::read8(addr);
     }
-    else if (addr >= mmap::wram::half_start && addr < mmap::wram::end) {
+    else if (addr >= mmap::wram::half_start && addr <= mmap::wram::end) {
         addr -= mmap::wram::start;
 
         uint8_t bank = mCurrBank == 0 ? 1 : mCurrBank;
@@ -78,7 +78,7 @@ void WorkRam::write8(uint16_t addr, uint8_t val)
         addr -= mmap::wram::start;
         Ram::write8(addr, val);
     }
-    else if (addr >= mmap::wram::half_start && addr < mmap::wram::end) {
+    else if (addr >= mmap::wram::half_start && addr <= mmap::wram::end) {
         addr -= mmap::wram::start;
 
         uint8_t bank = mCurrBank == 0 ? 1 : mCurrBank;

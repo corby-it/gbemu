@@ -2100,8 +2100,10 @@ TEST_CASE("CPU test INC reg 8-bit") {
 
     bus.write8(pc, op::INC_A);
 
+    auto flagsBefore = cpu.regs.flags;
+
     // we use reg A, the code is the same for the other registers
-    // the carry flag is never set 
+    // the carry flag is not modified
 
     SUBCASE("Test INC A no flags") {
         cpu.regs.A = 0x01;
@@ -2109,7 +2111,7 @@ TEST_CASE("CPU test INC reg 8-bit") {
         CHECK(cpu.regs.A == 0x02);
 
         CHECK_FALSE(cpu.regs.flags.Z);
-        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK(cpu.regs.flags.C == flagsBefore.C); 
         CHECK_FALSE(cpu.regs.flags.H);
         CHECK_FALSE(cpu.regs.flags.N);
 
@@ -2121,7 +2123,7 @@ TEST_CASE("CPU test INC reg 8-bit") {
         CHECK(cpu.regs.A == 0x10);
 
         CHECK_FALSE(cpu.regs.flags.Z);
-        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK(cpu.regs.flags.C == flagsBefore.C);
         CHECK(cpu.regs.flags.H);
         CHECK_FALSE(cpu.regs.flags.N);
 
@@ -2133,7 +2135,7 @@ TEST_CASE("CPU test INC reg 8-bit") {
         CHECK(cpu.regs.A == 0x00);
 
         CHECK(cpu.regs.flags.Z);
-        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK(cpu.regs.flags.C == flagsBefore.C);
         CHECK(cpu.regs.flags.H);
         CHECK_FALSE(cpu.regs.flags.N);
 
@@ -2152,12 +2154,16 @@ TEST_CASE("CPU test INC [HL]") {
     bus.write8(addr, 0x20);
     cpu.regs.setHL(addr);
 
+    auto flagsBefore = cpu.regs.flags;
+
     cpu.step();
 
     CHECK(bus.read8(addr) == 0x21);
 
+    // C flag is not modified by this instruction
+
     CHECK_FALSE(cpu.regs.flags.Z);
-    CHECK_FALSE(cpu.regs.flags.C);
+    CHECK(cpu.regs.flags.C == flagsBefore.C);
     CHECK_FALSE(cpu.regs.flags.H);
     CHECK_FALSE(cpu.regs.flags.N);
 
@@ -2174,8 +2180,10 @@ TEST_CASE("CPU test DEC reg 8-bit") {
 
     bus.write8(pc, op::DEC_A);
 
+    auto flagsBefore = cpu.regs.flags;
+
     // we use reg A, the code is the same for the other registers
-    // the carry flag is never set
+    // the C flag is not modified by this instruction
 
     SUBCASE("Test DEC A no flags") {
         cpu.regs.A = 0x03;
@@ -2183,7 +2191,7 @@ TEST_CASE("CPU test DEC reg 8-bit") {
         CHECK(cpu.regs.A == 0x02);
 
         CHECK_FALSE(cpu.regs.flags.Z);
-        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK(cpu.regs.flags.C == flagsBefore.C);
         CHECK_FALSE(cpu.regs.flags.H);
         CHECK(cpu.regs.flags.N);
 
@@ -2195,7 +2203,7 @@ TEST_CASE("CPU test DEC reg 8-bit") {
         CHECK(cpu.regs.A == 0x0f);
 
         CHECK_FALSE(cpu.regs.flags.Z);
-        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK(cpu.regs.flags.C == flagsBefore.C);
         CHECK(cpu.regs.flags.H);
         CHECK(cpu.regs.flags.N);
 
@@ -2207,7 +2215,7 @@ TEST_CASE("CPU test DEC reg 8-bit") {
         CHECK(cpu.regs.A == 0x00);
 
         CHECK(cpu.regs.flags.Z);
-        CHECK_FALSE(cpu.regs.flags.C);
+        CHECK(cpu.regs.flags.C == flagsBefore.C);
         CHECK_FALSE(cpu.regs.flags.H);
         CHECK(cpu.regs.flags.N);
 
@@ -2226,12 +2234,16 @@ TEST_CASE("CPU test DEC [HL]") {
     bus.write8(addr, 0x32);
     cpu.regs.setHL(addr);
 
+    auto flagsBefore = cpu.regs.flags;
+
     cpu.step();
 
     CHECK(bus.read8(addr) == 0x31);
 
+    // the C flag is not modified by this instruction
+    
     CHECK_FALSE(cpu.regs.flags.Z);
-    CHECK_FALSE(cpu.regs.flags.C);
+    CHECK(cpu.regs.flags.C == flagsBefore.C);
     CHECK_FALSE(cpu.regs.flags.H);
     CHECK(cpu.regs.flags.N);
 
@@ -3873,6 +3885,7 @@ TEST_CASE("CPU test conditional jumps JP C/Z/NC/NZ, a16") {
 
     SUBCASE("Test JP C,a16 branch not taken") {
         bus.write8(pc, op::JP_C_a16);
+        cpu.regs.flags.C = false;
         cpu.step();
         CHECK(cpu.regs.PC == pc + 3);
         CHECK(cpu.elapsedCycles() == 3);
@@ -3886,6 +3899,7 @@ TEST_CASE("CPU test conditional jumps JP C/Z/NC/NZ, a16") {
     }
     SUBCASE("Test JP Z,a16 branch not taken") {
         bus.write8(pc, op::JP_Z_a16);
+        cpu.regs.flags.Z = false;
         cpu.step();
         CHECK(cpu.regs.PC == pc + 3);
         CHECK(cpu.elapsedCycles() == 3);
@@ -3906,6 +3920,7 @@ TEST_CASE("CPU test conditional jumps JP C/Z/NC/NZ, a16") {
     }
     SUBCASE("Test JP NC,a16 branch taken") {
         bus.write8(pc, op::JP_NC_a16);
+        cpu.regs.flags.C = false;
         cpu.step();
         CHECK(cpu.regs.PC == addr);
         CHECK(cpu.elapsedCycles() == 4);
@@ -3919,6 +3934,7 @@ TEST_CASE("CPU test conditional jumps JP C/Z/NC/NZ, a16") {
     }
     SUBCASE("Test JP NZ,a16 branch taken") {
         bus.write8(pc, op::JP_NZ_a16);
+        cpu.regs.flags.Z = false;
         cpu.step();
         CHECK(cpu.regs.PC == addr);
         CHECK(cpu.elapsedCycles() == 4);
@@ -4660,11 +4676,13 @@ TEST_CASE("CPU test HALT mode with interrupts enabled") {
     CHECK(cpu.regs.PC == irqAddr);
 
     // execute the RETI and the two INC_A
+    auto oldA = cpu.regs.A;
+
     cpu.step();
     cpu.step();
     cpu.step();
 
-    CHECK(cpu.regs.A == 2);
+    CHECK(cpu.regs.A == oldA + 2);
 }
 
 TEST_CASE("CPU test HALT mode with interrupts disabled") {
@@ -4698,16 +4716,20 @@ TEST_CASE("CPU test HALT mode with interrupts disabled") {
     // raise timer interrupt that won't be handled because
     // IME is false 
     cpu.irqs.writeIF(Irqs::mask(Irqs::Type::Timer));
+
+    auto oldA = cpu.regs.A;
+
+    // this step will exit halt mode and execute the first INC A
     cpu.step();
 
     CHECK_FALSE(cpu.isHalted());
     CHECK(cpu.regs.PC == pc + 2);
+    CHECK(cpu.regs.A == oldA + 1);
 
-    // execute two INC_A
-    cpu.step();
+    // execute the second INC_A
     cpu.step();
 
-    CHECK(cpu.regs.A == 2);
+    CHECK(cpu.regs.A == oldA + 2);
 }
 
 
@@ -4738,12 +4760,13 @@ TEST_CASE("CPU test HALT mode, trigger HALT bug on 1-byte instruction") {
     // - execute the next instruction (INC_A)
     // - fail to increment the PC as expected
     auto oldPC = cpu.regs.PC;
+    auto oldA = cpu.regs.A;
 
     cpu.irqs.writeIF(Irqs::mask(Irqs::Type::Timer));
     cpu.step();
 
     CHECK_FALSE(cpu.isHalted());
-    CHECK(cpu.regs.A == 1);
+    CHECK(cpu.regs.A == oldA + 1);
     CHECK(cpu.regs.PC == oldPC);
 
     // step again to read the same byte from the program counter (it's important
@@ -4751,13 +4774,13 @@ TEST_CASE("CPU test HALT mode, trigger HALT bug on 1-byte instruction") {
     // byte read from the PC that is read twice!)
     cpu.step();
     CHECK_FALSE(cpu.isHalted());
-    CHECK(cpu.regs.A == 2);
+    CHECK(cpu.regs.A == oldA + 2);
     CHECK(cpu.regs.PC == oldPC + 1);
 
     // step again to execute the last INC_A
     cpu.step();
     CHECK_FALSE(cpu.isHalted());
-    CHECK(cpu.regs.A == 3);
+    CHECK(cpu.regs.A == oldA + 3);
     CHECK(cpu.regs.PC == oldPC + 2);
 }
 
