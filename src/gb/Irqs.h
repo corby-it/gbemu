@@ -118,11 +118,9 @@ struct Irqs {
     }
 
     template<class Archive>
-        void serialize(Archive& ar) {
+        void serialize(Archive& ar, uint32_t const /*version*/) {
         ar(ime, IE, IF);
     }
-
-
 
     bool ime;
 
@@ -130,8 +128,10 @@ private:
     uint8_t IF;
     uint8_t IE;
 
-
 };
+
+CEREAL_CLASS_VERSION(Irqs, 1);
+
 
 
 #endif // GBEMU_SRC_GB_IRQS_H_

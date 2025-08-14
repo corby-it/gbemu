@@ -14,6 +14,8 @@
 #include "Apu.h"
 #include "Serial.h"
 #include "Cartridge.h"
+#include "Infrared.h"
+#include "UndocumentedRegs.h"
 #include "gbdebug/Debug.h"
 #include <chrono>
 #include <filesystem>
@@ -21,7 +23,7 @@
 
 
 
-enum class GbType {
+enum class GbType : uint8_t {
     DMG,
     CGB
 };
@@ -42,6 +44,7 @@ struct EmulateRes {
 enum class SaveStateError {
     NoError,
     OpenFileError,
+    HardwareMismatch,
     CartridgeMismatch,
     LoadingError,
     SavingError,
@@ -98,8 +101,8 @@ public:
     void step();
     void stepReturn();
 
-    virtual SaveStateError saveState(const std::filesystem::path& path) = 0;
-    virtual SaveStateError loadState(const std::filesystem::path& path) = 0;
+    SaveStateError saveState(const std::filesystem::path& path);
+    SaveStateError loadState(const std::filesystem::path& path);
 
     CartridgeLoadingRes loadCartridge(const std::filesystem::path& path);
     CartridgeLoadingRes loadCartridge(const uint8_t* data, size_t size);
@@ -117,6 +120,8 @@ public:
     APU apu;
     Serial serial;
     HiRam hiRam;
+    Infrared infrared;
+    UndocumentedRegs undocRegs;
 
 
     Status status;
@@ -159,11 +164,10 @@ public:
 
 
 protected:
+    void gbReset();
 
 
 private:
-
-    virtual void gbReset() = 0;
     virtual GbStepRes gbStep() = 0;
 
     GbType mType;
@@ -182,24 +186,12 @@ public:
 
     GameBoyClassic();
 
-
     uint8_t read8(uint16_t addr) const override;
     void write8(uint16_t addr, uint8_t val) override;
 
 
-
-    SaveStateError saveState(const std::filesystem::path& path) override;
-    SaveStateError loadState(const std::filesystem::path& path) override;
-
-   
-    
-    
-
 private:
-
-    void gbReset() override;
     GbStepRes gbStep() override;
-
     AddressMap initAddressMap();
 
     const AddressMap mAddrMap;
@@ -216,24 +208,12 @@ public:
 
     GameBoyColor();
 
-
     uint8_t read8(uint16_t addr) const override;
     void write8(uint16_t addr, uint8_t val) override;
 
 
-
-    SaveStateError saveState(const std::filesystem::path& path) override;
-    SaveStateError loadState(const std::filesystem::path& path) override;
-
-
-
-
-
 private:
-
-    void gbReset() override;
     GbStepRes gbStep() override;
-
     AddressMap initAddressMap();
 
     const AddressMap mAddrMap;

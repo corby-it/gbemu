@@ -171,6 +171,11 @@ struct RegKey1 : public RegU8 {
     bool doubleSpeed;
     bool scheduleSpeedSwitch;
 
+    template<class Archive>
+    void serialize(Archive& ar, uint32_t const /*version*/) {
+        ar(doubleSpeed, scheduleSpeedSwitch);
+    }
+
 };
 
 
@@ -206,7 +211,7 @@ public:
 
     template<class Archive>
     void serialize(Archive& ar, uint32_t const /*version*/) {
-        ar(regs, irqs);
+        ar(regs, irqs, key1);
         ar(mCycles, mImeScheduled, mIsHalted, mCheckForHaltBug, mIsStopped);
         ar(mIrqNesting, mCallNesting);
     }

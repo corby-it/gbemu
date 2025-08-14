@@ -63,6 +63,8 @@ public:
 
     void reset();
 
+    void setIsCgb(bool val) { mIsCgb = val; }
+
     uint8_t read8(uint16_t addr) const override;
     void write8(uint16_t addr, uint8_t val) override;
 
@@ -93,7 +95,7 @@ public:
         ar(square1, square2, wave, noise);
         ar(mVinL, mVinR, mVolL, mVolR);
         ar(mChPanL, mChPanR);
-        ar(mOutL, mOutR, mApuEnabled);
+        ar(mOutL, mOutR, mApuEnabled, mPCM12, mPCM34);
         ar(mEnableHpf, mFrameSeq, mHpfL, mHpfR);
         ar(mDownsamplingFreq, mTimeCounter);
     }
@@ -121,6 +123,7 @@ private:
     void writeReg2(uint8_t val);
     uint8_t readReg2() const;
 
+    void updatePCMReg(uint32_t chId);
     
     // NR50
     bool mVinL;
@@ -137,6 +140,10 @@ private:
 
     float mOutR;
     float mOutL;
+
+    // PCM registers (CGB only)
+    uint8_t mPCM12;
+    uint8_t mPCM34;
 
     // internal stuff
 
@@ -159,6 +166,8 @@ private:
 
     uint32_t mDownsamplingFreq;
     std::chrono::nanoseconds mTimeCounter;
+
+    bool mIsCgb;
 
 };
 

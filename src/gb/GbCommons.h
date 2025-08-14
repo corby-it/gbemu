@@ -148,7 +148,16 @@ namespace mmap {
         }
 
         MMAP_T key1 = 0xFF4D;
+        MMAP_T infrared = 0xFF56;
         MMAP_T svbk = 0xFF70;
+
+        namespace undocumented {
+            MMAP_T start = 0xFF72;
+            MMAP_T end = 0xFF75;
+        }
+
+        MMAP_T pcm12 = 0xFF76;
+        MMAP_T pcm34 = 0xFF77;
 
         MMAP_T end = 0xFF7F;
     }

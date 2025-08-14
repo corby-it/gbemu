@@ -74,6 +74,7 @@ APU::APU(uint32_t downsamplingFreq)
     , mEnableHpf(true)
     , mChannels{ &square1, &square2, &wave, &noise }
     , mDownsamplingFreq(downsamplingFreq)
+    , mIsCgb(false)
 {
     // set cutoff frequency for the HPFs to 30 HZ
     mHpfR.setCutoff(30.f, (float)downsamplingFreq);
@@ -111,6 +112,9 @@ void APU::reset()
     mOutL = 0.f;
     mOutR = 0.f;
 
+    mPCM12 = 0;
+    mPCM34 = 0;
+
     mTimeCounter = 0ns;
 }
 
@@ -120,6 +124,14 @@ uint8_t APU::read8(uint16_t addr) const
 
     if (addr >= areg::wave_ram::start && addr <= areg::wave_ram::end) {
         return wave.readWaveRam(addr);
+    }
+    else if (mIsCgb && (addr == mmap::regs::pcm12 || addr == mmap::regs::pcm34)) {
+        switch (addr) {
+        case mmap::regs::pcm12: return mPCM12;
+        case mmap::regs::pcm34: return mPCM34;
+        default:
+            return 0xff;
+        }
     }
     else {
         // some bits are always set to 1 when read back
@@ -202,13 +214,15 @@ void APU::write8(uint16_t addr, uint8_t val)
             // when the apu is not enabled only register NR52 is writable
             // as stated in Blargg's tests, on monochrome models writing to NR41 is also possible 
             switch (addr) {
-            case areg::NR41: noise.writeReg1(val); break;
+            case areg::NR41: if(!mIsCgb) noise.writeReg1(val); break;
             case areg::NR52: writeReg2(val); break;
             default:
                 break;
             }
         }
     }
+
+    // PCM12 and PCM34 are read-only
 }
 
 
@@ -311,6 +325,31 @@ uint8_t APU::readReg2() const
 }
 
 
+void APU::updatePCMReg(uint32_t chId)
+{
+    switch (chId) {
+    case 0: // square 1 channel, PCM12 low nibble
+        mPCM12 = (mPCM12 & 0xF0) | (square1.getOutput() & 0x0F);
+        break;
+
+    case 1: // square 2 channel, PCM12 high nibble
+        mPCM12 = (mPCM12 & 0x0F) | ((square2.getOutput() & 0x0F) << 4);
+        break;
+
+    case 2: // wave channel, PCM34 low nibble
+        mPCM34 = (mPCM34 & 0xF0) | (wave.getOutput() & 0x0F);
+        break;
+
+    case 3: // noise channel, PCM34 high nibble
+        mPCM34 = (mPCM34 & 0x0F) | ((noise.getOutput() & 0x0F) << 4);
+        break;
+
+    default:
+        break;
+    }
+}
+
+
 bool APU::step(uint32_t mCycles)
 {
     // for each cpu cycle we:
@@ -355,8 +394,10 @@ bool APU::step(uint32_t mCycles)
 
             // update outputs if necessary
             for (uint32_t i = 0; i < chCount; ++i) {
-                if (outputReady[i])
+                if (outputReady[i]) {
                     mChannels[i]->updateChannelOutput();
+                    updatePCMReg(i);
+                }
             }
         }
 

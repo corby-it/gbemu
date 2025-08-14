@@ -34,6 +34,7 @@ const char* saveStateErrorToStr(SaveStateError err)
     switch (err) {
     case SaveStateError::NoError: return "No error";
     case SaveStateError::OpenFileError: return "Can't open the file";
+    case SaveStateError::HardwareMismatch: return "The save state hardware type doesn't match the currently emulated hardware type";
     case SaveStateError::CartridgeMismatch: return "The currently loaded cartridge header doesn't match the save state cartridge header";
     case SaveStateError::LoadingError: return "Loading error, maybe the save state file is corrupted?";
     case SaveStateError::SavingError: return "Saving error";
@@ -77,6 +78,46 @@ GameBoyIf::GameBoyIf(GbType type)
     , mType(type)
     , mStepInstruction(false)
 {}
+
+void GameBoyIf::gbReset()
+{
+    cpu.reset();
+    wram.reset();
+    ppu.reset();
+    dma.reset();
+    cartridge.reset();
+    timer.reset();
+    joypad.reset();
+    apu.reset();
+    serial.reset();
+    hiRam.reset();
+    infrared.reset();
+    undocRegs.reset();
+
+    dbg.updateInstructionToStr(*this);
+}
+
+const GBTimingInfo& GameBoyIf::getCurrTimingInfo() const
+{
+    static const GBTimingInfo baseSpeed = {
+        clockFreq,
+        machineFreq,
+        clockPeriod,
+        machinePeriod,
+    };
+    static const GBTimingInfo doubleSpeed = {
+        clockFreq * 2,
+        machineFreq * 2,
+        clockPeriod / 2,
+        machinePeriod / 2,
+    };
+
+    if (cpu.key1.doubleSpeed)
+        return doubleSpeed;
+    else
+        return baseSpeed;
+}
+
 
 
 EmulateRes GameBoyIf::emulate()
@@ -206,6 +247,119 @@ CartridgeLoadingRes GameBoyIf::loadCartridge(const uint8_t* data, size_t size)
 
 
 
+SaveStateError GameBoyIf::saveState(const fs::path& path)
+{
+    std::ofstream ofs(path, std::ios::binary);
+    if (!ofs)
+        return SaveStateError::OpenFileError;
+
+    try {
+        cereal::BinaryOutputArchive oar(ofs);
+
+        // first write the hardware type
+        oar(static_cast<uint8_t>(mType));
+
+        // write the content of the cartridge header file first, this will be used to check
+        // if a save state is compatible with the currently loaded cartridge
+        oar(cartridge.header.asArray());
+
+        oar(cpu);
+        oar(wram);
+        oar(ppu);
+        oar(dma);
+        oar(cartridge);
+        oar(timer);
+        oar(joypad);
+        oar(apu);
+        oar(serial);
+        oar(hiRam);
+        oar(infrared);
+        oar(undocRegs);
+    }
+    catch (const cereal::Exception& /*ex*/) {
+        return SaveStateError::SavingError;
+    }
+
+    return SaveStateError::NoError;
+}
+
+SaveStateError GameBoyIf::loadState(const fs::path& path)
+{
+    std::ifstream ifs(path, std::ios::binary);
+    if (!ifs)
+        return SaveStateError::OpenFileError;
+
+    try {
+        cereal::BinaryInputArchive iar(ifs);
+
+        uint8_t hwTypeU8;
+        iar(hwTypeU8);
+
+        auto hwType = static_cast<GbType>(hwTypeU8);
+        if (hwType != mType)
+            return SaveStateError::HardwareMismatch;
+
+        // first verify if the header of the currently loaded cartridge is compatible with
+        // the one contained in the save state
+        std::array<uint8_t, CartridgeHeader::headerSize> buf;
+        iar(buf);
+
+        if (cartridge.header != buf)
+            return SaveStateError::CartridgeMismatch;
+
+        // read everything from the archive into a copy of the current state
+
+        CPU tmpCpu = cpu;
+        WorkRam tmpWram = wram;
+        PPU tmpPpu = ppu;
+        DMA tmpDma = dma;
+        Cartridge tmpCart = cartridge;
+        Timer tmpTimer = timer;
+        Joypad tmpJoypad = joypad;
+        APU tmpApu = apu;
+        Serial tmpSerial = serial;
+        HiRam tmpHiRam = hiRam;
+        Infrared tmpInfrared = infrared;
+        UndocumentedRegs tmpUndocRegs = undocRegs;
+
+        iar(tmpCpu);
+        iar(tmpWram);
+        iar(tmpPpu);
+        iar(tmpDma);
+        iar(tmpCart);
+        iar(tmpTimer);
+        iar(tmpJoypad);
+        iar(tmpApu);
+        iar(tmpSerial);
+        iar(tmpHiRam);
+        iar(tmpInfrared);
+        iar(tmpUndocRegs);
+
+        // if no execption got caught while deserializing we can copy back 
+        // the new state into the gameboy
+        cpu = tmpCpu;
+        wram = tmpWram;
+        ppu = tmpPpu;
+        dma = tmpDma;
+        cartridge = tmpCart;
+        timer = tmpTimer;
+        joypad = tmpJoypad;
+        apu = tmpApu;
+        serial = tmpSerial;
+        hiRam = tmpHiRam;
+        infrared = tmpInfrared;
+        undocRegs = tmpUndocRegs;
+    }
+    catch (const cereal::Exception& /*ex*/) {
+        return SaveStateError::LoadingError;
+    }
+
+    return SaveStateError::NoError;
+}
+
+
+
+
 
 
 // ------------------------------------------------------------------------------------------------
@@ -218,47 +372,14 @@ GameBoyClassic::GameBoyClassic()
 {
     cpu.setIsCgb(false);
     wram.setIsCgb(false);
+    apu.setIsCgb(false);
+    infrared.setIsCgb(false);
+    undocRegs.setIsCgb(false);
 
     // make sure to reset everything 
     gbReset();
 }
 
-const GBTimingInfo& GameBoyIf::getCurrTimingInfo() const
-{
-    static const GBTimingInfo baseSpeed = {
-        clockFreq,
-        machineFreq,
-        clockPeriod,
-        machinePeriod,
-    };
-    static const GBTimingInfo doubleSpeed = {
-        clockFreq * 2,
-        machineFreq * 2,
-        clockPeriod / 2,
-        machinePeriod / 2,
-    };
-
-    if (cpu.key1.doubleSpeed)
-        return doubleSpeed;
-    else
-        return baseSpeed;
-}
-
-void GameBoyClassic::gbReset()
-{
-    cpu.reset();
-    wram.reset();
-    ppu.reset();
-    dma.reset();
-    cartridge.reset();
-    timer.reset();
-    joypad.reset();
-    apu.reset();
-    serial.reset();
-    hiRam.reset();
-
-    dbg.updateInstructionToStr(*this);
-}
 
 
 AddressMap GameBoyClassic::initAddressMap()
@@ -363,101 +484,6 @@ GbStepRes GameBoyClassic::gbStep()
 
 
 
-SaveStateError GameBoyClassic::saveState(const fs::path& path)
-{
-    std::ofstream ofs(path, std::ios::binary);
-    if(!ofs)
-        return SaveStateError::OpenFileError;
-
-    try {
-        cereal::BinaryOutputArchive oar(ofs);
-
-        // write the content of the cartridge header file first, this will be used to check
-        // if a save state is compatible with the currently loaded cartridge
-        oar(cartridge.header.asArray());
-
-        oar(cpu);
-        oar(wram);
-        oar(ppu);
-        oar(dma);
-        oar(cartridge);
-        oar(timer);
-        oar(joypad);
-        oar(apu);
-        oar(serial);
-        oar(hiRam);
-    }
-    catch (const cereal::Exception& /*ex*/) {
-        return SaveStateError::SavingError;
-    }
-
-    return SaveStateError::NoError;
-}
-
-SaveStateError GameBoyClassic::loadState(const fs::path& path)
-{
-    std::ifstream ifs(path, std::ios::binary);
-    if (!ifs)
-        return SaveStateError::OpenFileError;
-
-    try {
-        cereal::BinaryInputArchive iar(ifs);
-
-        // first verify if the header of the currently loaded cartridge is compatible with
-        // the one contained in the save state
-        std::array<uint8_t, CartridgeHeader::headerSize> buf;
-        iar(buf);
-
-        if (cartridge.header != buf)
-            return SaveStateError::CartridgeMismatch;
-
-        // read everything from the archive into a copy of the current state
-
-        CPU tmpCpu = cpu;
-        WorkRam tmpWram = wram;
-        PPU tmpPpu = ppu;
-        DMA tmpDma = dma;
-        Cartridge tmpCart = cartridge;
-        Timer tmpTimer = timer;
-        Joypad tmpJoypad = joypad;
-        APU tmpApu = apu;
-        Serial tmpSerial = serial;
-        HiRam tmphiRam = hiRam;
-
-        iar(tmpCpu);
-        iar(tmpWram);
-        iar(tmpPpu);
-        iar(tmpDma);
-        iar(tmpCart);
-        iar(tmpTimer);
-        iar(tmpJoypad);
-        iar(tmpApu);
-        iar(tmpSerial);
-        iar(tmphiRam);
-
-        // if no execption got caught while deserializing we can copy back 
-        // the new state into the gameboy
-        cpu = tmpCpu;
-        wram = tmpWram;
-        ppu = tmpPpu;
-        dma = tmpDma;
-        cartridge = tmpCart;
-        timer = tmpTimer;
-        joypad = tmpJoypad;
-        apu = tmpApu;
-        serial = tmpSerial;
-        hiRam = tmphiRam;
-    }
-    catch (const cereal::Exception& /*ex*/) {
-        return SaveStateError::LoadingError;
-    }
-
-    return SaveStateError::NoError;
-}
-
-
-
-
 // ------------------------------------------------------------------------------------------------
 // GameBoyColor
 // ------------------------------------------------------------------------------------------------
@@ -468,25 +494,12 @@ GameBoyColor::GameBoyColor()
 {
     cpu.setIsCgb(true);
     wram.setIsCgb(true);
+    apu.setIsCgb(true);
+    infrared.setIsCgb(true);
+    undocRegs.setIsCgb(false);
 
     // make sure to reset everything 
     gbReset();
-}
-
-void GameBoyColor::gbReset()
-{
-    cpu.reset();
-    wram.reset();
-    ppu.reset();
-    dma.reset();
-    cartridge.reset();
-    timer.reset();
-    joypad.reset();
-    apu.reset();
-    serial.reset();
-    hiRam.reset();
-
-    dbg.updateInstructionToStr(*this);
 }
 
 
@@ -531,8 +544,16 @@ AddressMap GameBoyColor::initAddressMap()
         { mmap::regs::lcd::end + 1, nullptr },
         { mmap::regs::key1, &cpu },         // KEY1
         { mmap::regs::key1 + 1, nullptr },  // KEY1
+        { mmap::regs::infrared - 1, nullptr },  // Infrared
+        { mmap::regs::infrared, &infrared },    // Infrared
+        { mmap::regs::infrared + 1, nullptr },  // Infrared
         { mmap::regs::svbk - 1, nullptr },  // SVBK
         { mmap::regs::svbk, &wram },        // SVBK
+        { mmap::regs::undocumented::start - 1, nullptr },  // undoc regs
+        { mmap::regs::undocumented::start, &undocRegs },  // undoc regs
+        { mmap::regs::undocumented::end, &undocRegs },  // undoc regs
+        { mmap::regs::pcm12, &apu },  // PCM regs
+        { mmap::regs::pcm34, &apu },  // PCM regs
         { mmap::hiram::start - 1, nullptr },
         { mmap::hiram::start, &hiRam },
         { mmap::hiram::end, &hiRam },
@@ -613,98 +634,4 @@ GbStepRes GameBoyColor::gbStep()
     return res;
 }
 
-
-
-
-SaveStateError GameBoyColor::saveState(const fs::path& path)
-{
-    std::ofstream ofs(path, std::ios::binary);
-    if (!ofs)
-        return SaveStateError::OpenFileError;
-
-    try {
-        cereal::BinaryOutputArchive oar(ofs);
-
-        // write the content of the cartridge header file first, this will be used to check
-        // if a save state is compatible with the currently loaded cartridge
-        oar(cartridge.header.asArray());
-
-        oar(cpu);
-        oar(wram);
-        oar(ppu);
-        oar(dma);
-        oar(cartridge);
-        oar(timer);
-        oar(joypad);
-        oar(apu);
-        oar(serial);
-        oar(hiRam);
-    }
-    catch (const cereal::Exception& /*ex*/) {
-        return SaveStateError::SavingError;
-    }
-
-    return SaveStateError::NoError;
-}
-
-SaveStateError GameBoyColor::loadState(const fs::path& path)
-{
-    std::ifstream ifs(path, std::ios::binary);
-    if (!ifs)
-        return SaveStateError::OpenFileError;
-
-    try {
-        cereal::BinaryInputArchive iar(ifs);
-
-        // first verify if the header of the currently loaded cartridge is compatible with
-        // the one contained in the save state
-        std::array<uint8_t, CartridgeHeader::headerSize> buf;
-        iar(buf);
-
-        if (cartridge.header != buf)
-            return SaveStateError::CartridgeMismatch;
-
-        // read everything from the archive into a copy of the current state
-
-        CPU tmpCpu = cpu;
-        WorkRam tmpWram = wram;
-        PPU tmpPpu = ppu;
-        DMA tmpDma = dma;
-        Cartridge tmpCart = cartridge;
-        Timer tmpTimer = timer;
-        Joypad tmpJoypad = joypad;
-        APU tmpApu = apu;
-        Serial tmpSerial = serial;
-        HiRam tmphiRam = hiRam;
-
-        iar(tmpCpu);
-        iar(tmpWram);
-        iar(tmpPpu);
-        iar(tmpDma);
-        iar(tmpCart);
-        iar(tmpTimer);
-        iar(tmpJoypad);
-        iar(tmpApu);
-        iar(tmpSerial);
-        iar(tmphiRam);
-
-        // if no execption got caught while deserializing we can copy back 
-        // the new state into the gameboy
-        cpu = tmpCpu;
-        wram = tmpWram;
-        ppu = tmpPpu;
-        dma = tmpDma;
-        cartridge = tmpCart;
-        timer = tmpTimer;
-        joypad = tmpJoypad;
-        apu = tmpApu;
-        serial = tmpSerial;
-        hiRam = tmphiRam;
-    }
-    catch (const cereal::Exception& /*ex*/) {
-        return SaveStateError::LoadingError;
-    }
-
-    return SaveStateError::NoError;
-}
 

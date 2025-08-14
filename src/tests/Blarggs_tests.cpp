@@ -87,7 +87,7 @@ public:
 
 class MemoryResultChecker {
 public:
-    MemoryResultChecker(GameBoyClassic& gameboy)
+    MemoryResultChecker(GameBoyIf& gameboy)
         : gb(gameboy)
         , status(TestStatus::NotStarted)
         , failedTest(0)
@@ -148,7 +148,7 @@ public:
     }
 
 
-    GameBoyClassic& gb;
+    GameBoyIf& gb;
     TestStatus status;
     int failedTest;
     std::string msg;
@@ -159,44 +159,73 @@ public:
 TEST_CASE("Blargg's test roms - Serial monitor roms") {
 
     fs::path romRelPath = "";
+    std::unique_ptr<GameBoyIf> gb;
 
-    // CPU instructions test roms 
-    SUBCASE("") { romRelPath = "cpu_instrs/individual/01-special.gb"; }
-    SUBCASE("") { romRelPath = "cpu_instrs/individual/02-interrupts.gb"; }
-    SUBCASE("") { romRelPath = "cpu_instrs/individual/03-op sp,hl.gb"; }
-    SUBCASE("") { romRelPath = "cpu_instrs/individual/04-op r,imm.gb"; }
-    SUBCASE("") { romRelPath = "cpu_instrs/individual/05-op rp.gb"; }
-    SUBCASE("") { romRelPath = "cpu_instrs/individual/06-ld r,r.gb"; }
-    SUBCASE("") { romRelPath = "cpu_instrs/individual/07-jr,jp,call,ret,rst.gb"; }
-    SUBCASE("") { romRelPath = "cpu_instrs/individual/08-misc instrs.gb"; }
-    SUBCASE("") { romRelPath = "cpu_instrs/individual/09-op r,r.gb"; }
-    SUBCASE("") { romRelPath = "cpu_instrs/individual/10-bit ops.gb"; }
-    SUBCASE("") { romRelPath = "cpu_instrs/individual/11-op a,(hl).gb"; }
+    SUBCASE("DMG") {
+        gb = std::make_unique<GameBoyClassic>();
 
-    // Instruction timing test roms
-    SUBCASE("") { romRelPath = "instr_timing/instr_timing.gb"; }
+        // CPU instructions test roms 
+        SUBCASE("") { romRelPath = "cpu_instrs/individual/01-special.gb"; }
+        SUBCASE("") { romRelPath = "cpu_instrs/individual/02-interrupts.gb"; }
+        SUBCASE("") { romRelPath = "cpu_instrs/individual/03-op sp,hl.gb"; }
+        SUBCASE("") { romRelPath = "cpu_instrs/individual/04-op r,imm.gb"; }
+        SUBCASE("") { romRelPath = "cpu_instrs/individual/05-op rp.gb"; }
+        SUBCASE("") { romRelPath = "cpu_instrs/individual/06-ld r,r.gb"; }
+        SUBCASE("") { romRelPath = "cpu_instrs/individual/07-jr,jp,call,ret,rst.gb"; }
+        SUBCASE("") { romRelPath = "cpu_instrs/individual/08-misc instrs.gb"; }
+        SUBCASE("") { romRelPath = "cpu_instrs/individual/09-op r,r.gb"; }
+        SUBCASE("") { romRelPath = "cpu_instrs/individual/10-bit ops.gb"; }
+        SUBCASE("") { romRelPath = "cpu_instrs/individual/11-op a,(hl).gb"; }
 
-    // Memory timing test roms
-    //SUBCASE("") { romRelPath = "mem_timing/individual/01-read_timing.gb"; }
-    //SUBCASE("") { romRelPath = "mem_timing/individual/02-write_timing.gb"; }
-    //SUBCASE("") { romRelPath = "mem_timing/individual/03-modify_timing.gb"; }
+        // Instruction timing test roms
+        SUBCASE("") { romRelPath = "instr_timing/instr_timing.gb"; }
+
+        // Memory timing test roms
+        //SUBCASE("") { romRelPath = "mem_timing/individual/01-read_timing.gb"; }
+        //SUBCASE("") { romRelPath = "mem_timing/individual/02-write_timing.gb"; }
+        //SUBCASE("") { romRelPath = "mem_timing/individual/03-modify_timing.gb"; }
+    }
+
+    SUBCASE("CGB") {
+        gb = std::make_unique<GameBoyColor>();
+
+        // CPU instructions test roms 
+        SUBCASE("") { romRelPath = "cpu_instrs/individual/01-special.gb"; }
+        SUBCASE("") { romRelPath = "cpu_instrs/individual/02-interrupts.gb"; }
+        SUBCASE("") { romRelPath = "cpu_instrs/individual/03-op sp,hl.gb"; }
+        SUBCASE("") { romRelPath = "cpu_instrs/individual/04-op r,imm.gb"; }
+        SUBCASE("") { romRelPath = "cpu_instrs/individual/05-op rp.gb"; }
+        SUBCASE("") { romRelPath = "cpu_instrs/individual/06-ld r,r.gb"; }
+        SUBCASE("") { romRelPath = "cpu_instrs/individual/07-jr,jp,call,ret,rst.gb"; }
+        SUBCASE("") { romRelPath = "cpu_instrs/individual/08-misc instrs.gb"; }
+        SUBCASE("") { romRelPath = "cpu_instrs/individual/09-op r,r.gb"; }
+        SUBCASE("") { romRelPath = "cpu_instrs/individual/10-bit ops.gb"; }
+        SUBCASE("") { romRelPath = "cpu_instrs/individual/11-op a,(hl).gb"; }
+
+        // Instruction timing test roms
+        SUBCASE("") { romRelPath = "instr_timing/instr_timing.gb"; }
+
+        // Memory timing test roms
+        //SUBCASE("") { romRelPath = "mem_timing/individual/01-read_timing.gb"; }
+        //SUBCASE("") { romRelPath = "mem_timing/individual/02-write_timing.gb"; }
+        //SUBCASE("") { romRelPath = "mem_timing/individual/03-modify_timing.gb"; }
+    }
 
 
     fs::path romPath = blarggsFilesRoot / romRelPath;
 
     SerialResultChecker checker;
 
-    GameBoyClassic gb;
-    REQUIRE(gb.loadCartridge(romPath) == CartridgeLoadingRes::Ok);
+    REQUIRE(gb->loadCartridge(romPath) == CartridgeLoadingRes::Ok);
 
-    gb.serial.setSerialDataReadyCb(std::bind(&SerialResultChecker::onData, &checker, _1));
-    gb.play();
+    gb->serial.setSerialDataReadyCb(std::bind(&SerialResultChecker::onData, &checker, _1));
+    gb->play();
 
 
     uint64_t cycles = 0;
     auto startTp = hr_clock::now();
     while (cycles < cyclesLimit && checker.status == TestStatus::Running) {
-        auto [stillGoing, stepsRes] = gb.emulate();
+        auto [stillGoing, stepsRes] = gb->emulate();
         cycles += stepsRes.cpuRes.cycles;
     }
     auto elapsed = duration_cast<microseconds>(hr_clock::now() - startTp).count();
@@ -217,50 +246,90 @@ TEST_CASE("Blargg's test roms - Memory monitor roms") {
 
     fs::path romRelPath = "";
 
-    // OAM bug roms
-    //SUBCASE("") { romRelPath = "oam_bug/rom_singles/1-lcd_sync.gb"; }
-    //SUBCASE("") { romRelPath = "oam_bug/rom_singles/2-causes.gb"; }
-    SUBCASE("") { romRelPath = "oam_bug/rom_singles/3-non_causes.gb"; }
-    //SUBCASE("") { romRelPath = "oam_bug/rom_singles/4-scanline_timing.gb"; }
-    //SUBCASE("") { romRelPath = "oam_bug/rom_singles/5-timing_bug.gb"; }
-    SUBCASE("") { romRelPath = "oam_bug/rom_singles/6-timing_no_bug.gb"; }
-    //SUBCASE("") { romRelPath = "oam_bug/rom_singles/7-timing_effect.gb"; }
-    //SUBCASE("") { romRelPath = "oam_bug/rom_singles/8-instr_effect.gb"; }
+    std::unique_ptr<GameBoyIf> gb;
 
-    // audio roms
-    SUBCASE("") { romRelPath = "dmg_sound/rom_singles/01-registers.gb"; }
-    SUBCASE("") { romRelPath = "dmg_sound/rom_singles/02-len ctr.gb"; }
-    //SUBCASE("") { romRelPath = "dmg_sound/rom_singles/03-trigger.gb"; }
-    SUBCASE("") { romRelPath = "dmg_sound/rom_singles/04-sweep.gb"; }
-    SUBCASE("") { romRelPath = "dmg_sound/rom_singles/05-sweep details.gb"; }
-    SUBCASE("") { romRelPath = "dmg_sound/rom_singles/06-overflow on trigger.gb"; }
-    SUBCASE("") { romRelPath = "dmg_sound/rom_singles/07-len sweep period sync.gb"; }
-    //SUBCASE("") { romRelPath = "dmg_sound/rom_singles/08-len ctr during power.gb"; }
-    //SUBCASE("") { romRelPath = "dmg_sound/rom_singles/09-wave read while on.gb"; }
-    //SUBCASE("") { romRelPath = "dmg_sound/rom_singles/10-wave trigger while on.gb"; }
-    SUBCASE("") { romRelPath = "dmg_sound/rom_singles/11-regs after power.gb"; }
-    //SUBCASE("") { romRelPath = "dmg_sound/rom_singles/12-wave write while on.gb"; }
+    SUBCASE("DMG Blargg's roms") {
+        gb = std::make_unique<GameBoyClassic>();
 
-    // Memory timing test roms
-    //SUBCASE("") { romRelPath = "mem_timing-2/rom_singles/01-read_timing.gb"; }
-    //SUBCASE("") { romRelPath = "mem_timing-2/rom_singles/02-write_timing.gb"; }
-    //SUBCASE("") { romRelPath = "mem_timing-2/rom_singles/03-modify_timing.gb"; }
+        // OAM bug roms
+        //SUBCASE("") { romRelPath = "oam_bug/rom_singles/1-lcd_sync.gb"; }
+        //SUBCASE("") { romRelPath = "oam_bug/rom_singles/2-causes.gb"; }
+        SUBCASE("") { romRelPath = "oam_bug/rom_singles/3-non_causes.gb"; }
+        //SUBCASE("") { romRelPath = "oam_bug/rom_singles/4-scanline_timing.gb"; }
+        //SUBCASE("") { romRelPath = "oam_bug/rom_singles/5-timing_bug.gb"; }
+        SUBCASE("") { romRelPath = "oam_bug/rom_singles/6-timing_no_bug.gb"; }
+        //SUBCASE("") { romRelPath = "oam_bug/rom_singles/7-timing_effect.gb"; }
+        //SUBCASE("") { romRelPath = "oam_bug/rom_singles/8-instr_effect.gb"; }
+
+        // audio roms
+        SUBCASE("") { romRelPath = "dmg_sound/rom_singles/01-registers.gb"; }
+        SUBCASE("") { romRelPath = "dmg_sound/rom_singles/02-len ctr.gb"; }
+        //SUBCASE("") { romRelPath = "dmg_sound/rom_singles/03-trigger.gb"; }
+        SUBCASE("") { romRelPath = "dmg_sound/rom_singles/04-sweep.gb"; }
+        SUBCASE("") { romRelPath = "dmg_sound/rom_singles/05-sweep details.gb"; }
+        SUBCASE("") { romRelPath = "dmg_sound/rom_singles/06-overflow on trigger.gb"; }
+        SUBCASE("") { romRelPath = "dmg_sound/rom_singles/07-len sweep period sync.gb"; }
+        //SUBCASE("") { romRelPath = "dmg_sound/rom_singles/08-len ctr during power.gb"; }
+        //SUBCASE("") { romRelPath = "dmg_sound/rom_singles/09-wave read while on.gb"; }
+        //SUBCASE("") { romRelPath = "dmg_sound/rom_singles/10-wave trigger while on.gb"; }
+        SUBCASE("") { romRelPath = "dmg_sound/rom_singles/11-regs after power.gb"; }
+        //SUBCASE("") { romRelPath = "dmg_sound/rom_singles/12-wave write while on.gb"; }
+
+        // Memory timing test roms
+        //SUBCASE("") { romRelPath = "mem_timing-2/rom_singles/01-read_timing.gb"; }
+        //SUBCASE("") { romRelPath = "mem_timing-2/rom_singles/02-write_timing.gb"; }
+        //SUBCASE("") { romRelPath = "mem_timing-2/rom_singles/03-modify_timing.gb"; }
+    }
+
+    SUBCASE("CGB Blargg's roms") {
+        gb = std::make_unique<GameBoyColor>();
+
+        // OAM bug roms
+        //SUBCASE("") { romRelPath = "oam_bug/rom_singles/1-lcd_sync.gb"; }
+        //SUBCASE("") { romRelPath = "oam_bug/rom_singles/2-causes.gb"; }
+        SUBCASE("") { romRelPath = "oam_bug/rom_singles/3-non_causes.gb"; }
+        //SUBCASE("") { romRelPath = "oam_bug/rom_singles/4-scanline_timing.gb"; }
+        //SUBCASE("") { romRelPath = "oam_bug/rom_singles/5-timing_bug.gb"; }
+        SUBCASE("") { romRelPath = "oam_bug/rom_singles/6-timing_no_bug.gb"; }
+        //SUBCASE("") { romRelPath = "oam_bug/rom_singles/7-timing_effect.gb"; }
+        //SUBCASE("") { romRelPath = "oam_bug/rom_singles/8-instr_effect.gb"; }
+
+        // audio roms
+        SUBCASE("") { romRelPath = "cgb_sound/rom_singles/01-registers.gb"; }
+        SUBCASE("") { romRelPath = "cgb_sound/rom_singles/02-len ctr.gb"; }
+        //SUBCASE("") { romRelPath = "cgb_sound/rom_singles/03-trigger.gb"; }
+        SUBCASE("") { romRelPath = "cgb_sound/rom_singles/04-sweep.gb"; }
+        SUBCASE("") { romRelPath = "cgb_sound/rom_singles/05-sweep details.gb"; }
+        SUBCASE("") { romRelPath = "cgb_sound/rom_singles/06-overflow on trigger.gb"; }
+        SUBCASE("") { romRelPath = "cgb_sound/rom_singles/07-len sweep period sync.gb"; }
+        //SUBCASE("") { romRelPath = "cgb_sound/rom_singles/08-len ctr during power.gb"; }
+        //SUBCASE("") { romRelPath = "cgb_sound/rom_singles/09-wave read while on.gb"; }
+        //SUBCASE("") { romRelPath = "cgb_sound/rom_singles/10-wave trigger while on.gb"; }
+        SUBCASE("") { romRelPath = "cgb_sound/rom_singles/11-regs after power.gb"; }
+        //SUBCASE("") { romRelPath = "cgb_sound/rom_singles/12-wave.gb"; }
+
+        // Memory timing test roms
+        //SUBCASE("") { romRelPath = "mem_timing-2/rom_singles/01-read_timing.gb"; }
+        //SUBCASE("") { romRelPath = "mem_timing-2/rom_singles/02-write_timing.gb"; }
+        //SUBCASE("") { romRelPath = "mem_timing-2/rom_singles/03-modify_timing.gb"; }
+    }
+
 
     fs::path romPath = blarggsFilesRoot / romRelPath;
 
 
-    GameBoyClassic gb;
-    MemoryResultChecker checker(gb);
+    //GameBoyClassic gb;
+    MemoryResultChecker checker(*gb);
 
-    REQUIRE(gb.loadCartridge(romPath) == CartridgeLoadingRes::Ok);
+    REQUIRE(gb->loadCartridge(romPath) == CartridgeLoadingRes::Ok);
 
-    gb.play();
+    gb->play();
 
 
     uint64_t cycles = 0;
     auto startTp = hr_clock::now();
     while (cycles < cyclesLimit && (checker.status == TestStatus::NotStarted || checker.status == TestStatus::Running)) {
-        auto [stillGoing, stepsRes] = gb.emulate();
+        auto [stillGoing, stepsRes] = gb->emulate();
         cycles += stepsRes.cpuRes.cycles;
 
         checker.check();
@@ -287,22 +356,26 @@ TEST_CASE("Blargg's test roms - HALT bug") {
     fs::path romRelPath = "halt_bug.gb";
     fs::path romPath = blarggsFilesRoot / romRelPath;
 
-    GameBoyClassic gb;
-    REQUIRE(gb.loadCartridge(romPath) == CartridgeLoadingRes::Ok);
+    std::unique_ptr<GameBoyIf> gb;
 
-    gb.play();
+    SUBCASE("DMG") { gb = std::make_unique<GameBoyClassic>(); }
+    SUBCASE("CGB") { gb = std::make_unique<GameBoyColor>(); }
+
+    REQUIRE(gb->loadCartridge(romPath) == CartridgeLoadingRes::Ok);
+
+    gb->play();
 
     // running for 5 emulated seconds should be enough to run the test
 
     uint64_t cycles = 0;
     auto startTp = hr_clock::now();
-    while (cycles < gb.timeToCyclesBase(5s)) {
-        auto [stillGoing, stepsRes] = gb.emulate();
+    while (cycles < gb->timeToCyclesBase(5s)) {
+        auto [stillGoing, stepsRes] = gb->emulate();
         cycles += stepsRes.cpuRes.cycles;
     }
     auto elapsed = duration_cast<microseconds>(hr_clock::now() - startTp).count();
 
-    auto result = compareDisplayWithFile(gb, blarggsFilesRoot / "halt_bug-dmg-cgb.png");
+    auto result = compareDisplayWithFile(*gb, blarggsFilesRoot / "halt_bug-dmg-cgb.png");
 
     INFO("Test name: ", romRelPath.string());
     INFO("This test took ", elapsed, "us");
