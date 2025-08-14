@@ -2419,12 +2419,15 @@ TEST_CASE("CPU test ADD HL,reg16") {
     // we use BC, when using other registers the code is the same
     // Z flag is not used by this instruction, only C and H are updated and N is always false
 
+    auto flagsBefore = cpu.regs.flags;
+
     SUBCASE("Test ADD HL,BC no flags") {
         cpu.regs.setHL(0x0444);
         cpu.step();
         
         CHECK(cpu.regs.HL() == 0x0777);
 
+        CHECK(cpu.regs.flags.Z == flagsBefore.Z);
         CHECK_FALSE(cpu.regs.flags.C);
         CHECK_FALSE(cpu.regs.flags.H);
         CHECK_FALSE(cpu.regs.flags.N);
@@ -2437,6 +2440,7 @@ TEST_CASE("CPU test ADD HL,reg16") {
 
         CHECK(cpu.regs.HL() == 0x1277);
 
+        CHECK(cpu.regs.flags.Z == flagsBefore.Z);
         CHECK_FALSE(cpu.regs.flags.C);
         CHECK(cpu.regs.flags.H);
         CHECK_FALSE(cpu.regs.flags.N);
@@ -2449,6 +2453,7 @@ TEST_CASE("CPU test ADD HL,reg16") {
 
         CHECK(cpu.regs.HL() == 0x0277);
 
+        CHECK(cpu.regs.flags.Z == flagsBefore.Z);
         CHECK(cpu.regs.flags.C);
         CHECK(cpu.regs.flags.H);
         CHECK_FALSE(cpu.regs.flags.N);
@@ -2536,11 +2541,15 @@ TEST_CASE("CPU test INC/DEC reg 16-bit") {
 
     const uint16_t pc = Registers::PCinitialValue;
 
+    // flags are not touched by these instructions
+    auto flagsBefore = cpu.regs.flags;
+
     SUBCASE("Test INC BC") {
         bus.write8(pc, op::INC_BC);
         cpu.regs.setBC(0x0333);
         cpu.step();
 
+        CHECK(cpu.regs.flags == flagsBefore);
         CHECK(cpu.regs.BC() == 0x0334);
         CHECK(cpu.elapsedCycles() == 2);
     }
@@ -2549,6 +2558,7 @@ TEST_CASE("CPU test INC/DEC reg 16-bit") {
         cpu.regs.setDE(0x0333);
         cpu.step();
 
+        CHECK(cpu.regs.flags == flagsBefore);
         CHECK(cpu.regs.DE() == 0x0334);
         CHECK(cpu.elapsedCycles() == 2);
     }
@@ -2557,6 +2567,7 @@ TEST_CASE("CPU test INC/DEC reg 16-bit") {
         cpu.regs.setHL(0x0333);
         cpu.step();
 
+        CHECK(cpu.regs.flags == flagsBefore);
         CHECK(cpu.regs.HL() == 0x0334);
         CHECK(cpu.elapsedCycles() == 2);
     }
@@ -2565,6 +2576,7 @@ TEST_CASE("CPU test INC/DEC reg 16-bit") {
         cpu.regs.SP = 0x0333;
         cpu.step();
 
+        CHECK(cpu.regs.flags == flagsBefore);
         CHECK(cpu.regs.SP == 0x0334);
         CHECK(cpu.elapsedCycles() == 2);
     }
@@ -2573,6 +2585,7 @@ TEST_CASE("CPU test INC/DEC reg 16-bit") {
         cpu.regs.setBC(0x0333);
         cpu.step();
 
+        CHECK(cpu.regs.flags == flagsBefore);
         CHECK(cpu.regs.BC() == 0x0332);
         CHECK(cpu.elapsedCycles() == 2);
     }
@@ -2581,6 +2594,7 @@ TEST_CASE("CPU test INC/DEC reg 16-bit") {
         cpu.regs.setDE(0x0333);
         cpu.step();
 
+        CHECK(cpu.regs.flags == flagsBefore);
         CHECK(cpu.regs.DE() == 0x0332);
         CHECK(cpu.elapsedCycles() == 2);
     }
@@ -2589,6 +2603,7 @@ TEST_CASE("CPU test INC/DEC reg 16-bit") {
         cpu.regs.setHL(0x0333);
         cpu.step();
 
+        CHECK(cpu.regs.flags == flagsBefore);
         CHECK(cpu.regs.HL() == 0x0332);
         CHECK(cpu.elapsedCycles() == 2);
     }
@@ -2597,6 +2612,7 @@ TEST_CASE("CPU test INC/DEC reg 16-bit") {
         cpu.regs.SP = 0x0333;
         cpu.step();
 
+        CHECK(cpu.regs.flags == flagsBefore);
         CHECK(cpu.regs.SP == 0x0332);
         CHECK(cpu.elapsedCycles() == 2);
     }
@@ -3656,6 +3672,8 @@ TEST_CASE("CPU test BIT n,reg") {
 
     bus.write8(pc, op::CB_PREFIX);
 
+    auto flagsBefore = cpu.regs.flags;
+
     SUBCASE("Test BIT 2,A") {
         bus.write8(pc + 1, op_cb::BIT_2_A);
         cpu.regs.A = 0x22;
@@ -3663,6 +3681,7 @@ TEST_CASE("CPU test BIT n,reg") {
 
         CHECK(cpu.regs.flags.Z);
         CHECK(cpu.regs.flags.H);
+        CHECK(cpu.regs.flags.C == flagsBefore.C);
         CHECK_FALSE(cpu.regs.flags.N);
 
         CHECK(cpu.elapsedCycles() == 2);
@@ -3674,6 +3693,7 @@ TEST_CASE("CPU test BIT n,reg") {
 
         CHECK_FALSE(cpu.regs.flags.Z);
         CHECK(cpu.regs.flags.H);
+        CHECK(cpu.regs.flags.C == flagsBefore.C);
         CHECK_FALSE(cpu.regs.flags.N);
 
         CHECK(cpu.elapsedCycles() == 2);
@@ -3689,6 +3709,8 @@ TEST_CASE("CPU test BIT n,[HL]") {
     // copies the complement of the specified bit of the of the byte in memory into Z
     // H is always 1, N is always 0, C is unchanged
 
+    auto flagsBefore = cpu.regs.flags;
+
     uint16_t addr = 0x1234;
     bus.write8(pc, op::CB_PREFIX);
     cpu.regs.setHL(addr);
@@ -3700,6 +3722,7 @@ TEST_CASE("CPU test BIT n,[HL]") {
 
         CHECK(cpu.regs.flags.Z);
         CHECK(cpu.regs.flags.H);
+        CHECK(cpu.regs.flags.C == flagsBefore.C);
         CHECK_FALSE(cpu.regs.flags.N);
 
         CHECK(cpu.elapsedCycles() == 3);
@@ -3711,6 +3734,7 @@ TEST_CASE("CPU test BIT n,[HL]") {
 
         CHECK_FALSE(cpu.regs.flags.Z);
         CHECK(cpu.regs.flags.H);
+        CHECK(cpu.regs.flags.C == flagsBefore.C);
         CHECK_FALSE(cpu.regs.flags.N);
 
         CHECK(cpu.elapsedCycles() == 3);
@@ -3727,6 +3751,8 @@ TEST_CASE("CPU test SET n,reg") {
     // sets to 1 the specified bit in register reg
     // flags are unchanged
 
+    auto flagsBefore = cpu.regs.flags;
+
     bus.write8(pc, op::CB_PREFIX);
 
     SUBCASE("Test SET 2,A") {
@@ -3736,6 +3762,7 @@ TEST_CASE("CPU test SET n,reg") {
 
         CHECK(cpu.regs.A == 0x26);
         CHECK(cpu.elapsedCycles() == 2);
+        CHECK(cpu.regs.flags == flagsBefore);
     }
     SUBCASE("Test SET 4,D") {
         bus.write8(pc + 1, op_cb::SET_4_D);
@@ -3744,6 +3771,7 @@ TEST_CASE("CPU test SET n,reg") {
 
         CHECK(cpu.regs.D == 0xF6);
         CHECK(cpu.elapsedCycles() == 2);
+        CHECK(cpu.regs.flags == flagsBefore);
     }
 }
 
@@ -3756,6 +3784,8 @@ TEST_CASE("CPU test SET n,[HL]") {
     // sets to 1 the specified bit in the byte in memory
     // flags are unchanged
 
+    auto flagsBefore = cpu.regs.flags;
+
     uint16_t addr = 0x1234;
     bus.write8(pc, op::CB_PREFIX);
     cpu.regs.setHL(addr);
@@ -3767,6 +3797,7 @@ TEST_CASE("CPU test SET n,[HL]") {
 
         CHECK(bus.read8(addr) == 0x26);
         CHECK(cpu.elapsedCycles() == 4);
+        CHECK(cpu.regs.flags == flagsBefore);
     }
     SUBCASE("Test SET 4,[HL]") {
         bus.write8(pc + 1, op_cb::SET_4_inHL);
@@ -3775,6 +3806,7 @@ TEST_CASE("CPU test SET n,[HL]") {
 
         CHECK(bus.read8(addr) == 0xF6);
         CHECK(cpu.elapsedCycles() == 4);
+        CHECK(cpu.regs.flags == flagsBefore);
     }
 }
 
@@ -3787,6 +3819,8 @@ TEST_CASE("CPU test RES n,reg") {
     // resets to 0 the specified bit in register reg
     // flags are unchanged
 
+    auto flagsBefore = cpu.regs.flags;
+
     bus.write8(pc, op::CB_PREFIX);
 
     SUBCASE("Test RES 2,A") {
@@ -3796,6 +3830,7 @@ TEST_CASE("CPU test RES n,reg") {
 
         CHECK(cpu.regs.A == 0x2B);
         CHECK(cpu.elapsedCycles() == 2);
+        CHECK(cpu.regs.flags == flagsBefore);
     }
     SUBCASE("Test RES 4,D") {
         bus.write8(pc + 1, op_cb::RES_4_D);
@@ -3804,6 +3839,7 @@ TEST_CASE("CPU test RES n,reg") {
 
         CHECK(cpu.regs.D == 0xE6);
         CHECK(cpu.elapsedCycles() == 2);
+        CHECK(cpu.regs.flags == flagsBefore);
     }
 }
 
@@ -3816,6 +3852,8 @@ TEST_CASE("CPU test RES n,[HL]") {
     // resets to 0 the specified bit in the byte in memory
     // flags are unchanged
 
+    auto flagsBefore = cpu.regs.flags;
+
     uint16_t addr = 0x1234;
     bus.write8(pc, op::CB_PREFIX);
     cpu.regs.setHL(addr);
@@ -3827,6 +3865,7 @@ TEST_CASE("CPU test RES n,[HL]") {
 
         CHECK(bus.read8(addr) == 0x2B);
         CHECK(cpu.elapsedCycles() == 4);
+        CHECK(cpu.regs.flags == flagsBefore);
     }
     SUBCASE("Test RES 4,[HL]") {
         bus.write8(pc + 1, op_cb::RES_4_inHL);
@@ -3835,6 +3874,7 @@ TEST_CASE("CPU test RES n,[HL]") {
 
         CHECK(bus.read8(addr) == 0xE6);
         CHECK(cpu.elapsedCycles() == 4);
+        CHECK(cpu.regs.flags == flagsBefore);
     }
 }
 
@@ -3852,10 +3892,13 @@ TEST_CASE("CPU test unconditional jump JP a16") {
     bus.write8(pc + 1, addr & 0xff);
     bus.write8(pc + 2, addr >> 8);
 
+    auto flagsBefore = cpu.regs.flags;
+
     cpu.step();
 
     CHECK(cpu.regs.PC == addr);
     CHECK(cpu.elapsedCycles() == 4);
+    CHECK(cpu.regs.flags == flagsBefore);
 }
 
 TEST_CASE("CPU test unconditional jump JP HL") {
@@ -3867,10 +3910,14 @@ TEST_CASE("CPU test unconditional jump JP HL") {
 
     bus.write8(pc, op::JP_HL);
     cpu.regs.setHL(addr);
+
+    auto flagsBefore = cpu.regs.flags;
+
     cpu.step();
 
     CHECK(cpu.regs.PC == addr);
     CHECK(cpu.elapsedCycles() == 1);
+    CHECK(cpu.regs.flags == flagsBefore);
 }
 
 TEST_CASE("CPU test conditional jumps JP C/Z/NC/NZ, a16") {
@@ -3883,9 +3930,12 @@ TEST_CASE("CPU test conditional jumps JP C/Z/NC/NZ, a16") {
     bus.write8(pc + 1, addr & 0xff);
     bus.write8(pc + 2, addr >> 8);
 
+    Flags flagsBefore;
+
     SUBCASE("Test JP C,a16 branch not taken") {
         bus.write8(pc, op::JP_C_a16);
         cpu.regs.flags.C = false;
+        flagsBefore = cpu.regs.flags;
         cpu.step();
         CHECK(cpu.regs.PC == pc + 3);
         CHECK(cpu.elapsedCycles() == 3);
@@ -3893,6 +3943,7 @@ TEST_CASE("CPU test conditional jumps JP C/Z/NC/NZ, a16") {
     SUBCASE("Test JP C,a16 branch taken") {
         bus.write8(pc, op::JP_C_a16);
         cpu.regs.flags.C = true;
+        flagsBefore = cpu.regs.flags;
         cpu.step();
         CHECK(cpu.regs.PC == addr);
         CHECK(cpu.elapsedCycles() == 4);
@@ -3900,6 +3951,7 @@ TEST_CASE("CPU test conditional jumps JP C/Z/NC/NZ, a16") {
     SUBCASE("Test JP Z,a16 branch not taken") {
         bus.write8(pc, op::JP_Z_a16);
         cpu.regs.flags.Z = false;
+        flagsBefore = cpu.regs.flags;
         cpu.step();
         CHECK(cpu.regs.PC == pc + 3);
         CHECK(cpu.elapsedCycles() == 3);
@@ -3907,6 +3959,7 @@ TEST_CASE("CPU test conditional jumps JP C/Z/NC/NZ, a16") {
     SUBCASE("Test JP Z,a16 branch taken") {
         bus.write8(pc, op::JP_Z_a16);
         cpu.regs.flags.Z = true;
+        flagsBefore = cpu.regs.flags;
         cpu.step();
         CHECK(cpu.regs.PC == addr);
         CHECK(cpu.elapsedCycles() == 4);
@@ -3914,6 +3967,7 @@ TEST_CASE("CPU test conditional jumps JP C/Z/NC/NZ, a16") {
     SUBCASE("Test JP NC,a16 branch not taken") {
         bus.write8(pc, op::JP_NC_a16);
         cpu.regs.flags.C = true;
+        flagsBefore = cpu.regs.flags;
         cpu.step();
         CHECK(cpu.regs.PC == pc + 3);
         CHECK(cpu.elapsedCycles() == 3);
@@ -3921,6 +3975,7 @@ TEST_CASE("CPU test conditional jumps JP C/Z/NC/NZ, a16") {
     SUBCASE("Test JP NC,a16 branch taken") {
         bus.write8(pc, op::JP_NC_a16);
         cpu.regs.flags.C = false;
+        flagsBefore = cpu.regs.flags;
         cpu.step();
         CHECK(cpu.regs.PC == addr);
         CHECK(cpu.elapsedCycles() == 4);
@@ -3928,6 +3983,7 @@ TEST_CASE("CPU test conditional jumps JP C/Z/NC/NZ, a16") {
     SUBCASE("Test JP NZ,a16 branch not taken") {
         bus.write8(pc, op::JP_NZ_a16);
         cpu.regs.flags.Z = true;
+        flagsBefore = cpu.regs.flags;
         cpu.step();
         CHECK(cpu.regs.PC == pc + 3);
         CHECK(cpu.elapsedCycles() == 3);
@@ -3935,10 +3991,13 @@ TEST_CASE("CPU test conditional jumps JP C/Z/NC/NZ, a16") {
     SUBCASE("Test JP NZ,a16 branch taken") {
         bus.write8(pc, op::JP_NZ_a16);
         cpu.regs.flags.Z = false;
+        flagsBefore = cpu.regs.flags;
         cpu.step();
         CHECK(cpu.regs.PC == addr);
         CHECK(cpu.elapsedCycles() == 4);
     }
+
+    CHECK(cpu.regs.flags == flagsBefore);
 }
 
 
@@ -3949,6 +4008,8 @@ TEST_CASE("CPU test unconditional relative jump JR e8") {
     const uint16_t pc = Registers::PCinitialValue;
 
     bus.write8(pc, op::JR_e8);
+
+    auto flagsBefore = cpu.regs.flags;
     
     SUBCASE("Test JR e8 positive value") {
         bus.write8(pc + 1, (uint8_t)25);
@@ -3966,6 +4027,8 @@ TEST_CASE("CPU test unconditional relative jump JR e8") {
         CHECK(cpu.regs.PC == (uint16_t)(oldPC + 2 - 15)); // +2 because the instruction is 2 bytes long
         CHECK(cpu.elapsedCycles() == 3);
     }
+
+    CHECK(cpu.regs.flags == flagsBefore);
 }
 
 
@@ -3977,10 +4040,13 @@ TEST_CASE("CPU test conditional relative jumps JR C/Z/NC/NZ,e8") {
         
     uint16_t oldPC = cpu.regs.PC;
 
+    Flags flagsBefore;
+
     SUBCASE("Test JR C,e8 branch not taken") {
         bus.write8(pc, op::JR_C_e8);
         bus.write8(pc + 1, 25);
         cpu.regs.flags.C = false;
+        flagsBefore = cpu.regs.flags;
         cpu.step();
         CHECK(cpu.regs.PC == oldPC + 2);
         CHECK(cpu.elapsedCycles() == 2);
@@ -3989,6 +4055,7 @@ TEST_CASE("CPU test conditional relative jumps JR C/Z/NC/NZ,e8") {
         bus.write8(pc, op::JR_C_e8);
         bus.write8(pc + 1, 25);
         cpu.regs.flags.C = true;
+        flagsBefore = cpu.regs.flags;
         cpu.step();
         CHECK(cpu.regs.PC == oldPC + 2 + 25);
         CHECK(cpu.elapsedCycles() == 3);
@@ -3997,6 +4064,7 @@ TEST_CASE("CPU test conditional relative jumps JR C/Z/NC/NZ,e8") {
         bus.write8(pc, op::JR_Z_e8);
         bus.write8(pc + 1, 25);
         cpu.regs.flags.Z = false;
+        flagsBefore = cpu.regs.flags;
         cpu.step();
         CHECK(cpu.regs.PC == oldPC + 2);
         CHECK(cpu.elapsedCycles() == 2);
@@ -4005,6 +4073,7 @@ TEST_CASE("CPU test conditional relative jumps JR C/Z/NC/NZ,e8") {
         bus.write8(pc, op::JR_Z_e8);
         bus.write8(pc + 1, 25);
         cpu.regs.flags.Z = true;
+        flagsBefore = cpu.regs.flags;
         cpu.step();
         CHECK(cpu.regs.PC == oldPC + 2 + 25);
         CHECK(cpu.elapsedCycles() == 3);
@@ -4013,6 +4082,7 @@ TEST_CASE("CPU test conditional relative jumps JR C/Z/NC/NZ,e8") {
         bus.write8(pc, op::JR_NC_e8);
         bus.write8(pc + 1, 25);
         cpu.regs.flags.C = true;
+        flagsBefore = cpu.regs.flags;
         cpu.step();
         CHECK(cpu.regs.PC == oldPC + 2);
         CHECK(cpu.elapsedCycles() == 2);
@@ -4021,6 +4091,7 @@ TEST_CASE("CPU test conditional relative jumps JR C/Z/NC/NZ,e8") {
         bus.write8(pc, op::JR_NC_e8);
         bus.write8(pc + 1, 25);
         cpu.regs.flags.C = false;
+        flagsBefore = cpu.regs.flags;
         cpu.step();
         CHECK(cpu.regs.PC == oldPC + 2 + 25);
         CHECK(cpu.elapsedCycles() == 3);
@@ -4029,6 +4100,7 @@ TEST_CASE("CPU test conditional relative jumps JR C/Z/NC/NZ,e8") {
         bus.write8(pc, op::JR_NZ_e8);
         bus.write8(pc + 1, 25);
         cpu.regs.flags.Z = true;
+        flagsBefore = cpu.regs.flags;
         cpu.step();
         CHECK(cpu.regs.PC == oldPC + 2);
         CHECK(cpu.elapsedCycles() == 2);
@@ -4037,6 +4109,7 @@ TEST_CASE("CPU test conditional relative jumps JR C/Z/NC/NZ,e8") {
         bus.write8(pc, op::JR_NZ_e8);
         bus.write8(pc + 1, 25);
         cpu.regs.flags.Z = false;
+        flagsBefore = cpu.regs.flags;
         cpu.step();
         CHECK(cpu.regs.PC == oldPC + 2 + 25);
         CHECK(cpu.elapsedCycles() == 3);
@@ -4045,6 +4118,7 @@ TEST_CASE("CPU test conditional relative jumps JR C/Z/NC/NZ,e8") {
         bus.write8(pc, op::JR_C_e8);
         bus.write8(pc + 1, (uint8_t)-15);
         cpu.regs.flags.C = true;
+        flagsBefore = cpu.regs.flags;
         cpu.step();
         CHECK(cpu.regs.PC == (uint16_t)(oldPC + 2 - 15));
         CHECK(cpu.elapsedCycles() == 3);
@@ -4053,10 +4127,13 @@ TEST_CASE("CPU test conditional relative jumps JR C/Z/NC/NZ,e8") {
         bus.write8(pc, op::JR_NZ_e8);
         bus.write8(pc + 1, (uint8_t)-15);
         cpu.regs.flags.Z = false;
+        flagsBefore = cpu.regs.flags;
         cpu.step();
         CHECK(cpu.regs.PC == (uint16_t)(oldPC + 2 - 15));
         CHECK(cpu.elapsedCycles() == 3);
     }
+
+    CHECK(cpu.regs.flags == flagsBefore);
 }
 
 
@@ -4073,6 +4150,9 @@ TEST_CASE("CPU test unconditional CALL a16") {
 
     // CALL pushes the current PC to the stack then sets the 
     // PC to the address read from the instruction
+    // flags are unchanged
+
+    auto flagsBefore = cpu.regs.flags;
 
     bus.write8(pc + 1, addr & 0xff);
     bus.write8(pc + 2, addr >> 8);
@@ -4086,6 +4166,7 @@ TEST_CASE("CPU test unconditional CALL a16") {
     // check if SP points to the old value of PC (+3 because that's the length of the CALL instruction)
     CHECK(bus.read16(cpu.regs.SP) == pc + 3);
     CHECK(cpu.elapsedCycles() == 6);
+    CHECK(cpu.regs.flags == flagsBefore);
 }
 
 
@@ -4103,11 +4184,14 @@ TEST_CASE("CPU test conditional CALL C,Z,NC,NZ,a16") {
     // just check if the condition checking happend or not, the code for the 
     // actual call operation is the same for CALL a16
 
+    Flags flagsBefore;
+
     bus.write16(pc + 1, addr);
 
     SUBCASE("CALL C,a16 branch not taken") {
         bus.write8(pc, op::CALL_C_a16);
         cpu.regs.flags.C = false;
+        flagsBefore = cpu.regs.flags;
         cpu.step();
         CHECK(cpu.regs.PC == oldPC + 3);
         CHECK(cpu.elapsedCycles() == 3);
@@ -4115,6 +4199,7 @@ TEST_CASE("CPU test conditional CALL C,Z,NC,NZ,a16") {
     SUBCASE("CALL NZ,a16 branch taken") {
         bus.write8(pc, op::CALL_NZ_a16);
         cpu.regs.flags.Z = false;
+        flagsBefore = cpu.regs.flags;
         cpu.step();
         CHECK(cpu.regs.PC == addr);
         CHECK(cpu.elapsedCycles() == 6);
@@ -4122,10 +4207,13 @@ TEST_CASE("CPU test conditional CALL C,Z,NC,NZ,a16") {
     SUBCASE("CALL NC,a16 branch not taken") {
         bus.write8(pc, op::CALL_NC_a16);
         cpu.regs.flags.C = true;
+        flagsBefore = cpu.regs.flags;
         cpu.step();
         CHECK(cpu.regs.PC == oldPC + 3);
         CHECK(cpu.elapsedCycles() == 3);
     }
+
+    CHECK(cpu.regs.flags == flagsBefore);
 }
 
 
@@ -4141,6 +4229,8 @@ TEST_CASE("CPU test unconditional RET") {
     bus.write16(oldSP, newPC);
     cpu.regs.SP = oldSP;
 
+    auto flagsBefore = cpu.regs.flags;
+
     // RET pops the old PC value from the stack and copies it into PC
 
     cpu.step();
@@ -4150,6 +4240,7 @@ TEST_CASE("CPU test unconditional RET") {
     // check if SP has been incremented by 2
     CHECK(cpu.regs.SP == oldSP + 2);
     CHECK(cpu.elapsedCycles() == 4);
+    CHECK(cpu.regs.flags == flagsBefore);
 }
 
 TEST_CASE("CPU test RETI") {
@@ -4165,6 +4256,8 @@ TEST_CASE("CPU test RETI") {
     cpu.regs.SP = oldSP;
     cpu.irqs.ime = false;
 
+    auto flagsBefore = cpu.regs.flags;
+
     // RETI works like ret but also sets the ime flag to 1
 
     cpu.step();
@@ -4175,6 +4268,7 @@ TEST_CASE("CPU test RETI") {
     CHECK(cpu.regs.SP == oldSP + 2);
     CHECK(cpu.irqs.ime == true);
     CHECK(cpu.elapsedCycles() == 4);
+    CHECK(cpu.regs.flags == flagsBefore);
 }
 
 
@@ -4191,11 +4285,14 @@ TEST_CASE("CPU test conditional RET C,Z,NC,NZ") {
     bus.write16(oldSP, newPC);
     cpu.regs.SP = oldSP;
 
+    Flags flagsBefore;
+
     // like RET but only if condition is met
 
     SUBCASE("RET C branch not taken") {
         bus.write8(pc, op::RET_C);
         cpu.regs.flags.C = false;
+        flagsBefore = cpu.regs.flags;
         cpu.step();
         CHECK(cpu.regs.PC == oldPC + 1);
         CHECK(cpu.elapsedCycles() == 2);
@@ -4203,6 +4300,7 @@ TEST_CASE("CPU test conditional RET C,Z,NC,NZ") {
     SUBCASE("RET NZ branch taken") {
         bus.write8(pc, op::RET_NZ);
         cpu.regs.flags.Z = false;
+        flagsBefore = cpu.regs.flags;
         cpu.step();
         CHECK(cpu.regs.PC == newPC);
         CHECK(cpu.elapsedCycles() == 5);
@@ -4210,10 +4308,13 @@ TEST_CASE("CPU test conditional RET C,Z,NC,NZ") {
     SUBCASE("RET NC branch not taken") {
         bus.write8(pc, op::RET_NC);
         cpu.regs.flags.C = true;
+        flagsBefore = cpu.regs.flags;
         cpu.step();
         CHECK(cpu.regs.PC == oldPC + 1);
         CHECK(cpu.elapsedCycles() == 2);
     }
+
+    CHECK(cpu.regs.flags == flagsBefore);
 }
 
 
@@ -4226,6 +4327,8 @@ TEST_CASE("CPU test RST") {
     uint16_t oldSP = 0x1234;
     uint16_t oldPC = pc;
     cpu.regs.SP = oldSP;
+
+    auto flagsBefore = cpu.regs.flags;
 
     // RST calls to a fixed address depending on the opcode
     // RST 08 is equivalent to CALL $0008
@@ -4260,10 +4363,12 @@ TEST_CASE("CPU test RST") {
         CHECK(bus.read16(cpu.regs.SP) == oldPC + 1);
         CHECK(cpu.elapsedCycles() == 4);
     }
+
+    CHECK(cpu.regs.flags == flagsBefore);
 }
 
 
-TEST_CASE("CPU test entering and resuming from STOP mode") {
+TEST_CASE("CPU test STOP instruction") {
     TestBus bus;
     CPU cpu(bus);
 
@@ -4275,38 +4380,110 @@ TEST_CASE("CPU test entering and resuming from STOP mode") {
 
     // STOP puts the cpu in the stopped state, after that nothing
     // happens until a full reset
+    
+    // on CGB STOP is used to trigger a clock speed switch
 
     bus.write8(pc, op::STOP);
     bus.write8(pc + 1, 0);
     bus.write8(pc + 2, op::NOP);
     bus.write8(pc + 3, op::NOP);
 
-    // execute STOP
-    cpu.step();
 
-    CHECK(cpu.isStopped());
-    CHECK(cpu.elapsedCycles() == 1);
+    SUBCASE("DMG STOP behavior") {
+        cpu.setIsCgb(false);
 
-    uint16_t oldPC = cpu.regs.PC;
+        SUBCASE("Writing to KEY1 has no effect") {
+            cpu.write8(mmap::regs::key1, 0x01);
+        }
+        SUBCASE("Normal DMG behavior") {}
 
-    // try to execute more
-    cpu.step();
-    cpu.step();
-    
-    CHECK(cpu.isStopped());
-    CHECK(cpu.elapsedCycles() == 1);
-    CHECK(cpu.regs.PC == oldPC);
+        // execute STOP
+        cpu.step();
 
-    // simulate one of the joypad lines going low to resume from STOP mode
-    // see the corresponding joypad source file for an explanation of the values
-    bus.write8(mmap::regs::joypad, 0x2E);
+        CHECK(cpu.isStopped());
+        CHECK(cpu.elapsedCycles() == 1);
 
-    // stepping should resume from STOP mode and execute a NOP (1 more cycle and +1 to the PC)
-    cpu.step();
+        uint16_t oldPC = cpu.regs.PC;
 
-    CHECK_FALSE(cpu.isStopped());
-    CHECK(cpu.elapsedCycles() == 2);
-    CHECK(cpu.regs.PC == oldPC + 1);
+        // try to execute more
+        cpu.step();
+        cpu.step();
+
+        CHECK(cpu.isStopped());
+        CHECK(cpu.elapsedCycles() == 1);
+        CHECK(cpu.regs.PC == oldPC);
+
+        // simulate one of the joypad lines going low to resume from STOP mode
+        // see the corresponding joypad source file for an explanation of the values
+        bus.write8(mmap::regs::joypad, 0x2E);
+
+        // stepping should resume from STOP mode and execute a NOP (1 more cycle and +1 to the PC)
+        cpu.step();
+
+        CHECK_FALSE(cpu.isStopped());
+        CHECK(cpu.elapsedCycles() == 2);
+        CHECK(cpu.regs.PC == oldPC + 1);
+    }
+
+    SUBCASE("CGB - STOP behavior") {
+        // for more info on speed switch see: 
+        // https://gbdev.io/pandocs/CGB_Registers.html#ff4d--key1spd-cgb-mode-only-prepare-speed-switch
+
+        cpu.setIsCgb(true);
+
+        SUBCASE("Set up speed switch by writing to KEY1") {
+            cpu.write8(mmap::regs::key1, 0x01);
+
+            // the GB starts in normal speed
+            CHECK(cpu.key1.doubleSpeed == false);
+
+            // execute STOP
+            cpu.step();
+
+            // the CPU is not stopped and speed is now double
+            CHECK_FALSE(cpu.isStopped());
+            CHECK(cpu.elapsedCycles() == 1);
+            CHECK(cpu.key1.doubleSpeed == true);
+            
+            uint16_t oldPC = cpu.regs.PC;
+
+            // execute the next two NOPs
+            cpu.step();
+            cpu.step();
+
+            CHECK(cpu.elapsedCycles() == 3);
+            CHECK(cpu.regs.PC == oldPC + 2);
+        }
+
+        SUBCASE("Normal STOP behavior") {
+            // execute STOP
+            cpu.step();
+
+            CHECK(cpu.isStopped());
+            CHECK(cpu.elapsedCycles() == 1);
+
+            uint16_t oldPC = cpu.regs.PC;
+
+            // try to execute more
+            cpu.step();
+            cpu.step();
+
+            CHECK(cpu.isStopped());
+            CHECK(cpu.elapsedCycles() == 1);
+            CHECK(cpu.regs.PC == oldPC);
+
+            // simulate one of the joypad lines going low to resume from STOP mode
+            // see the corresponding joypad source file for an explanation of the values
+            bus.write8(mmap::regs::joypad, 0x2E);
+
+            // stepping should resume from STOP mode and execute a NOP (1 more cycle and +1 to the PC)
+            cpu.step();
+
+            CHECK_FALSE(cpu.isStopped());
+            CHECK(cpu.elapsedCycles() == 2);
+            CHECK(cpu.regs.PC == oldPC + 1);
+        }
+    }
 }
 
 
@@ -4873,3 +5050,4 @@ TEST_CASE("CPU test HALT mode, double HALT bug") {
     CHECK(cpu.regs.PC == oldPC);
     CHECK(cpu.elapsedCycles() == 12);
 }
+

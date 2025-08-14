@@ -20,7 +20,7 @@ static const fs::path mooneyeResFilesRoot = testFilesRoot / "mts-results";
 // mooneye test shouldn't run for more than 120 emulated seconds:
 // source: https://github.com/Gekkio/mooneye-gb/blob/master/core/tests/mooneye_suite.rs
 
-static constexpr uint64_t cyclesLimit = GameBoyClassic::timeToCycles(120s);
+static constexpr uint64_t cyclesLimit = GameBoyClassic::timeToCyclesBase(120s);
 
 
 enum class MooneyeRes : int32_t {

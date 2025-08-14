@@ -237,7 +237,7 @@ bool App::emulateFullSpeed(std::chrono::nanoseconds currTime)
     // when emulating at 100% speed we emulate exactly for the required number of availableFrames, taking into 
     // account how much time elapsed between the current call and the last App::emulate() call
     // 
-    // if the requested number of availableFrames is not reached in the corresponding gb tim we return anyway,
+    // if the requested number of availableFrames is not reached in the corresponding gb time we return anyway,
     // if the ppu is disabled availableFrames won't be ready but the emulation must keep going.
 
     uint32_t requiredFrames = 1;
@@ -253,16 +253,21 @@ bool App::emulateFullSpeed(std::chrono::nanoseconds currTime)
 
     TracyPlot(plotRequiredFrames, (int64_t)requiredFrames);
 
+    // get current timing info from the gameboy (the CGB might be running at double clock speed)
+    auto& timingInfo = mGameboy.getCurrTimingInfo();
 
     auto realTargetGbTime = emulateFor().value();
-    auto targetGbTime = realTargetGbTime + (2 * CPU::longestInstructionCycles * GameBoyClassic::machinePeriod);
+    // add the length (in ns) of the longest possible instruction so that we always emulate for at 
+    // least the realTargetGbTime
+    auto targetGbTime = realTargetGbTime + (2 * CPU::longestInstructionCycles * timingInfo.machinePeriod);
+    
     nanoseconds elapsedGbTime = 0ns;
 
     uint32_t renderedFrames = 0;
     while (elapsedGbTime < targetGbTime && renderedFrames < requiredFrames) {
         auto [stillGoing, stepRes] = mGameboy.emulate();
 
-        elapsedGbTime += GameBoyClassic::machinePeriod * stepRes.cpuRes.cycles;
+        elapsedGbTime += timingInfo.machinePeriod * stepRes.cpuRes.cycles;
 
         if (stepRes.frameReady) {
             ++renderedFrames;
@@ -293,7 +298,7 @@ bool App::emulateOtherSpeeds(std::chrono::nanoseconds /*currTime*/)
             if (!stillGoing)
                 break;
 
-            elapsedGbTime += GameBoyClassic::machinePeriod * stepRes.cpuRes.cycles;
+            elapsedGbTime += mGameboy.getCurrTimingInfo().machinePeriod * stepRes.cpuRes.cycles;
         }
     }
     else {
@@ -1404,9 +1409,9 @@ void App::UIDrawCpuRegTable()
         { fmtHex4, "BC", mGameboy.cpu.regs.BC() },
         { fmtHex4, "PC", mGameboy.cpu.regs.PC },
         { fmtHex4, "DE", mGameboy.cpu.regs.DE() },
-        { fmtHex2, "IE", mGameboy.cpu.irqs.read8(mmap::IE)},
+        { fmtHex2, "IE", mGameboy.cpu.irqs.readIE()},
         { fmtHex4, "HL", mGameboy.cpu.regs.HL() },
-        { fmtHex2, "IF", mGameboy.cpu.irqs.read8(mmap::regs::IF)},
+        { fmtHex2, "IF", mGameboy.cpu.irqs.readIF()},
     };
 
     if (ImGui::BeginTable("cpuRegsTable", 4, regsTableFlags))

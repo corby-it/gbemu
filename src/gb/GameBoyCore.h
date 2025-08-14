@@ -57,6 +57,16 @@ CEREAL_CLASS_VERSION(HiRam, 1);
 
 
 
+struct GBTimingInfo {
+    uint32_t clockFreq;
+    uint32_t machineFreq;
+
+    std::chrono::nanoseconds clockPeriod;
+    std::chrono::nanoseconds machinePeriod;
+};
+
+
+
 
 // ------------------------------------------------------------------------------------------------
 // GameBoyIf
@@ -116,16 +126,35 @@ public:
     // the gb cpu actually runs at 4.194304 MHz but, since we are not counting actual clock
     // cycles but machine cycles (clock cycles / 4) we have to use the clock frequency
     // divided by 4
+
+    // the CGB can also run at double clock speed 
+
     static constexpr uint32_t clockFreq = 4194304;
     static constexpr uint32_t machineFreq = 1048576;
 
     static constexpr std::chrono::nanoseconds clockPeriod = std::chrono::nanoseconds(238);
     static constexpr std::chrono::nanoseconds machinePeriod = std::chrono::nanoseconds(954);
 
+    const GBTimingInfo& getCurrTimingInfo() const;
+
     template<typename TimeT>
-    static constexpr uint64_t timeToCycles(TimeT t) {
+    uint64_t timeToCycles(TimeT t) {
+        auto nanos = std::chrono::duration_cast<std::chrono::nanoseconds>(t);
+
+        return nanos / getCurrTimingInfo().machinePeriod;
+    }
+
+
+    template<typename TimeT>
+    static constexpr uint64_t timeToCyclesBase(TimeT t) {
         auto nanos = std::chrono::duration_cast<std::chrono::nanoseconds>(t);
         return nanos / machinePeriod;
+    }
+
+    template<typename TimeT>
+    static constexpr uint64_t timeToCyclesDouble(TimeT t) {
+        auto nanos = std::chrono::duration_cast<std::chrono::nanoseconds>(t);
+        return nanos / (machinePeriod / 2);
     }
 
 

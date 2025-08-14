@@ -23,7 +23,7 @@ static const fs::path blarggsFilesRoot = testFilesRoot / "blarggs-test-roms";
 // Blargg's test shouldn't run for more than 60 emulated seconds:
 // source: https://github.com/c-sp/game-boy-test-roms/blob/master/src/howto/blargg.md
 
-static constexpr uint64_t cyclesLimit = GameBoyIf::timeToCycles(60s);
+static constexpr uint64_t cyclesLimit = GameBoyIf::timeToCyclesBase(60s);
 
 
 // Blargg's test roms don't have a single way to detect success or failure
@@ -296,7 +296,7 @@ TEST_CASE("Blargg's test roms - HALT bug") {
 
     uint64_t cycles = 0;
     auto startTp = hr_clock::now();
-    while (cycles < GameBoyIf::timeToCycles(5s)) {
+    while (cycles < gb.timeToCyclesBase(5s)) {
         auto [stillGoing, stepsRes] = gb.emulate();
         cycles += stepsRes.cpuRes.cycles;
     }

@@ -126,6 +126,7 @@ bool AudioChannelIf::step()
     // check downsampling, that is, check if a new sample is ready
     auto samplePeriod = duration_cast<nanoseconds>(1s) / mDownsamplingFreq;
 
+    // the APU always runs at the base clock speed, even if the CGB is running at double clock speed
     mTimeCounter += GameBoyClassic::machinePeriod;
 
     bool newSample = false;

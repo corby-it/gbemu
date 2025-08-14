@@ -223,6 +223,27 @@ GameBoyClassic::GameBoyClassic()
     gbReset();
 }
 
+const GBTimingInfo& GameBoyIf::getCurrTimingInfo() const
+{
+    static const GBTimingInfo baseSpeed = {
+        clockFreq,
+        machineFreq,
+        clockPeriod,
+        machinePeriod,
+    };
+    static const GBTimingInfo doubleSpeed = {
+        clockFreq * 2,
+        machineFreq * 2,
+        clockPeriod / 2,
+        machinePeriod / 2,
+    };
+
+    if (cpu.key1.doubleSpeed)
+        return doubleSpeed;
+    else
+        return baseSpeed;
+}
+
 void GameBoyClassic::gbReset()
 {
     cpu.reset();
@@ -314,12 +335,18 @@ GbStepRes GameBoyClassic::gbStep()
 
     auto cpuRes = cpu.step();
 
-    dma.step(cpuRes.cycles);
-    bool frameReady = ppu.step(cpuRes.cycles);
-    timer.step(cpuRes.cycles, cpu.isStopped());
-    serial.step(cpuRes.cycles);
-    joypad.step(cpuRes.cycles);
-    apu.step(cpuRes.cycles);
+    bool frameReady = false;
+
+    if (!cpu.isStopped()) {
+        // when the cpu is stopped the main clock is stopped 
+        // so the other components don't step
+        dma.step(cpuRes.cycles);
+        frameReady = ppu.step(cpuRes.cycles);
+        timer.step(cpuRes.cycles, cpu.isStopped());
+        serial.step(cpuRes.cycles);
+        joypad.step(cpuRes.cycles);
+        apu.step(cpuRes.cycles);
+    }
 
     if (status != Status::Running) {
         ZoneScoped;
@@ -543,12 +570,36 @@ GbStepRes GameBoyColor::gbStep()
 
     auto cpuRes = cpu.step();
 
-    dma.step(cpuRes.cycles);
-    bool frameReady = ppu.step(cpuRes.cycles);
-    timer.step(cpuRes.cycles, cpu.isStopped());
-    serial.step(cpuRes.cycles);
-    joypad.step(cpuRes.cycles);
-    apu.step(cpuRes.cycles);
+    bool frameReady = false;
+
+    if (!cpu.isStopped()) {
+
+        if (cpu.key1.doubleSpeed) {
+            // when the cpu is running at double speed, everything is running at
+            // double clock speed as well, except for the PPU and the APU
+            static bool runPpuApu = false;
+
+            if (runPpuApu) {
+                frameReady = ppu.step(cpuRes.cycles);
+                apu.step(cpuRes.cycles);
+            }
+
+            dma.step(cpuRes.cycles);
+            timer.step(cpuRes.cycles, cpu.isStopped());
+            serial.step(cpuRes.cycles);
+            joypad.step(cpuRes.cycles);
+
+            runPpuApu = !runPpuApu;
+        }
+        else {
+            dma.step(cpuRes.cycles);
+            frameReady = ppu.step(cpuRes.cycles);
+            timer.step(cpuRes.cycles, cpu.isStopped());
+            serial.step(cpuRes.cycles);
+            joypad.step(cpuRes.cycles);
+            apu.step(cpuRes.cycles);
+        }
+    }
 
     if (status != Status::Running) {
         ZoneScoped;
