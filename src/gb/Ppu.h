@@ -396,6 +396,8 @@ public:
 
     void reset();
 
+    void setIsCgb(bool val);
+
     bool step(uint32_t mCycles);
     void stepLine(uint32_t n = 1);
     void stepFrame(uint32_t n = 1);
@@ -492,6 +494,8 @@ private:
     OAMPixelInfoList renderPixelGetObjsValues(uint32_t currX);
 
     Bus* mBus;
+
+    bool mIsCgb;
 
     uint32_t mDotCounter;
     OAMRegister mOamScanRegister;

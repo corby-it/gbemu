@@ -248,3 +248,43 @@ TEST_CASE("Test OAMData and OAMAttr functions")
     CHECK_FALSE(attr.vFlip());
     CHECK(attr.priority());
 }
+
+
+TEST_CASE("VRAM test banking")
+{
+    VRam vram;
+
+    static const uint16_t addr = mmap::vram::start + 0x100;
+    static const uint16_t vbk = mmap::regs::vbk;
+
+
+    SUBCASE("DMG") {
+        // VRAM banking is not available in the DMG
+        vram.setIsCgb(false);
+
+        vram.write8(vbk, 0);
+        vram.write8(addr, 10);
+        vram.write8(vbk, 1);
+        vram.write8(addr, 11);
+        
+        vram.write8(vbk, 0); 
+        CHECK(vram.read8(addr) == 11);
+        vram.write8(vbk, 1);
+        CHECK(vram.read8(addr) == 11);
+    }
+
+    SUBCASE("CGB") {
+        vram.setIsCgb(true);
+
+        vram.write8(vbk, 0);
+        vram.write8(addr, 10);
+        vram.write8(vbk, 1);
+        vram.write8(addr, 11);
+
+        vram.write8(vbk, 0);
+        CHECK(vram.read8(addr) == 10);
+        vram.write8(vbk, 1);
+        CHECK(vram.read8(addr) == 11);
+    }
+
+}

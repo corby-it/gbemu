@@ -180,6 +180,7 @@ namespace lcdreg = mmap::regs::lcd;
 
 PPU::PPU(Bus& bus)
     : mBus(&bus)
+    , mIsCgb(false)
 {
     reset();
 }
@@ -191,7 +192,8 @@ void PPU::reset()
     mFirstStep = true;
 
     regs.reset();
-
+    vram.reset();
+    oamRam.reset();
     display.clear();
     
     // at reset update the STAT register to actually reflect the current
@@ -200,6 +202,12 @@ void PPU::reset()
 
     // lock ram to correctly reflect the current ppu mode and the lcd enable status
     lockRamAreas(regs.LCDC.lcdEnable);
+}
+
+void PPU::setIsCgb(bool val)
+{
+    mIsCgb = val;
+    vram.setIsCgb(val);
 }
 
 

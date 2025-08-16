@@ -147,8 +147,29 @@ namespace mmap {
             MMAP_T end = 0xFF4B;
         }
 
+        MMAP_T key0 = 0xFF4C;
         MMAP_T key1 = 0xFF4D;
+        MMAP_T vbk = 0xFF4F;
+        MMAP_T boot = 0xFF50;
+
+        namespace hdma {
+            MMAP_T start = 0xFF51;
+            MMAP_T end = 0xFF55;
+        }
+
         MMAP_T infrared = 0xFF56;
+
+        namespace col_palette {
+            MMAP_T start = 0xFF68;
+            MMAP_T bgpi = 0xFF68;
+            MMAP_T bgpd = 0xFF69;
+            MMAP_T obpi = 0xFF6A;
+            MMAP_T obpd = 0xFF6B;
+            MMAP_T end = 0xFF6B;
+        }
+
+        MMAP_T opri = 0xFF6C;
+
         MMAP_T svbk = 0xFF70;
 
         namespace undocumented {

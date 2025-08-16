@@ -759,7 +759,7 @@ void App::UIDrawMemoryEditorWindow()
         if (ImGui::BeginTabItem("VRAM"))
         {
             static MemoryEditor memEdit;
-            memEdit.DrawContents(mGameboy.ppu.vram.data(), mGameboy.ppu.vram.size(), mGameboy.ppu.vram.startAddr());
+            memEdit.DrawContents(mGameboy.ppu.vram.getBank(0).data(), mGameboy.ppu.vram.getBank(0).size(), mGameboy.ppu.vram.getBank(0).startAddr());
             ImGui::EndTabItem();
         }
         if (ImGui::BeginTabItem("ExtRAM"))

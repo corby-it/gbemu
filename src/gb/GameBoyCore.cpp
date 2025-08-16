@@ -372,6 +372,7 @@ GameBoyClassic::GameBoyClassic()
 {
     cpu.setIsCgb(false);
     wram.setIsCgb(false);
+    ppu.setIsCgb(false);
     apu.setIsCgb(false);
     infrared.setIsCgb(false);
     undocRegs.setIsCgb(false);
@@ -494,6 +495,7 @@ GameBoyColor::GameBoyColor()
 {
     cpu.setIsCgb(true);
     wram.setIsCgb(true);
+    ppu.setIsCgb(true);
     apu.setIsCgb(true);
     infrared.setIsCgb(true);
     undocRegs.setIsCgb(false);
@@ -528,10 +530,9 @@ AddressMap GameBoyColor::initAddressMap()
         { mmap::regs::joypad, &joypad },
         { mmap::regs::serial_data, &serial },
         { mmap::regs::serial_ctrl, &serial },
-        { mmap::regs::serial_ctrl + 1, nullptr },
+        { mmap::regs::timer::start - 1, nullptr },
         { mmap::regs::timer::start, &timer },
         { mmap::regs::timer::end, &timer },
-        { mmap::regs::timer::end + 1, nullptr },
         { mmap::regs::IF - 1, nullptr },
         { mmap::regs::IF, &cpu },
         { mmap::regs::audio::start, &apu },
@@ -541,17 +542,23 @@ AddressMap GameBoyColor::initAddressMap()
         { mmap::regs::lcd::dma, &dma },
         { mmap::regs::lcd::bgp, &ppu },
         { mmap::regs::lcd::end, &ppu },
-        { mmap::regs::lcd::end + 1, nullptr },
+        { mmap::regs::key0, nullptr },      // KEY0
         { mmap::regs::key1, &cpu },         // KEY1
-        { mmap::regs::key1 + 1, nullptr },  // KEY1
-        { mmap::regs::infrared - 1, nullptr },  // Infrared
+        { mmap::regs::vbk - 1, nullptr },   // VBK
+        { mmap::regs::vbk, &ppu.vram },     // VBK
+        { mmap::regs::boot, nullptr },      // BOOT
+        { mmap::regs::hdma::start, nullptr },   // HDMA
+        { mmap::regs::hdma::end, nullptr },     // HDMA
         { mmap::regs::infrared, &infrared },    // Infrared
-        { mmap::regs::infrared + 1, nullptr },  // Infrared
+        { mmap::regs::col_palette::start -1, nullptr }, // Color palette
+        { mmap::regs::col_palette::start, nullptr },    // Color palette
+        { mmap::regs::col_palette::end, nullptr },      // Color palette
+        { mmap::regs::opri, nullptr },      // OPRI
         { mmap::regs::svbk - 1, nullptr },  // SVBK
         { mmap::regs::svbk, &wram },        // SVBK
-        { mmap::regs::undocumented::start - 1, nullptr },  // undoc regs
-        { mmap::regs::undocumented::start, &undocRegs },  // undoc regs
-        { mmap::regs::undocumented::end, &undocRegs },  // undoc regs
+        { mmap::regs::undocumented::start - 1, nullptr },   // undoc regs
+        { mmap::regs::undocumented::start, &undocRegs },    // undoc regs
+        { mmap::regs::undocumented::end, &undocRegs },      // undoc regs
         { mmap::regs::pcm12, &apu },  // PCM regs
         { mmap::regs::pcm34, &apu },  // PCM regs
         { mmap::hiram::start - 1, nullptr },

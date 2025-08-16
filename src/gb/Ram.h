@@ -10,6 +10,7 @@
 #include <iostream>
 #include <cereal/cereal.hpp>
 #include <cereal/types/memory.hpp>
+#include <cereal/types/polymorphic.hpp>
 
 
 
@@ -40,6 +41,7 @@ public:
 
     virtual ~Ram() {}
 
+
     virtual uint8_t read8(uint16_t addr) const override
     {
         addr -= mStartAddr;
@@ -68,7 +70,7 @@ public:
 
     constexpr size_t size() const { return Size; }
 
-    void reset()
+    virtual void reset()
     {
         memset(mData.get(), 0, Size);
     }
@@ -82,7 +84,6 @@ public:
         ar(mStartAddr, cereal::binary_data(mData.get(), Size));
     }
 
-protected:
     uint8_t* getPtr(uint16_t addr) const
     {
         addr -= mStartAddr;
@@ -90,6 +91,7 @@ protected:
         return mData.get() + addr;
     }
 
+protected:
     uint16_t mStartAddr;
     std::unique_ptr<uint8_t[]> mData;
 
@@ -99,32 +101,67 @@ protected:
 
 
 
+class Lockable {
+public:
+    Lockable()
+        : mLocked(false)
+    {}
+
+    Lockable(const Lockable&) = default;
+    Lockable& operator=(const Lockable&) = default;
+
+    void lock(bool l) { mLocked = l; }
+    bool isLocked() const { return mLocked; }
+
+    template<class Archive>
+    void serialize(Archive& ar, uint32_t const /*version*/)
+    {
+        ar(mLocked);
+    }
+
+protected: 
+    bool mLocked;
+
+};
+
+CEREAL_CLASS_VERSION(Lockable, 1);
+
+
+
+
+
 template<size_t Size>
-class LockableRam : public Ram<Size> {
+class LockableRam : public Ram<Size>, public Lockable {
 public:
     LockableRam(uint16_t startAddr = 0)
         : Ram<Size>(startAddr)
-        , mLocked(false)
     {}
 
     LockableRam(const LockableRam& other)
         : Ram<Size>(other)
-        , mLocked(other.mLocked)
+        , Lockable(other)
     {}
 
     LockableRam& operator=(const LockableRam& other)
     {
         Ram<Size>::operator=(other);
-        mLocked = other.mLocked;
+        Lockable::operator=(other);
 
         return *this;
+    }
+
+
+    virtual void reset() override
+    {
+        Ram<Size>::reset();
+        lock(false);
     }
 
     uint8_t read8(uint16_t addr) const override
     {
         // when some parts of the memory are locked, reading returns
         // garbage values or FF (source: https://gbdev.io/pandocs/Rendering.html#ppu-modes)
-        if (mLocked)
+        if (isLocked())
             return 0xFF;
 
         return Ram<Size>::read8(addr);
@@ -132,24 +169,19 @@ public:
 
     void write8(uint16_t addr, uint8_t val) override
     {
-        if (mLocked)
+        if (isLocked())
             return;
 
         Ram<Size>::write8(addr, val);
     }
 
-    void lock(bool l) { mLocked = l; }
-    bool isLocked() const { return mLocked; }
-
 
     template<class Archive>
     void serialize(Archive& ar, uint32_t const /*version*/)
     {
-        ar(this->mStartAddr, cereal::binary_data(this->mData.get(), Size), mLocked);
+        ar(cereal::base_class<Ram<Size>>(this));
+        ar(cereal::base_class<Lockable>(this));
     }
-
-protected:
-    bool mLocked;
 
 };
 
