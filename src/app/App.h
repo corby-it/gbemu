@@ -68,7 +68,7 @@ private:
     AppConfig mConfig;
     std::filesystem::path mConfigSavePath;
 
-    GameBoyClassic mGameboy;
+    GameBoyColor mGameboy;
 
     RgbaBuffer mDisplayBuffer;
 

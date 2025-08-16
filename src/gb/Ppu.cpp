@@ -5,10 +5,11 @@
 #include <tracy/Tracy.hpp>
 #include <algorithm>
 #include <array>
+#include <cstdlib>
 
 
 // ------------------------------------------------------------------------------------------------
-// PPURegs
+// LCDCReg
 // ------------------------------------------------------------------------------------------------
 
 LCDCReg::LCDCReg()
@@ -49,6 +50,11 @@ void LCDCReg::fromU8(uint8_t b)
 }
 
 
+
+// ------------------------------------------------------------------------------------------------
+// STATReg
+// ------------------------------------------------------------------------------------------------
+
 STATReg::STATReg()
     : ppuMode(PPUMode::OAMScan)
     , lycEqual(false)
@@ -80,14 +86,19 @@ void STATReg::fromU8(uint8_t b)
 }
 
 
-PaletteReg::PaletteReg()
+
+// ------------------------------------------------------------------------------------------------
+// DMGPaletteReg
+// ------------------------------------------------------------------------------------------------
+
+DMGPaletteReg::DMGPaletteReg()
     : valForId0(0)
     , valForId1(1)
     , valForId2(2)
     , valForId3(3)
 {}
 
-uint8_t PaletteReg::asU8() const
+uint8_t DMGPaletteReg::asU8() const
 {
     uint8_t val = valForId0
         | valForId1 << 2
@@ -97,7 +108,7 @@ uint8_t PaletteReg::asU8() const
     return val;
 }
 
-void PaletteReg::fromU8(uint8_t b)
+void DMGPaletteReg::fromU8(uint8_t b)
 {
     valForId0 = b & 0x03;
     valForId1 = (b & 0x0C) >> 2;
@@ -106,6 +117,134 @@ void PaletteReg::fromU8(uint8_t b)
 }
 
 
+
+// ------------------------------------------------------------------------------------------------
+// CGBPalettes
+// ------------------------------------------------------------------------------------------------
+
+void CGBColor::setR(uint8_t r) {
+    if (!ptr)
+        return;
+
+    r >>= 3;
+    *ptr = (*ptr & ~maskR) | r;
+}
+
+void CGBColor::setG(uint8_t g) {
+    if (!ptr)
+        return;
+
+    g >>= 3;
+    uint8_t gLo = g << 5;
+    uint8_t gHi = g >> 3;
+    *ptr = (*ptr & 0xE0) | gLo;
+    *(ptr + 1) = (*(ptr + 1) & 0x03) | gHi;
+}
+
+void CGBColor::setB(uint8_t b) {
+    if (!ptr)
+        return;
+
+    b >>= 3;
+    *(ptr + 1) = (*(ptr + 1) & 0x7C) | (b << 2);
+}
+
+void CGBColor::set(uint8_t r, uint8_t g, uint8_t  b) {
+    if (!ptr)
+        return;
+
+    r >>= 3;
+    g >>= 3;
+    b >>= 3;
+
+    uint16_t raw = r | (g << 5) | (b << 10);
+
+    ptr[0] = uint8_t(raw);
+    ptr[1] = uint8_t(raw >> 8);
+}
+
+
+
+
+void CGBPaletteData::resetRandom()
+{
+    std::srand((unsigned)std::time(nullptr)); // use current time as seed for random generator
+
+    for (auto& v : raw) {
+        v = uint8_t(std::abs(std::rand()) % 256);
+    }
+}
+
+
+
+CGBPalettes::CGBPalettes()
+    : mIsCgb(false)
+{
+    reset();
+}
+
+void CGBPalettes::reset()
+{
+    mBGPIReg.fromU8(0);
+    mOBPIReg.fromU8(0);
+
+    // all background colors are initialized as white 
+    // all object colors are not initialized (random)
+    // see: https://gbdev.io/pandocs/Palettes.html#lcd-color-palettes-cgb-only
+
+    mBgData.resetWhite();
+    mObjData.resetRandom();
+}
+
+
+namespace cgbpal = mmap::regs::col_palette;
+
+uint8_t CGBPalettes::read8(uint16_t addr) const
+{
+    if (!mIsCgb)
+        return 0xff;
+
+    switch (addr) {
+    case cgbpal::bgpi: return mBGPIReg.asU8();
+    case cgbpal::bgpd: return mBgData.raw[mBGPIReg.index];
+    case cgbpal::obpi: return mOBPIReg.asU8();
+    case cgbpal::obpd: return mObjData.raw[mOBPIReg.index];
+    default:
+        return 0xff;
+    }
+}
+
+void CGBPalettes::write8(uint16_t addr, uint8_t val)
+{
+    if (!mIsCgb)
+        return;
+
+    switch (addr) {
+    case cgbpal::bgpi: mBGPIReg.fromU8(val); break;
+    
+    case cgbpal::bgpd:
+        mBgData.raw[mBGPIReg.index] = val;
+        mBGPIReg.tryIncIndex();
+        break;
+
+    case cgbpal::obpi: mOBPIReg.fromU8(val); break;
+
+    case cgbpal::obpd:
+        mObjData.raw[mOBPIReg.index] = val;
+        mOBPIReg.tryIncIndex();
+        break;
+
+    default:
+        break;
+    }
+}
+
+
+
+
+// ------------------------------------------------------------------------------------------------
+// PPURegs
+// ------------------------------------------------------------------------------------------------
 
 PPURegs::PPURegs()
     : SCY(0)

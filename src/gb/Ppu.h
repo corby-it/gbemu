@@ -9,13 +9,14 @@
 #include "GbCommons.h"
 #include <vector>
 #include <cereal/cereal.hpp>
+#include <cereal/types/array.hpp>
 
 
 
 
 
 // ------------------------------------------------------------------------------------------------
-// PPURegs
+// LCDCReg
 // ------------------------------------------------------------------------------------------------
 
 struct LCDCReg : public RegU8 {
@@ -65,6 +66,9 @@ CEREAL_CLASS_VERSION(LCDCReg, 1);
 
 
 
+// ------------------------------------------------------------------------------------------------
+// STATReg
+// ------------------------------------------------------------------------------------------------
 
 enum class PPUMode : uint8_t {
     HBlank = 0,
@@ -116,8 +120,12 @@ CEREAL_CLASS_VERSION(STATReg, 1);
 
 
 
-struct PaletteReg : public RegU8 {
-    PaletteReg();
+// ------------------------------------------------------------------------------------------------
+// DMGPaletteReg
+// ------------------------------------------------------------------------------------------------
+
+struct DMGPaletteReg : public RegU8 {
+    DMGPaletteReg();
 
     // this register assigns gray shades to the 3 possible colors for a pixel
     // bit  function
@@ -179,10 +187,205 @@ struct PaletteReg : public RegU8 {
     }
 };
 
-CEREAL_CLASS_VERSION(PaletteReg, 1);
+CEREAL_CLASS_VERSION(DMGPaletteReg, 1);
 
 
 
+// ------------------------------------------------------------------------------------------------
+// CGBPalettes
+// ------------------------------------------------------------------------------------------------
+
+
+struct CGBColor {
+    
+    CGBColor(uint8_t* basePtr = nullptr)
+        : ptr(basePtr)
+    {}
+
+
+    static constexpr uint16_t maskR = 0x001F;
+    static constexpr uint16_t maskG = 0x03E0;
+    static constexpr uint16_t maskB = 0x7C00;
+    
+    uint8_t R() const { return uint8_t((raw() & maskR) << 3); }
+    uint8_t G() const { return uint8_t(((raw() & maskG) >> 5) << 3); }
+    uint8_t B() const { return uint8_t(((raw() & maskB) >> 10) << 3); }
+
+    void setR(uint8_t r);
+    void setG(uint8_t g);
+    void setB(uint8_t b);
+
+    void set(uint8_t r, uint8_t g, uint8_t  b);
+
+
+    // colors in the CGB are stored as RGB555 in an u16,
+    // to get the actual shade the 5-bit value must be shifted left by 3
+    // (that is, mapped in the 0-255 range)
+    uint16_t raw() const {
+        if (!ptr)
+            return 0;
+
+        uint8_t lo = ptr[0];
+        uint8_t hi = ptr[1];
+
+        return (hi << 8) | lo;
+    }
+
+    uint8_t *ptr;
+};
+
+
+struct CGBPalette {
+    CGBPalette(uint8_t* basePtr = nullptr)
+        : ptr(basePtr)
+    {}
+
+    CGBColor getColor(uint8_t idx) const {
+        if (!ptr)
+            return CGBColor();
+
+        if (idx >= 4)
+            idx = 3;
+
+        // each color is 2-byte long
+        return CGBColor(ptr + idx * 2);
+    }
+
+    uint8_t* ptr;
+};
+
+
+struct CGBPaletteData {
+
+    void resetWhite() {
+        std::fill(raw.begin(), raw.end(), 0xFF);
+    }
+
+    void resetBlack() {
+        std::fill(raw.begin(), raw.end(), 0);
+    }
+
+    void resetRandom();
+
+    CGBPalette getPalette(uint8_t idx) {
+        if (idx >= 8)
+            idx = 7;
+        
+        // each palette is stored as an 8-byte sequence (4 x u16 colors)
+        return CGBPalette(raw.data() + idx * 8);
+    }
+
+
+    template<class Archive>
+    void serialize(Archive& ar, uint32_t const /*version*/) {
+        ar(raw);
+    }
+
+
+    std::array<uint8_t, 64> raw;
+};
+
+CEREAL_CLASS_VERSION(CGBPaletteData, 1);
+
+
+
+
+
+struct CGBPaletteIndexReg : public RegU8 {
+
+    CGBPaletteIndexReg()
+        : autoInc(false)
+        , index(0)
+    {}
+
+    bool autoInc;
+    uint8_t index;
+
+    uint8_t asU8() const override {
+        // the first 6 bits are used for the index, the top bit is used for auto increment
+        uint8_t ret = index & ~0xC0;
+        if (autoInc)
+            ret |= 0x80;
+
+        return ret;
+    }
+
+    void fromU8(uint8_t val) override {
+        autoInc = val & 0x80;
+        index = val & 0x3F;
+    }
+
+    void tryIncIndex() {
+        if (autoInc)
+            index = (index + 1) & 0x3F;
+    }
+
+
+    template<class Archive>
+    void save(Archive& archive, uint32_t const /*version*/) const {
+        archive(asU8());
+    }
+
+    template<class Archive>
+    void load(Archive& archive, uint32_t const /*version*/) {
+        uint8_t val;
+        archive(val);
+        fromU8(val);
+    }
+};
+
+CEREAL_CLASS_VERSION(CGBPaletteIndexReg, 1);
+
+
+
+
+
+class CGBPalettes : public ReadWriteIf {
+public:
+    CGBPalettes();
+
+    void reset();
+
+    void setIsCgb(bool val) { mIsCgb = val; }
+
+
+    uint8_t read8(uint16_t addr) const override;
+    void write8(uint16_t addr, uint8_t val) override;
+
+    CGBPalette getBgPalette(uint8_t idx) { return mBgData.getPalette(idx); }
+    CGBPalette getObjPalette(uint8_t idx) { return mObjData.getPalette(idx); }
+
+
+    // only for testing and debug
+    CGBPaletteData& getBgPaletteData() { return mBgData; }
+    CGBPaletteData& getObjPaletteData() { return mObjData; }
+
+
+    template<class Archive>
+    void serialize(Archive& ar, uint32_t const /*version*/) {
+        ar(mBGPIReg, mOBPIReg, mBgData, mObjData);
+    }
+
+
+private:
+
+    bool mIsCgb;
+
+    CGBPaletteIndexReg mBGPIReg;
+    CGBPaletteIndexReg mOBPIReg;
+
+    CGBPaletteData mBgData;
+    CGBPaletteData mObjData;
+};
+
+CEREAL_CLASS_VERSION(CGBPalettes, 1);
+
+
+
+
+// ------------------------------------------------------------------------------------------------
+// PPURegs
+// ------------------------------------------------------------------------------------------------
 
 struct PPURegs {
     PPURegs();
@@ -219,14 +422,14 @@ struct PPURegs {
     // 0xFF47
     // background palette data
     // this register assigns gray shades to the 3 possible colors for background and window tiles
-    PaletteReg BGP;
+    DMGPaletteReg BGP;
 
     // 0xFF48 and 0xFF49
     // OBJ palettes 0 and 1
     // they work the same as BGP but are used for objects except that color ID 0
     // is always transparent for objects
-    PaletteReg OBP0;
-    PaletteReg OBP1;
+    DMGPaletteReg OBP0;
+    DMGPaletteReg OBP1;
 
     // 0xFF4A and 0xFF4b
     // Window position, specified as the position of the top left pixel

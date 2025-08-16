@@ -729,3 +729,219 @@ TEST_CASE("DMA transfer")
     }
 
 }
+
+
+
+TEST_CASE("CGBColor test") {
+
+    SUBCASE("Test with NULL") {
+        CGBColor col;
+
+        col.set(255, 255, 255);
+        CHECK(col.raw() == 0x00);
+        CHECK(col.R() == 0x00);
+        CHECK(col.G() == 0x00);
+        CHECK(col.B() == 0x00);
+    }
+
+    SUBCASE("Test with ptr") {
+        uint16_t data = 0;
+
+        CGBColor col((uint8_t*)&data);
+
+        SUBCASE("Test set() function") {
+            col.set(255, 255, 255);
+
+            CHECK(data == 0x7FFF);
+            CHECK(col.raw() == 0x7FFF);
+            CHECK(col.R() == 0xF8);
+            CHECK(col.G() == 0xF8);
+            CHECK(col.B() == 0xF8);
+        }
+        SUBCASE("Test red functions") {
+            col.setR(255);
+            CHECK(data == 0x001F);
+            CHECK(col.raw() == 0x001F);
+            CHECK(col.R() == 0xF8);
+            CHECK(col.G() == 0x00);
+            CHECK(col.B() == 0x00);
+        }
+        SUBCASE("Test green functions") {
+            col.setG(255);
+            CHECK(data == 0x03E0);
+            CHECK(col.raw() == 0x03E0);
+            CHECK(col.R() == 0x00);
+            CHECK(col.G() == 0xF8);
+            CHECK(col.B() == 0x00);
+        }
+        SUBCASE("Test blue functions") {
+            col.setB(255);
+            CHECK(data == 0x7C00);
+            CHECK(col.raw() == 0x7C00);
+            CHECK(col.R() == 0x00);
+            CHECK(col.G() == 0x00);
+            CHECK(col.B() == 0xF8);
+        }
+    }
+}
+
+TEST_CASE("CGBPalette test") {
+
+    SUBCASE("Test with NULL") {
+        CGBPalette pal;
+
+        auto col1 = pal.getColor(1);
+        auto col3 = pal.getColor(3);
+        auto col5 = pal.getColor(5);
+
+        CHECK(col1.raw() == 0);
+        CHECK(col3.raw() == 0);
+        CHECK(col5.raw() == 0);
+    }
+
+    SUBCASE("Test with ptr") {
+        uint16_t data[4] = {
+            0x0000, // black
+            0x0842, // all colors 0x02 -> scaled is 0x10
+            0x1CE7, // all colors 0x07 -> scaled is 0x38
+            0x7FFF, // white
+        };
+
+        CGBPalette pal((uint8_t*)data);
+
+        auto col0 = pal.getColor(0);
+        auto col1 = pal.getColor(1);
+        auto col2 = pal.getColor(2);
+        auto col3 = pal.getColor(3);
+        auto col5 = pal.getColor(5);
+
+        CHECK(col0.raw() == data[0]);
+        CHECK(col1.raw() == data[1]);
+        CHECK(col2.raw() == data[2]);
+        CHECK(col3.raw() == data[3]);
+        CHECK(col5.raw() == data[3]);
+
+        CHECK(col1.R() == 0x10);
+        CHECK(col1.G() == 0x10);
+        CHECK(col1.B() == 0x10);
+
+        CHECK(col2.R() == 0x38);
+        CHECK(col2.G() == 0x38);
+        CHECK(col2.B() == 0x38);
+
+        col1.set(255, 255, 255);
+        CHECK(col1.raw() == 0x7FFF);
+        CHECK(data[1] == 0x7FFF);
+    }
+}
+
+
+TEST_CASE("CGBPaletteData test") {
+
+    CGBPaletteData palData;
+    palData.resetBlack();
+
+    auto pal0 = palData.getPalette(0);
+    auto pal3 = palData.getPalette(3);
+    auto pal7 = palData.getPalette(7);
+    auto pal9 = palData.getPalette(9);
+
+    // check out of bounds
+    CHECK(pal7.ptr == pal9.ptr);
+
+    pal0.getColor(0).set(255, 255, 255);
+    pal0.getColor(2).set(255, 255, 255);
+
+    CHECK(palData.raw[0] == 0xFF);
+    CHECK(palData.raw[1] == 0x7F);
+    CHECK(palData.raw[4] == 0xFF);
+    CHECK(palData.raw[5] == 0x7F);
+
+    pal3.getColor(1).set(255, 255, 255);
+    pal3.getColor(3).set(255, 255, 255);
+
+    CHECK(palData.raw[26] == 0xFF);
+    CHECK(palData.raw[27] == 0x7F);
+    CHECK(palData.raw[30] == 0xFF);
+    CHECK(palData.raw[31] == 0x7F);
+
+    pal7.getColor(2).set(255, 255, 255);
+    pal7.getColor(3).set(255, 255, 255);
+
+    CHECK(palData.raw[60] == 0xFF);
+    CHECK(palData.raw[61] == 0x7F);
+    CHECK(palData.raw[62] == 0xFF);
+    CHECK(palData.raw[63] == 0x7F);
+}
+
+
+TEST_CASE("CGBPalettes test") {
+
+    CGBPalettes palettes;
+
+    static constexpr auto BGPI = mmap::regs::col_palette::bgpi;
+    static constexpr auto BGPD = mmap::regs::col_palette::bgpd;
+    static constexpr auto OBPI = mmap::regs::col_palette::obpi;
+    static constexpr auto OBPD = mmap::regs::col_palette::obpd;
+
+    SUBCASE("DMG") {
+        palettes.setIsCgb(false);
+
+        // reading returns 0xff and writing has no effect
+        CHECK(palettes.read8(BGPI) == 0xff);
+        CHECK(palettes.read8(BGPD) == 0xff);
+        CHECK(palettes.read8(OBPI) == 0xff);
+        CHECK(palettes.read8(OBPD) == 0xff);
+
+        palettes.write8(BGPI, 0x89);
+        palettes.write8(OBPI, 0x89);
+
+        CHECK(palettes.read8(BGPI) == 0xff);
+        CHECK(palettes.read8(OBPI) == 0xff);
+    }
+
+    SUBCASE("CGB") {
+        palettes.setIsCgb(true);
+
+        // reset palettes to black for the tests
+        palettes.getBgPaletteData().resetBlack();
+        palettes.getObjPaletteData().resetBlack();
+
+        // write to bg palette 1, color 0, with auto inc
+        palettes.write8(BGPI, 0x88);
+        palettes.write8(BGPD, 0xFF);
+        palettes.write8(BGPD, 0x7F);
+
+        // write to bg palette 1, color 3, with auto inc
+        palettes.write8(BGPI, 0x8E);
+        palettes.write8(BGPD, 0xFF);
+        palettes.write8(BGPD, 0x7F);
+
+        auto pal1bg = palettes.getBgPalette(1);
+
+        CHECK(pal1bg.getColor(0).raw() == 0x7FFF);
+        CHECK(pal1bg.getColor(1).raw() == 0x0000);
+        CHECK(pal1bg.getColor(2).raw() == 0x0000);
+        CHECK(pal1bg.getColor(3).raw() == 0x7FFF);
+
+
+        // now do the same but in the object palettes
+        
+        // write to obj palette 1, color 0, with auto inc
+        palettes.write8(OBPI, 0x88);
+        palettes.write8(OBPD, 0xFF);
+        palettes.write8(OBPD, 0x7F);
+
+        // write to bg palette 1, color 3, with auto inc
+        palettes.write8(OBPI, 0x8E);
+        palettes.write8(OBPD, 0xFF);
+        palettes.write8(OBPD, 0x7F);
+
+        auto pal1obj = palettes.getObjPalette(1);
+
+        CHECK(pal1obj.getColor(0).raw() == 0x7FFF);
+        CHECK(pal1obj.getColor(1).raw() == 0x0000);
+        CHECK(pal1obj.getColor(2).raw() == 0x0000);
+        CHECK(pal1obj.getColor(3).raw() == 0x7FFF);
+    }
+}
