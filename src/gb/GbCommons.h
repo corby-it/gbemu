@@ -154,6 +154,11 @@ namespace mmap {
 
         namespace hdma {
             MMAP_T start = 0xFF51;
+            MMAP_T src_hi = 0xFF51;
+            MMAP_T src_lo = 0xFF52;
+            MMAP_T dst_hi = 0xFF53;
+            MMAP_T dst_lo = 0xFF54;
+            MMAP_T len = 0xFF55;
             MMAP_T end = 0xFF55;
         }
 

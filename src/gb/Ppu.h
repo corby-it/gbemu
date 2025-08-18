@@ -355,6 +355,9 @@ public:
     CGBPalette getBgPalette(uint8_t idx) { return mBgData.getPalette(idx); }
     CGBPalette getObjPalette(uint8_t idx) { return mObjData.getPalette(idx); }
 
+    // color palette data is only accessible during HBlank and VBlank
+    void lockIndexRegs(bool val) { mDataRegsLocked = val; }
+
 
     // only for testing and debug
     CGBPaletteData& getBgPaletteData() { return mBgData; }
@@ -363,7 +366,7 @@ public:
 
     template<class Archive>
     void serialize(Archive& ar, uint32_t const /*version*/) {
-        ar(mBGPIReg, mOBPIReg, mBgData, mObjData);
+        ar(mBGPIReg, mDataRegsLocked, mOBPIReg, mBgData, mObjData);
     }
 
 
@@ -371,6 +374,7 @@ private:
 
     bool mIsCgb;
 
+    bool mDataRegsLocked;
     CGBPaletteIndexReg mBGPIReg;
     CGBPaletteIndexReg mOBPIReg;
 
@@ -615,13 +619,13 @@ public:
 
     template<class Archive>
     void save(Archive& ar, uint32_t const /*version*/) const {
-        ar(regs, vram, oamRam, display);
+        ar(regs, colors, vram, oamRam, display);
         ar(mDotCounter, mFirstStep);
     }
 
     template<class Archive>
     void load(Archive& ar, uint32_t const /*version*/) {
-        ar(regs, vram, oamRam, display);
+        ar(regs, colors, vram, oamRam, display);
         ar(mDotCounter, mFirstStep);
 
         // since the oam scan register contains pointer to the memory it can't
@@ -632,6 +636,7 @@ public:
 
 
     PPURegs regs;
+    CGBPalettes colors;
     VRam vram;
     OAMRam oamRam;
     Display display;

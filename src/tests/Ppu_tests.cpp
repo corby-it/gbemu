@@ -1,6 +1,7 @@
 
 #include "gb/Ppu.h"
 #include "gb/Dma.h"
+#include "gb/Hdma.h"
 #include "gb/GbCommons.h"
 #include "gb/Irqs.h"
 #include "doctest/doctest.h"
@@ -944,4 +945,183 @@ TEST_CASE("CGBPalettes test") {
         CHECK(pal1obj.getColor(2).raw() == 0x0000);
         CHECK(pal1obj.getColor(3).raw() == 0x7FFF);
     }
+}
+
+
+TEST_CASE("HDMA test") {
+
+    TestBus bus;
+    Hdma hdma(bus);
+
+    static constexpr auto SRCHI = mmap::regs::hdma::src_hi;
+    static constexpr auto SRCLO = mmap::regs::hdma::src_lo;
+    static constexpr auto DSTHI = mmap::regs::hdma::dst_hi;
+    static constexpr auto DSTLO = mmap::regs::hdma::dst_lo;
+    static constexpr auto LEN = mmap::regs::hdma::len;
+
+
+    auto compareMemRange = [&](uint16_t addr1, uint16_t addr2, uint16_t len) {
+        for (uint16_t i = 0; i < len; ++i) {
+            if (bus.read8(addr1 + i) != bus.read8(addr2 + i))
+                return false;
+        }
+
+        return true;
+    };
+
+
+    SUBCASE("DMG") {
+        hdma.setIsCgb(false);
+
+        // all reads should return FF and writes should have no effect
+        hdma.write8(SRCHI, 0xC0);
+        hdma.write8(SRCLO, 0x00);
+        hdma.write8(DSTHI, 0x82);
+        hdma.write8(DSTLO, 0x00);
+        hdma.write8(LEN, 0xC0);
+
+        CHECK(hdma.read8(SRCHI) == 0xFF);
+        CHECK(hdma.read8(SRCLO) == 0xFF);
+        CHECK(hdma.read8(DSTHI) == 0xFF);
+        CHECK(hdma.read8(DSTLO) == 0xFF);
+        CHECK(hdma.read8(LEN) == 0xFF);
+
+        CHECK(hdma.currMode() == HdmaMode::Stopped);
+    }
+
+    SUBCASE("CGB") {
+        hdma.setIsCgb(true);
+
+        uint16_t addrSrc = 0xC100;
+        uint16_t addrDst = 0x8100;
+        uint8_t len = 0x7F;
+        uint16_t byteLen = (len + 1) * 16;
+
+
+        // fill ram starting at C100 with progressive numbers
+        for (uint16_t i = 0; i < byteLen; ++i) {
+            bus.write8(addrSrc + i, (uint8_t)i);
+        }
+
+        SUBCASE("Generic transfer, len = 7F") {
+            // the entire transfer should take 0x800 / 2 = 0x400 = 1024 m-cycles
+
+            hdma.write8(SRCHI, addrSrc >> 8);
+            hdma.write8(SRCLO, (uint8_t)addrSrc);
+            hdma.write8(DSTHI, addrDst >> 8);
+            hdma.write8(DSTLO, (uint8_t)addrDst);
+            hdma.write8(LEN, len);
+
+            // check address regs are write only
+            CHECK(hdma.read8(SRCHI) == 0xFF);
+            CHECK(hdma.read8(SRCLO) == 0xFF);
+            CHECK(hdma.read8(DSTHI) == 0xFF);
+            CHECK(hdma.read8(DSTLO) == 0xFF);
+
+            // LEN should now return 0x7F
+            // top bit == 0 because transfer is running
+            // remaining blocks still 7F
+            CHECK(hdma.read8(LEN) == 0x7F);
+            CHECK(hdma.currMode() == HdmaMode::Generic);
+
+            // step for 8 m-cycles
+            for (auto i = 0; i < 8; ++i)
+                hdma.step(false);
+
+            // check if length is decreased by 1
+            CHECK(hdma.read8(LEN) == 0x7E);
+
+            // run for 1024 - 8 - 1 cycles
+            for (auto i = 0; i < 1024 - 9; ++i)
+                hdma.step(false);
+
+            // check that len still reads 0 (which means that the last block is still being transferred)
+            // and that the transfer is still running
+            CHECK(hdma.read8(LEN) == 0x00);
+            CHECK(hdma.currMode() == HdmaMode::Generic);
+
+            // step for the last time and check if the transfer is done (len reads FF)
+            hdma.step(false);
+
+            CHECK(hdma.read8(LEN) == 0xFF);
+            CHECK(hdma.currMode() == HdmaMode::Stopped);
+
+            // check if memory has been copied as expected
+            CHECK(compareMemRange(addrSrc, addrDst, byteLen));
+        }
+
+        SUBCASE("HBlank transfer, len = 0x12") {
+            hdma.write8(SRCHI, addrSrc >> 8);
+            hdma.write8(SRCLO, (uint8_t)addrSrc);
+            hdma.write8(DSTHI, addrDst >> 8);
+            hdma.write8(DSTLO, (uint8_t)addrDst);
+            hdma.write8(LEN, len | 0x80);
+
+            // LEN should now return 0x7F
+            // top bit == 0 because transfer is running
+            // remaining blocks still 7F
+            CHECK(hdma.read8(LEN) == 0x7F);
+            CHECK(hdma.currMode() == HdmaMode::HBlank);
+
+            // step for 8 m-cycles with "ppu is in hblank" false
+            for (auto i = 0; i < 8; ++i)
+                hdma.step(false);
+
+            // check that length is still the same
+            CHECK(hdma.read8(LEN) == 0x7F);
+
+            // run for 1024 - 1 cycles with "ppu is in hblank" true
+            for (auto i = 0; i < 1024 - 1; ++i)
+                hdma.step(true);
+
+            // check that len still reads 0 (which means that the last block is still being transferred)
+            // and that the transfer is still running
+            CHECK(hdma.read8(LEN) == 0x00);
+            CHECK(hdma.currMode() == HdmaMode::HBlank);
+
+            // step for the last time and check if the transfer is done (len reads FF)
+            hdma.step(true);
+
+            CHECK(hdma.read8(LEN) == 0xFF);
+            CHECK(hdma.currMode() == HdmaMode::Stopped);
+
+            // check if memory has been copied as expected
+            CHECK(compareMemRange(addrSrc, addrDst, byteLen));
+        }
+
+        SUBCASE("Hblank transfer, len = 0x12, interrupted") {
+            hdma.write8(SRCHI, addrSrc >> 8);
+            hdma.write8(SRCLO, (uint8_t)addrSrc);
+            hdma.write8(DSTHI, addrDst >> 8);
+            hdma.write8(DSTLO, (uint8_t)addrDst);
+            hdma.write8(LEN, len | 0x80);
+
+            // LEN should now return 0x7F
+            // top bit == 0 because transfer is running
+            // remaining blocks still 7F
+            CHECK(hdma.read8(LEN) == 0x7F);
+            CHECK(hdma.currMode() == HdmaMode::HBlank);
+
+
+            // run for 256 cycles
+            for (auto i = 0; i < 256; ++i)
+                hdma.step(true);
+
+            // 256 * 2 = 512 bytes (32 16-byte blocks) must have been transferred, which means that 
+            // now len should read 0x80 - 0x20 - 1 = 5F
+            CHECK(hdma.read8(LEN) == 0x5F);
+            CHECK(hdma.currMode() == HdmaMode::HBlank);
+
+            // interrupt the transfer by writing the top bit of the len register to 0
+            hdma.write8(LEN, 0x00);
+
+            // check that reads 5F | 80 and that the transfer is now stopped
+            CHECK(hdma.read8(LEN) == (0x5F | 0x80));
+            CHECK(hdma.currMode() == HdmaMode::Stopped);
+
+            // check if memory has been copied as expected up to 512 bytes
+            CHECK(compareMemRange(addrSrc, addrDst, 512));
+        }
+    }
+
 }

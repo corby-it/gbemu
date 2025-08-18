@@ -550,9 +550,9 @@ AddressMap GameBoyColor::initAddressMap()
         { mmap::regs::hdma::start, nullptr },   // HDMA
         { mmap::regs::hdma::end, nullptr },     // HDMA
         { mmap::regs::infrared, &infrared },    // Infrared
-        { mmap::regs::col_palette::start -1, nullptr }, // Color palette
-        { mmap::regs::col_palette::start, nullptr },    // Color palette
-        { mmap::regs::col_palette::end, nullptr },      // Color palette
+        { mmap::regs::col_palette::start -1, nullptr },     // Color palette
+        { mmap::regs::col_palette::start, &ppu.colors },    // Color palette
+        { mmap::regs::col_palette::end, &ppu.colors },      // Color palette
         { mmap::regs::opri, nullptr },      // OPRI
         { mmap::regs::svbk - 1, nullptr },  // SVBK
         { mmap::regs::svbk, &wram },        // SVBK

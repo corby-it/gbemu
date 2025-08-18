@@ -185,6 +185,7 @@ CGBPalettes::CGBPalettes()
 
 void CGBPalettes::reset()
 {
+    mDataRegsLocked = false;
     mBGPIReg.fromU8(0);
     mOBPIReg.fromU8(0);
 
@@ -206,9 +207,19 @@ uint8_t CGBPalettes::read8(uint16_t addr) const
 
     switch (addr) {
     case cgbpal::bgpi: return mBGPIReg.asU8();
-    case cgbpal::bgpd: return mBgData.raw[mBGPIReg.index];
+    case cgbpal::bgpd:
+        if (mDataRegsLocked)
+            return 0xff;
+        else 
+            return mBgData.raw[mBGPIReg.index];
+
     case cgbpal::obpi: return mOBPIReg.asU8();
-    case cgbpal::obpd: return mObjData.raw[mOBPIReg.index];
+    case cgbpal::obpd: 
+        if (mDataRegsLocked)
+            return 0xff;
+        else 
+            return mObjData.raw[mOBPIReg.index];
+
     default:
         return 0xff;
     }
@@ -223,15 +234,19 @@ void CGBPalettes::write8(uint16_t addr, uint8_t val)
     case cgbpal::bgpi: mBGPIReg.fromU8(val); break;
     
     case cgbpal::bgpd:
-        mBgData.raw[mBGPIReg.index] = val;
-        mBGPIReg.tryIncIndex();
+        if (!mDataRegsLocked) {
+            mBgData.raw[mBGPIReg.index] = val;
+            mBGPIReg.tryIncIndex();
+        }
         break;
 
     case cgbpal::obpi: mOBPIReg.fromU8(val); break;
 
     case cgbpal::obpd:
-        mObjData.raw[mOBPIReg.index] = val;
-        mOBPIReg.tryIncIndex();
+        if (!mDataRegsLocked) {
+            mObjData.raw[mOBPIReg.index] = val;
+            mOBPIReg.tryIncIndex();
+        }
         break;
 
     default:
@@ -331,6 +346,7 @@ void PPU::reset()
     mFirstStep = true;
 
     regs.reset();
+    colors.reset();
     vram.reset();
     oamRam.reset();
     display.clear();
@@ -346,6 +362,7 @@ void PPU::reset()
 void PPU::setIsCgb(bool val)
 {
     mIsCgb = val;
+    colors.setIsCgb(val);
     vram.setIsCgb(val);
 }
 
@@ -571,20 +588,24 @@ void PPU::lockRamAreas(bool lock)
         case PPUMode::VBlank:
             oamRam.lock(false);
             vram.lock(false);
+            colors.lockIndexRegs(false);
             break;
         case PPUMode::OAMScan:
             oamRam.lock(true);
             vram.lock(false);
+            colors.lockIndexRegs(true);
             break;
         case PPUMode::Draw:
             oamRam.lock(true);
             vram.lock(true);
+            colors.lockIndexRegs(true);
             break;
         }
     }
     else {
         oamRam.lock(false);
         vram.lock(false);
+        colors.lockIndexRegs(false);
     }
 }
 
