@@ -335,6 +335,7 @@ namespace lcdreg = mmap::regs::lcd;
 PPU::PPU(Bus& bus)
     : mBus(&bus)
     , mIsCgb(false)
+    , hdma(bus)
 {
     reset();
 }
@@ -364,6 +365,7 @@ void PPU::setIsCgb(bool val)
     mIsCgb = val;
     colors.setIsCgb(val);
     vram.setIsCgb(val);
+    hdma.setIsCgb(val);
 }
 
 
@@ -536,7 +538,11 @@ bool PPU::step(uint32_t mCycles)
             // during which the gpu fetches stuff, after that, the 160 screen dots are actually rendered
             if (regs.STAT.ppuMode == PPUMode::Draw && mDotCounter >= 80 + 12) {
                 uint32_t currX = mDotCounter - (80 + 12);
-                renderPixel(currX);
+                
+                if (mIsCgb)
+                    renderPixelCGB(currX);
+                else 
+                    renderPixelDMG(currX);
             }
         }
     }
@@ -549,6 +555,12 @@ bool PPU::step(uint32_t mCycles)
     // or unlock video related memory depending on the current PPU mode
     // and on the lcd enable flag
     lockRamAreas(regs.LCDC.lcdEnable);
+
+    
+    // handle HDMA transfers
+    // hdma hblank transfers, as the name suggests, only happen during the hblank
+    // mode of the ppu
+    hdma.step(regs.LCDC.lcdEnable && regs.STAT.ppuMode == PPUMode::HBlank);
 
     return frameReady;
 }
@@ -627,6 +639,10 @@ void PPU::updateSTAT()
         if (mDotCounter >= 252)
             regs.STAT.ppuMode = PPUMode::HBlank;
     }
+
+    // ppu mode is always hblank when the ppu is disabled
+    if (!regs.LCDC.lcdEnable)
+        regs.STAT.ppuMode = PPUMode::HBlank;
 }
 
 void PPU::oamScan()
@@ -677,7 +693,7 @@ PPU::OAMDataPtrList PPU::findCurrOams(uint32_t currX) const
 
 
 
-void PPU::renderPixel(uint32_t dispX)
+void PPU::renderPixelDMG(uint32_t dispX)
 {
     uint8_t bgColorId = 0;
     uint8_t bgColorVal = 0;
@@ -848,6 +864,65 @@ PPU::OAMPixelInfoList PPU::renderPixelGetObjsValues(uint32_t currX)
     });
 
     return pixInfo;
+}
+
+void PPU::renderPixelCGB(uint32_t dispX)
+{
+    uint8_t bgColorId = 0;
+    uint8_t bgColorVal = 0;
+
+    // get background info for this pixel
+    bool hasWindow = renderPixelGetWinVal(dispX, bgColorId);
+    if (!hasWindow) {
+        // if the window must not be displayed or if the current pixel 
+        // is not involved with the window we have to get the regular bg pixel
+        bgColorId = renderPixelGetBgVal(dispX);
+    }
+
+    bgColorVal = regs.BGP.id2val(bgColorId);
+
+    // get the back buffer for the display
+    auto& dispBuf = display.getBackBuf();
+
+    // get objects info for this pixel
+    auto objsPixInfo = renderPixelGetObjsValues(dispX);
+
+    if (objsPixInfo.empty()) {
+        // no objects for this pixel, draw the background color
+        dispBuf.set(dispX, regs.LY, bgColorVal);
+    }
+    else {
+        // we have a list of colors and associated information:
+        // - colors with priority == false must be drawn above the background, unless they are 0 (transparent)
+        // - colors with priority == true must be drawn behind the background, only if the background color is 0 (transparent)
+        // we start from top to bottom, from the first object, if the object is transparent then we go down and check the next object
+        // then, when objects above the background are over we check the background color, if it's 0 we also check for objects that must
+        // be drawn behind the background, etc.
+
+        auto objIt = objsPixInfo.begin();
+
+        // check object colors above the background (priority == false)
+        while (objIt != objsPixInfo.end() && !objIt->priority) {
+
+            if (objIt->colorId != 0) {
+                dispBuf.set(dispX, regs.LY, objIt->colorVal);
+                return;
+            }
+            ++objIt;
+        }
+
+        // done with objects above the background, check if the background is 0 and objects might be drawn behind it
+        if (bgColorId != 0) {
+            dispBuf.set(dispX, regs.LY, bgColorVal);
+            return;
+        }
+
+        // draw the color of the first object behind the background (if any), otherwise draw the background color
+        if (objIt != objsPixInfo.end())
+            dispBuf.set(dispX, regs.LY, objIt->colorVal);
+        else
+            dispBuf.set(dispX, regs.LY, bgColorVal);
+    }
 }
 
 

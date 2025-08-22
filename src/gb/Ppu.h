@@ -7,6 +7,7 @@
 #include "Bus.h"
 #include "Vram.h"
 #include "GbCommons.h"
+#include "Hdma.h"
 #include <vector>
 #include <cereal/cereal.hpp>
 #include <cereal/types/array.hpp>
@@ -637,6 +638,7 @@ public:
 
     PPURegs regs;
     CGBPalettes colors;
+    Hdma hdma;
     VRam vram;
     OAMRam oamRam;
     Display display;
@@ -696,10 +698,12 @@ private:
     OAMDataPtrList findCurrOams(uint32_t currX) const;
 
 
-    void renderPixel(uint32_t dispX);
+    void renderPixelDMG(uint32_t dispX);
     uint8_t renderPixelGetBgVal(uint32_t dispX);
     bool renderPixelGetWinVal(uint32_t dispX, uint8_t& colorId);
     OAMPixelInfoList renderPixelGetObjsValues(uint32_t currX);
+
+    void renderPixelCGB(uint32_t dispX);
 
     Bus* mBus;
 

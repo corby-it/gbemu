@@ -3,6 +3,7 @@
 #define GBEMU_SRC_GB_HDMA_H_
 
 #include "Bus.h"
+#include <cereal/cereal.hpp>
 
 
 enum class HdmaMode {
@@ -31,6 +32,22 @@ public:
 
     HdmaMode currMode() const { return mMode; }
 
+
+
+    template<class Archive>
+    void save(Archive& archive, uint32_t const /*version*/) const {
+        uint8_t modeU8 = static_cast<uint8_t>(mMode);
+        archive(modeU8, mLen, mSrc, mDst, mSubcount, mSrcInternal, mDstInternal);
+    }
+
+    template<class Archive>
+    void load(Archive& archive, uint32_t const /*version*/) {
+        uint8_t modeU8 = 0;
+        archive(modeU8, mLen, mSrc, mDst, mSubcount, mSrcInternal, mDstInternal);
+        mMode = static_cast<HdmaMode>(modeU8);
+    }
+
+
 private:
 
     Bus* mBus;
@@ -43,11 +60,14 @@ private:
     uint16_t mSrc;
     uint16_t mDst;
 
+    bool mPrevPpuHblank;
     uint8_t mSubcount;
     uint16_t mSrcInternal;
     uint16_t mDstInternal;
 
 };
+
+CEREAL_CLASS_VERSION(Hdma, 1);
 
 
 

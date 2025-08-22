@@ -1024,6 +1024,12 @@ TEST_CASE("HDMA test") {
             CHECK(hdma.read8(LEN) == 0x7F);
             CHECK(hdma.currMode() == HdmaMode::Generic);
 
+            // check that the correct event has been sent to the bus
+            CHECK(bus.mEvtQueue.size() == 1);
+            CHECK(bus.mEvtQueue.front() == BusEvent::HdmaStarted);
+            bus.mEvtQueue.pop();
+
+
             // step for 8 m-cycles
             for (auto i = 0; i < 8; ++i)
                 hdma.step(false);
@@ -1046,11 +1052,16 @@ TEST_CASE("HDMA test") {
             CHECK(hdma.read8(LEN) == 0xFF);
             CHECK(hdma.currMode() == HdmaMode::Stopped);
 
+            // check that the correct event has been sent to the bus
+            CHECK(bus.mEvtQueue.size() == 1);
+            CHECK(bus.mEvtQueue.front() == BusEvent::HdmaStopped);
+            bus.mEvtQueue.pop();
+
             // check if memory has been copied as expected
             CHECK(compareMemRange(addrSrc, addrDst, byteLen));
         }
 
-        SUBCASE("HBlank transfer, len = 0x12") {
+        SUBCASE("HBlank transfer, len = 0x7F") {
             hdma.write8(SRCHI, addrSrc >> 8);
             hdma.write8(SRCLO, (uint8_t)addrSrc);
             hdma.write8(DSTHI, addrDst >> 8);
@@ -1063,6 +1074,9 @@ TEST_CASE("HDMA test") {
             CHECK(hdma.read8(LEN) == 0x7F);
             CHECK(hdma.currMode() == HdmaMode::HBlank);
 
+            // no events must have been sent to the bus yet
+            CHECK(bus.mEvtQueue.empty());
+
             // step for 8 m-cycles with "ppu is in hblank" false
             for (auto i = 0; i < 8; ++i)
                 hdma.step(false);
@@ -1070,8 +1084,45 @@ TEST_CASE("HDMA test") {
             // check that length is still the same
             CHECK(hdma.read8(LEN) == 0x7F);
 
-            // run for 1024 - 1 cycles with "ppu is in hblank" true
-            for (auto i = 0; i < 1024 - 1; ++i)
+            // no events must have been sent to the bus yet
+            CHECK(bus.mEvtQueue.empty());
+
+            // simulate entering in hblank mode
+            hdma.step(true);
+
+            // check that the event has been sent to the bus
+            CHECK(bus.mEvtQueue.size() == 1);
+            CHECK(bus.mEvtQueue.front() == BusEvent::HdmaStarted);
+            bus.mEvtQueue.pop();
+
+            // run for 511 cycles and simulate exiting hblank mode
+            for (auto i = 0; i < 511; ++i)
+                hdma.step(true);
+
+            hdma.step(false);
+
+            // check that the event has been sent to the bus
+            CHECK(bus.mEvtQueue.size() == 1);
+            CHECK(bus.mEvtQueue.front() == BusEvent::HdmaStopped);
+            bus.mEvtQueue.pop();
+
+            // len value should now be 3F and mode should still be hblank
+            CHECK(hdma.read8(LEN) == 0x3F);
+            CHECK(hdma.currMode() == HdmaMode::HBlank);
+
+
+            // restart the transfer by entering hblank again
+            hdma.step(true);
+
+            // check that the event has been sent to the bus
+            CHECK(bus.mEvtQueue.size() == 1);
+            CHECK(bus.mEvtQueue.front() == BusEvent::HdmaStarted);
+            bus.mEvtQueue.pop();
+
+
+            // run for the remaining 511 cycles minus 1 with "ppu is in hblank" true
+            // to stop right before the last byte transfer 
+            for (auto i = 0; i < 510; ++i)
                 hdma.step(true);
 
             // check that len still reads 0 (which means that the last block is still being transferred)
@@ -1085,11 +1136,17 @@ TEST_CASE("HDMA test") {
             CHECK(hdma.read8(LEN) == 0xFF);
             CHECK(hdma.currMode() == HdmaMode::Stopped);
 
+            // check that the event has been sent to the bus
+            CHECK(bus.mEvtQueue.size() == 1);
+            CHECK(bus.mEvtQueue.front() == BusEvent::HdmaStopped);
+            bus.mEvtQueue.pop();
+
+
             // check if memory has been copied as expected
             CHECK(compareMemRange(addrSrc, addrDst, byteLen));
         }
 
-        SUBCASE("Hblank transfer, len = 0x12, interrupted") {
+        SUBCASE("Hblank transfer, len = 0x7F, interrupted") {
             hdma.write8(SRCHI, addrSrc >> 8);
             hdma.write8(SRCLO, (uint8_t)addrSrc);
             hdma.write8(DSTHI, addrDst >> 8);
@@ -1104,8 +1161,15 @@ TEST_CASE("HDMA test") {
 
 
             // run for 256 cycles
-            for (auto i = 0; i < 256; ++i)
+            hdma.step(true);
+            
+            CHECK(bus.mEvtQueue.size() == 1);
+            CHECK(bus.mEvtQueue.front() == BusEvent::HdmaStarted);
+            bus.mEvtQueue.pop();
+
+            for (auto i = 0; i < 255; ++i)
                 hdma.step(true);
+
 
             // 256 * 2 = 512 bytes (32 16-byte blocks) must have been transferred, which means that 
             // now len should read 0x80 - 0x20 - 1 = 5F
@@ -1118,6 +1182,12 @@ TEST_CASE("HDMA test") {
             // check that reads 5F | 80 and that the transfer is now stopped
             CHECK(hdma.read8(LEN) == (0x5F | 0x80));
             CHECK(hdma.currMode() == HdmaMode::Stopped);
+
+            // check event
+            CHECK(bus.mEvtQueue.size() == 1);
+            CHECK(bus.mEvtQueue.front() == BusEvent::HdmaStopped);
+            bus.mEvtQueue.pop();
+
 
             // check if memory has been copied as expected up to 512 bytes
             CHECK(compareMemRange(addrSrc, addrDst, 512));

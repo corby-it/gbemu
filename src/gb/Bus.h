@@ -5,6 +5,7 @@
 
 #include "Ram.h"
 #include "GbCommons.h"
+#include <queue>
 
 
 // the GB has a 16-bit address bus that connects the CPU to everything else.
@@ -15,6 +16,12 @@
 // Bus
 // ------------------------------------------------------------------------------------------------
 
+enum class BusEvent {
+    HdmaStarted,
+    HdmaStopped,
+};
+
+
 class Bus : public ReadWriteIf {
 public:
     virtual ~Bus() {}
@@ -22,6 +29,14 @@ public:
     uint16_t read16(uint16_t addr) const;
     
     void write16(uint16_t addr, uint16_t val);
+
+
+    void sendEvent(BusEvent evt) { mEvtQueue.push(evt); }
+
+    
+
+    std::queue<BusEvent> mEvtQueue;
+
 
 };
 

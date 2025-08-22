@@ -195,6 +195,8 @@ public:
 
     uint32_t elapsedCycles() const { return mCycles; }
 
+    void halt(bool val);
+
     bool isHalted() const { return mIsHalted; }
     bool isStopped() const { return mIsStopped; }
     

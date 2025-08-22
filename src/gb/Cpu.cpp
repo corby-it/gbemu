@@ -2284,6 +2284,11 @@ uint8_t CPU::opHalt()
     return 1;
 }
 
+void CPU::halt(bool val)
+{
+    mIsHalted = val;
+}
+
 uint8_t CPU::opStop()
 {
     // STOP

@@ -23,6 +23,7 @@ void Hdma::reset()
     mSrc = 0;
     mDst = 0;
 
+    mPrevPpuHblank = false;
     mSubcount = 0;
     mSrcInternal = 0;
     mDstInternal = 0;
@@ -84,6 +85,7 @@ void Hdma::write8(uint16_t addr, uint8_t val)
 
         if (mMode == HdmaMode::HBlank && !(val & 0x80)) {
             mMode = HdmaMode::Stopped;
+            mBus->sendEvent(BusEvent::HdmaStopped);
         }
         else {
             mMode = (val & 0x80) ? HdmaMode::HBlank : HdmaMode::Generic;
@@ -101,6 +103,10 @@ void Hdma::write8(uint16_t addr, uint8_t val)
 
             // reset the subcounter
             mSubcount = 0;
+
+            // tell everybody that a generic transfer started
+            if(mMode == HdmaMode::Generic)
+                mBus->sendEvent(BusEvent::HdmaStarted);
         }
 
         break;
@@ -123,7 +129,40 @@ void Hdma::step(bool isPPUInHblank)
     // and 16 "fast" m-cycles in Double Speed Mode.
     // this means that for each m-cycle 2 bytes are transferred.
 
-    if (mMode == HdmaMode::Generic || (mMode == HdmaMode::HBlank && isPPUInHblank)) {
+    bool run = false;
+    bool sendEvt = false;
+    BusEvent evt = BusEvent::HdmaStopped;
+
+    if(mMode == HdmaMode::Stopped) {
+        run = false;
+        sendEvt = false;
+    }
+    else if (mMode == HdmaMode::Generic) {
+        run = true;
+    }
+    else if (mMode == HdmaMode::HBlank) {
+
+        // when running in hblank mode we have to tell the rest of the hardware that 
+        // the hdma started transferring because the cpu has to switch to halt mode
+
+        if (!mPrevPpuHblank && isPPUInHblank) {
+            // entered hblank mode
+            sendEvt = true;
+            evt = BusEvent::HdmaStarted;
+        }
+        else if (mPrevPpuHblank && !isPPUInHblank) {
+            // finished hblank mode
+            sendEvt = true;
+            evt = BusEvent::HdmaStopped;
+        }
+
+        run = isPPUInHblank;
+    }
+
+    mPrevPpuHblank = isPPUInHblank;
+
+
+    if (run) {
         // copy 2 bytes
         for (uint32_t i = 0; i < 2; ++i) {
 
@@ -142,10 +181,15 @@ void Hdma::step(bool isPPUInHblank)
                     // when mLen wraps around the transfer is over
                     mLen = 0x7F;
                     mMode = HdmaMode::Stopped;
+                    sendEvt = true;
+                    evt = BusEvent::HdmaStopped;
                     break;
                 }
             }
         }
     }
+
+    if (sendEvt)
+        mBus->sendEvent(evt);
 }
 

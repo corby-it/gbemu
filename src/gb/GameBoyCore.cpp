@@ -547,8 +547,8 @@ AddressMap GameBoyColor::initAddressMap()
         { mmap::regs::vbk - 1, nullptr },   // VBK
         { mmap::regs::vbk, &ppu.vram },     // VBK
         { mmap::regs::boot, nullptr },      // BOOT
-        { mmap::regs::hdma::start, nullptr },   // HDMA
-        { mmap::regs::hdma::end, nullptr },     // HDMA
+        { mmap::regs::hdma::start, &ppu.hdma },   // HDMA
+        { mmap::regs::hdma::end, &ppu.hdma },     // HDMA
         { mmap::regs::infrared, &infrared },    // Infrared
         { mmap::regs::col_palette::start -1, nullptr },     // Color palette
         { mmap::regs::col_palette::start, &ppu.colors },    // Color palette
@@ -626,6 +626,20 @@ GbStepRes GameBoyColor::gbStep()
             serial.step(cpuRes.cycles);
             joypad.step(cpuRes.cycles);
             apu.step(cpuRes.cycles);
+        }
+
+        // handle bus events (if any)
+        for ( ; !mEvtQueue.empty(); mEvtQueue.pop()) {
+
+            // when an HDMA transfer starts the cpu is halted and it automatically
+            // returns to its normal state when the transfer is over
+            switch (mEvtQueue.front()) {
+            case BusEvent::HdmaStarted: cpu.halt(true); break;
+            case BusEvent::HdmaStopped: cpu.halt(false); break;
+            default:
+                break;
+            }
+
         }
     }
 
