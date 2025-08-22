@@ -9,6 +9,7 @@
 #include "GbCommons.h"
 #include "Hdma.h"
 #include <vector>
+#include <optional>
 #include <cereal/cereal.hpp>
 #include <cereal/types/array.hpp>
 
@@ -28,7 +29,9 @@ struct LCDCReg : public RegU8 {
     // This is the main LCD control register. Its bits toggle what elements are displayed on the screen, and how
 
     // bit  function
-    // 0    BG and window enable/priority: if 0 both background and window are blank (white)
+    // 0    BG and window enable/priority: 
+    //          DMG: if 0 both background and window are blank (white)
+    //          CGB: if 0 bg and window lose their priority, objects will always be displayed on top of them
     bool bgWinEnable;
     // 1    OBJ enable: if 0 objects are not rendered (can be changed mid scanline)
     bool objEnable;
@@ -217,6 +220,11 @@ struct CGBColor {
     void setB(uint8_t b);
 
     void set(uint8_t r, uint8_t g, uint8_t  b);
+
+
+    operator RgbaPixel() const {
+        return RgbaPixel(R(), G(), B());
+    }
 
 
     // colors in the CGB are stored as RGB555 in an u16,
@@ -652,8 +660,7 @@ private:
     struct OAMPixelInfo {
         const OAMData* oam;
         uint8_t colorId;
-        uint8_t colorVal;
-        bool palette;
+        RgbaPixel colorVal;
         bool priority;
     };
     
@@ -699,11 +706,16 @@ private:
 
 
     void renderPixelDMG(uint32_t dispX);
-    uint8_t renderPixelGetBgVal(uint32_t dispX);
-    bool renderPixelGetWinVal(uint32_t dispX, uint8_t& colorId);
-    OAMPixelInfoList renderPixelGetObjsValues(uint32_t currX);
+    uint8_t renderPixelDMGGetBgVal(uint32_t dispX);
+    bool renderPixelDMGGetWinVal(uint32_t dispX, uint8_t& colorId);
 
     void renderPixelCGB(uint32_t dispX);
+    void renderPixelCGBGetBgVal(uint32_t dispX, uint8_t& bgColorId, RgbaPixel& bgColor, bool& bgPriority);
+    bool renderPixelCGBGetWinVal(uint32_t dispX, uint8_t& bgColorId, RgbaPixel& bgColor, bool& bgPriority);
+
+    OAMPixelInfoList renderPixelGetObjsValues(uint32_t currX);
+    std::optional<OAMPixelInfo> renderPixelGetObjInfo(uint32_t currX);
+
 
     Bus* mBus;
 

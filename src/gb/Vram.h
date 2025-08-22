@@ -372,29 +372,6 @@ CEREAL_CLASS_VERSION(OAMRam, 1);
 // Display
 // ------------------------------------------------------------------------------------------------
 
-class DisplayBuf : public Matrix {
-public:
-    DisplayBuf(uint32_t w, uint32_t h);
-
-    DisplayBuf(const DisplayBuf& other);
-    DisplayBuf& operator=(const DisplayBuf& other);
-
-
-    void clear();
-
-    uint8_t* data() { return mData.get(); }
-    size_t size() const { return mWidth * mHeight; }
-
-private:
-    uint8_t getImpl(uint32_t x, uint32_t y) const override;
-    void setImpl(uint32_t x, uint32_t y, uint8_t val) override;
-
-
-    std::unique_ptr<uint8_t[]> mData;
-
-};
-
-
 
 class Display {
 public:
@@ -407,32 +384,30 @@ public:
     static constexpr uint8_t w = 160;
     static constexpr uint8_t h = 144;
 
-    DisplayBuf& getFrontBuf() { return mIsFrontA ? mBufA : mBufB; }
-    const DisplayBuf& getFrontBuf() const { return mIsFrontA ? mBufA : mBufB; }
+    RgbaBuffer& getFrontBuf() { return mIsFrontA ? mBufA : mBufB; }
+    const RgbaBuffer& getFrontBuf() const { return mIsFrontA ? mBufA : mBufB; }
 
-    DisplayBuf& getBackBuf() { return mIsFrontA ? mBufB : mBufA; }
-    const DisplayBuf& getBackBuf() const { return mIsFrontA ? mBufB : mBufA; }
+    RgbaBuffer& getBackBuf() { return mIsFrontA ? mBufB : mBufA; }
+    const RgbaBuffer& getBackBuf() const { return mIsFrontA ? mBufB : mBufA; }
 
-    DisplayBuf& getA() { return mBufA; }
-    DisplayBuf& getB() { return mBufB; }
+    RgbaBuffer& getA() { return mBufA; }
+    RgbaBuffer& getB() { return mBufB; }
 
     void swapBufs() { mIsFrontA = !mIsFrontA; }
 
     template<class Archive>
     void serialize(Archive& ar, uint32_t const /*version*/) {
-        ar(mIsFrontA,
-            cereal::binary_data(mBufA.data(), mBufA.size()), 
-            cereal::binary_data(mBufB.data(), mBufB.size())
-        );
+        ar(mIsFrontA, mBufA, mBufB);
     }
 
 private:
 
     bool mIsFrontA;
-    DisplayBuf mBufA;
-    DisplayBuf mBufB;
+    RgbaBuffer mBufA;
+    RgbaBuffer mBufB;
 
 };
+
 
 CEREAL_CLASS_VERSION(Display, 1);
 

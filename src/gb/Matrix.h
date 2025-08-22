@@ -6,6 +6,8 @@
 #include <cstdint>
 #include <memory>
 #include <cassert>
+#include <cereal/cereal.hpp>
+#include <cereal/types/polymorphic.hpp>
 
 
 // Generic classes for matrix-like objects
@@ -18,17 +20,54 @@ struct RgbaPixel {
     uint8_t B;
     uint8_t A;
 
+    RgbaPixel()
+        : R(0), G(0), B(0), A(0)
+    {}
+
+    RgbaPixel(uint8_t r, uint8_t g, uint8_t b, uint8_t a = 255)
+        : R(r), G(g), B(b), A(a)
+    {}
+
+    RgbaPixel(const uint8_t* ptr) {
+        R = ptr ? ptr[0] : 0;
+        G = ptr ? ptr[1] : 0;
+        B = ptr ? ptr[2] : 0;
+        A = ptr ? ptr[3] : 0;
+    }
+
     uint32_t asU32() const {
         return (R << 24) | (G << 16) | (B << 8) | A;
+    }
+
+    bool operator==(const RgbaPixel& other) const {
+        return R == other.R && G == other.G
+            && B == other.B && A == other.A;
+    }
+
+    bool operator!=(const RgbaPixel& other) const {
+        return !(*this == other);
     }
 };
 
 
 
-static constexpr RgbaPixel blackA = { 0, 0, 0, 255 };
-static constexpr RgbaPixel darkGreyA = { 120, 120, 120, 255 };
-static constexpr RgbaPixel lightGreyA = { 200, 200, 200, 255 };
-static constexpr RgbaPixel whiteA = { 255, 255, 255, 255 };
+static const auto blackA = RgbaPixel(0, 0, 0);
+static const auto darkGreyA = RgbaPixel(120, 120, 120);
+static const auto lightGreyA = RgbaPixel(200, 200, 200);
+static const auto whiteA = RgbaPixel(255, 255, 255);
+
+
+static inline RgbaPixel dmgVal2RGB(uint8_t val)
+{
+    switch (val) {
+    default:
+    case 0: return whiteA;
+    case 1: return lightGreyA;
+    case 2: return darkGreyA;
+    case 3: return blackA;
+    }
+}
+
 
 
 class RgbaPixelRef {
@@ -50,6 +89,16 @@ public:
         return *this;
     }
 
+    bool operator==(const RgbaPixel& other) const {
+        return mPtr[0] == other.R && mPtr[1] == other.G
+            && mPtr[2] == other.B && mPtr[3] == other.A;
+    }
+
+    bool operator!=(const RgbaPixel& other) const {
+        return !(*this == other);
+    }
+
+
 private:
     uint8_t* mPtr;
 
@@ -62,12 +111,13 @@ public:
     RgbaBufferIf(uint32_t w, uint32_t h)
         : mWidth(w)
         , mHeight(h)
-        , mSize(w* h * 4)
+        , mSize(w * h * 4)
     {}
 
     virtual ~RgbaBufferIf() {}
 
     virtual uint8_t* ptr() = 0;
+    virtual const uint8_t* ptr() const = 0;
 
     size_t size() const { return mSize; }
     uint32_t w() const { return mWidth; }
@@ -77,23 +127,51 @@ public:
     {
         x %= mWidth;
         y %= mHeight;
-        return RgbaPixelRef(ptr() + (y * mWidth * 4) + (x * 4));
+        return RgbaPixelRef(pixelPtr(x,y));
+    }
+
+    RgbaPixel operator()(uint32_t x, uint32_t y) const
+    {
+        x %= mWidth;
+        y %= mHeight;
+        return RgbaPixel(pixelPtr(x, y));
     }
 
     void fill(RgbaPixel pix)
     {
-        for (uint32_t r = 0; r < mHeight; ++r) {
-            for (uint32_t c = 0; c < mWidth; ++c) {
-                (*this)(r, c) = pix;
+        for (uint32_t y = 0; y < mHeight; ++y) {
+            for (uint32_t x = 0; x < mWidth; ++x) {
+                (*this)(x, y) = pix;
             }
         }
     }
 
+    template<class Archive>
+    void serialize(Archive& ar, uint32_t const /*version*/) {
+        ar(mWidth, mHeight, mSize);
+    }
+
 protected:
+
+    uint8_t* pixelPtr(uint32_t x, uint32_t y) {
+        return ptr() + (y * mWidth * 4) + (x * 4);
+    }
+
+    const uint8_t* pixelPtr(uint32_t x, uint32_t y) const {
+        return ptr() + (y * mWidth * 4) + (x * 4);
+    }
+    
+
+
     uint32_t mWidth;
     uint32_t mHeight;
     size_t mSize;
 };
+
+CEREAL_CLASS_VERSION(RgbaBufferIf, 1);
+
+
+
 
 
 
@@ -104,12 +182,41 @@ public:
         , mData(std::make_unique<uint8_t[]>(mSize))
     {}
 
+    RgbaBuffer(RgbaBuffer& other)
+        : RgbaBufferIf(other)
+        , mData(std::make_unique<uint8_t[]>(mSize))
+    {
+        memcpy(mData.get(), other.mData.get(), other.mSize);
+    }
+
+    RgbaBuffer& operator=(RgbaBuffer& other) {
+        mData.reset(new uint8_t[other.mSize]);
+        memcpy(mData.get(), other.mData.get(), other.mSize);
+
+        return *this;
+    }
+
     uint8_t* ptr() override { return mData.get(); }
+    const uint8_t* ptr() const override { return mData.get(); }
+
+
+
+    template<class Archive>
+    void serialize(Archive& ar, uint32_t const /*version*/) {
+        ar(cereal::base_class<RgbaBufferIf>(this));
+        ar(cereal::binary_data(mData.get(), mSize));
+    }
+
 
 private:
     std::unique_ptr<uint8_t[]> mData;
 
 };
+
+CEREAL_CLASS_VERSION(RgbaBuffer, 1);
+
+
+
 
 
 template<size_t W, size_t H>
@@ -121,6 +228,7 @@ public:
     {}
 
     uint8_t* ptr() override { return mData.data(); }
+    const uint8_t* ptr() const override { return mData.data(); }
 
 private:
     std::array<uint8_t, W* H * 4> mData;
@@ -163,13 +271,7 @@ public:
     {
         for (uint32_t y = 0; y < mHeight; ++y) {
             for (uint32_t x = 0; x < mWidth; ++x) {
-                switch (get(x, y)) {
-                default:
-                case 0: buf(x, y) = whiteA; break;
-                case 1: buf(x, y) = lightGreyA; break;
-                case 2: buf(x, y) = darkGreyA; break;
-                case 3: buf(x, y) = blackA; break;
-                }
+                buf(x, y) = dmgVal2RGB(get(x, y));
             }
         }
     }

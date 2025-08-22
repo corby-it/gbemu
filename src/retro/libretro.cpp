@@ -143,26 +143,14 @@ static void transfer_frame()
     static constexpr uint8_t mask5 = 0xF8;
     static constexpr uint8_t mask6 = 0xFC;
 
-    static const uint32_t white = whiteA.asU32();
-    static const uint32_t lightGrey = lightGreyA.asU32();
-    static const uint32_t darkGrey = darkGreyA.asU32();
-    static const uint32_t black = blackA.asU32();
-
     const auto& display = gb.ppu.display.getFrontBuf();
 
     uint8_t* ptr = framebuf.get();
 
-    for (uint32_t r = 0; r < display.height(); ++r) {
-        for (uint32_t c = 0; c < display.width(); ++c) {
-            uint32_t colorRGBA = 0;
+    for (uint32_t y = 0; y < display.h(); ++y) {
+        for (uint32_t x = 0; x < display.w(); ++x) {
 
-            switch (display.get(c, r)) {
-            default:
-            case 0: colorRGBA = white; break;
-            case 1: colorRGBA = lightGrey; break;
-            case 2: colorRGBA = darkGrey; break;
-            case 3: colorRGBA = black; break;
-            }
+            uint32_t colorRGBA = display(x, y).asU32();
 
             // convert to RGB565
             auto red = uint8_t((colorRGBA & 0xFF000000) >> 24);

@@ -127,12 +127,12 @@ static void loadTextureFromRgbaBuffer(GLuint& outTexture, RgbaBufferIf& buffer)
 }
 
 // load from an already existing buffer
-static void LoadTextureFromMatrix(const Matrix& mat, GLuint& outTexture, RgbaBufferIf& buffer)
-{
-    // turn the matrix data into an RGB buffer
-    mat.fillRgbaBuffer(buffer);
-    loadTextureFromRgbaBuffer(outTexture, buffer);
-}
+//static void LoadTextureFromMatrix(const Matrix& mat, GLuint& outTexture, RgbaBufferIf& buffer)
+//{
+//    // turn the matrix data into an RGB buffer
+//    mat.fillRgbaBuffer(buffer);
+//    loadTextureFromRgbaBuffer(outTexture, buffer);
+//}
 
 // use a new buffer on the stack
 template<size_t W, size_t H>
@@ -732,7 +732,8 @@ void App::UIDrawControlWindow()
 
 void App::UIDrawGBDisplayWindow()
 {
-    LoadTextureFromMatrix(mGameboy.ppu.display.getFrontBuf(), mGLDisplayTexture, mDisplayBuffer);
+    /*LoadTextureFromMatrix(mGameboy.ppu.display.getFrontBuf(), mGLDisplayTexture, mDisplayBuffer);*/
+    loadTextureFromRgbaBuffer(mGLDisplayTexture, mGameboy.ppu.display.getFrontBuf());
 
     FrameImage(mDisplayBuffer.ptr(), mGameboy.ppu.display.w, mGameboy.ppu.display.h, 0, false);
 
@@ -792,7 +793,7 @@ void App::UIDrawMemoryEditorWindow()
 }
 
 
-static void drawPaletteTable(const char* tableName, PaletteReg** palettes, size_t count)
+static void drawPaletteTable(const char* tableName, DMGPaletteReg** palettes, size_t count)
 {
     static ImGuiTableFlags tablePaletteFlags = ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_RowBg 
             | ImGuiTableFlags_Borders | ImGuiTableFlags_NoHostExtendX;
@@ -813,7 +814,7 @@ static void drawPaletteTable(const char* tableName, PaletteReg** palettes, size_
             ImGui::TableNextColumn();
             ImGui::Text("0x%02x", palettes[i]->asU8());
             
-            for (uint8_t colId = 0; colId < PaletteReg::maxIds; ++colId) {
+            for (uint8_t colId = 0; colId < DMGPaletteReg::maxIds; ++colId) {
                 float sz = 32;
 
                 auto colVal = palettes[i]->id2val(colId);
@@ -1024,18 +1025,18 @@ void App::UIDrawTileViewerWindow()
 
         ImGui::SeparatorText("BGP");
         
-        PaletteReg* bgps[] = {
+        DMGPaletteReg* bgps[] = {
             &mGameboy.ppu.regs.BGP,
         };
-        drawPaletteTable("tableBGPData", (PaletteReg**)bgps, 1);
+        drawPaletteTable("tableBGPData", (DMGPaletteReg**)bgps, 1);
         
         ImGui::SeparatorText("OBP");
         
-        PaletteReg* obps[] = {
+        DMGPaletteReg* obps[] = {
             &mGameboy.ppu.regs.OBP0,
             &mGameboy.ppu.regs.OBP1,
         };
-        drawPaletteTable("tableOBPData", (PaletteReg**)obps, 2);
+        drawPaletteTable("tableOBPData", (DMGPaletteReg**)obps, 2);
         
     }
 

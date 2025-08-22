@@ -241,7 +241,14 @@ TEST_CASE("PPU test drawing simple objects, no window, no overlaps")
     p.regs.LCDC.objDoubleH = false;
 
     uint8_t bgColor = 0;
+    RgbaPixel bgColorVal = dmgVal2RGB(bgColor);
+
     uint8_t objColors[3] = { 1, 2, 3 };
+    RgbaPixel objColorsVal[3] = { 
+        dmgVal2RGB(objColors[0]),
+        dmgVal2RGB(objColors[1]),
+        dmgVal2RGB(objColors[2])
+    };
     
     // background will use only one tile
     auto bgTile = p.vram.getBgTile(0, bgTileAreaFlag);
@@ -297,19 +304,19 @@ TEST_CASE("PPU test drawing simple objects, no window, no overlaps")
     p.stepFrame();
 
     // check if the areas corresponding the objects are of the right color
-    auto checkObjDisplayArea = [&](OAMData& oam, uint8_t color) {
+    auto checkObjDisplayArea = [&](OAMData& oam, RgbaPixel color) {
         for (uint32_t y = oam.y() - 16; (int32_t)y < oam.y() - 8; ++y) {
             for (uint32_t x = oam.x() - 8; x < oam.x(); ++x) {
-                if (p.display.getFrontBuf().get(x, y) != color)
+                if (p.display.getFrontBuf()(x, y) != color)
                     return false;
             }
         }
         return true;
     };
 
-    CHECK(checkObjDisplayArea(objs[0], objColors[0]));
-    CHECK(checkObjDisplayArea(objs[1], objColors[1]));
-    CHECK(checkObjDisplayArea(objs[2], objColors[2]));
+    CHECK(checkObjDisplayArea(objs[0], objColorsVal[0]));
+    CHECK(checkObjDisplayArea(objs[1], objColorsVal[1]));
+    CHECK(checkObjDisplayArea(objs[2], objColorsVal[2]));
 
     // check if the background is of the right color
     auto checkBgDisplayArea = [&]() {
@@ -323,7 +330,7 @@ TEST_CASE("PPU test drawing simple objects, no window, no overlaps")
                     }
                 }
 
-                if (!insideObj && p.display.getFrontBuf().get(x, y) != bgColor)
+                if (!insideObj && p.display.getFrontBuf()(x, y) != bgColorVal)
                     return false;
             }
         }
@@ -349,7 +356,14 @@ TEST_CASE("PPU test object overlaps (different x coordinates)")
     p.regs.LCDC.objDoubleH = false;
 
     uint8_t bgColor = 0;
+    RgbaPixel bgColorVal = dmgVal2RGB(bgColor);
+
     uint8_t objColors[3] = { 1, 2, 3 };
+    RgbaPixel objColorsVal[3] = {
+        dmgVal2RGB(objColors[0]),
+        dmgVal2RGB(objColors[1]),
+        dmgVal2RGB(objColors[2])
+    };
 
     // background will use only one tile
     auto bgTile = p.vram.getBgTile(0, bgTileAreaFlag);
@@ -405,20 +419,20 @@ TEST_CASE("PPU test object overlaps (different x coordinates)")
     p.stepFrame();
 
     // check if the areas corresponding the objects are of the right color,
-    auto checkObjDisplayArea = [&](uint32_t xl, uint32_t xr, uint32_t yt, uint32_t yb, uint8_t color)
+    auto checkObjDisplayArea = [&](uint32_t xl, uint32_t xr, uint32_t yt, uint32_t yb, RgbaPixel color)
     {
         for (uint32_t y = yt; y < yb; ++y) {
             for (uint32_t x = xl; x < xr; ++x) {
-                if (p.display.getFrontBuf().get(x, y) != color)
+                if (p.display.getFrontBuf()(x, y) != color)
                     return false;
             }
         }
         return true;
     };
 
-    CHECK(checkObjDisplayArea(30, 38, 50, 58, objColors[0]));
-    CHECK(checkObjDisplayArea(38, 43, 50, 58, objColors[1]));
-    CHECK(checkObjDisplayArea(43, 48, 50, 58, objColors[2]));
+    CHECK(checkObjDisplayArea(30, 38, 50, 58, objColorsVal[0]));
+    CHECK(checkObjDisplayArea(38, 43, 50, 58, objColorsVal[1]));
+    CHECK(checkObjDisplayArea(43, 48, 50, 58, objColorsVal[2]));
 
     // check if the background is of the right color
     auto checkBgDisplayArea = [&]() {
@@ -432,7 +446,7 @@ TEST_CASE("PPU test object overlaps (different x coordinates)")
                     }
                 }
 
-                if (!insideObj && p.display.getFrontBuf().get(x, y) != bgColor)
+                if (!insideObj && p.display.getFrontBuf()(x, y) != bgColorVal)
                     return false;
             }
         }
@@ -459,7 +473,14 @@ TEST_CASE("PPU test object overlaps (same x coordinates)")
     p.regs.LCDC.objDoubleH = false;
 
     uint8_t bgColor = 0;
+    RgbaPixel bgColorVal = dmgVal2RGB(bgColor);
+
     uint8_t objColors[3] = { 1, 2, 3 };
+    RgbaPixel objColorsVal[3] = {
+        dmgVal2RGB(objColors[0]),
+        dmgVal2RGB(objColors[1]),
+        dmgVal2RGB(objColors[2])
+    };
 
     // background will use only one tile
     auto bgTile = p.vram.getBgTile(0, bgTileAreaFlag);
@@ -515,20 +536,20 @@ TEST_CASE("PPU test object overlaps (same x coordinates)")
     p.stepFrame();
 
     // check if the areas corresponding the objects are of the right color,
-    auto checkObjDisplayArea = [&](uint32_t xl, uint32_t xr, uint32_t yt, uint32_t yb, uint8_t color)
+    auto checkObjDisplayArea = [&](uint32_t xl, uint32_t xr, uint32_t yt, uint32_t yb, RgbaPixel color)
     {
         for (uint32_t y = yt; y < yb; ++y) {
             for (uint32_t x = xl; x < xr; ++x) {
-                if (p.display.getFrontBuf().get(x, y) != color)
+                if (p.display.getFrontBuf()(x, y) != color)
                     return false;
             }
         }
         return true;
     };
 
-    CHECK(checkObjDisplayArea(30, 38, 50, 58, objColors[0]));
-    CHECK(checkObjDisplayArea(30, 38, 58, 63, objColors[1]));
-    CHECK(checkObjDisplayArea(30, 38, 63, 68, objColors[2]));
+    CHECK(checkObjDisplayArea(30, 38, 50, 58, objColorsVal[0]));
+    CHECK(checkObjDisplayArea(30, 38, 58, 63, objColorsVal[1]));
+    CHECK(checkObjDisplayArea(30, 38, 63, 68, objColorsVal[2]));
 
     // check if the background is of the right color
     auto checkBgDisplayArea = [&]() {
@@ -542,7 +563,7 @@ TEST_CASE("PPU test object overlaps (same x coordinates)")
                     }
                 }
 
-                if (!insideObj && p.display.getFrontBuf().get(x, y) != bgColor)
+                if (!insideObj && p.display.getFrontBuf()(x, y) != bgColorVal)
                     return false;
             }
         }
@@ -569,10 +590,10 @@ TEST_CASE("PPU test disabling the display")
     p.stepLine(45);
     p.step(43);
 
-    auto checkDisplay = [](const Display& disp) {
+    auto checkDisplay = [](Display& disp) {
         for (uint32_t y = 0; y < Display::h; ++y) {
             for (uint32_t x = 0; x < Display::w; ++x) {
-                if (disp.getFrontBuf().get(x, y) != 0)
+                if (disp.getFrontBuf()(x, y) != dmgVal2RGB(0))
                     return false;
             }
         }
@@ -582,6 +603,7 @@ TEST_CASE("PPU test disabling the display")
     CHECK(checkDisplay(p.display));
 
     CHECK(p.getDotCounter() == 0);
+    CHECK(p.regs.STAT.ppuMode == PPUMode::HBlank);
 
 }
 

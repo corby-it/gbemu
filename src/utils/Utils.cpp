@@ -27,8 +27,7 @@ void saveDisplayToFile(const GameBoyIf& gb, fs::path pngPath, uint32_t scaling)
     static const auto w = Display::w;
     static const auto h = Display::h;
 
-    RgbaBuffer buf(w, h);
-    gb.ppu.display.getFrontBuf().fillRgbaBuffer(buf);
+    auto& buf = gb.ppu.display.getFrontBuf();
 
     if (scaling <= 1) {
         stbi_write_png(pngPath.string().c_str(), w, h, 4, static_cast<const void*>(buf.ptr()), w * 4);
@@ -63,8 +62,7 @@ bool compareDisplayWithFile(const GameBoyIf& gb, std::filesystem::path pngPath)
         return false;
     }
 
-    RgbaBuffer buf(dispW, dispH);
-    gb.ppu.display.getFrontBuf().fillRgbaBuffer(buf);
+    auto& buf = gb.ppu.display.getFrontBuf();
 
     bool res = true;
 
@@ -77,7 +75,7 @@ bool compareDisplayWithFile(const GameBoyIf& gb, std::filesystem::path pngPath)
 
             auto dispPix = buf(x, y);
 
-            if (dispPix.R() != pngR || dispPix.G() != pngG || dispPix.B() != pngB)
+            if (dispPix.R != pngR || dispPix.G != pngG || dispPix.B != pngB)
                 res = false;
 
             pngPtr += ch;

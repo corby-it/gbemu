@@ -198,22 +198,6 @@ TEST_CASE("Test TileMap set() function")
 }
 
 
-TEST_CASE("Test DispalyBuf get/set functions")
-{
-    DisplayBuf d(Display::w, Display::h);
-
-    d.set(0, 0, 0);
-    d.set(10, 10, 1);
-    d.set(50, 40, 2);
-    d.set(130, 100, 0);
-    d.set(159, 143, 3);
-
-    CHECK(d.get(0, 0) == 0);
-    CHECK(d.get(10, 10) == 1);
-    CHECK(d.get(50, 40) == 2);
-    CHECK(d.get(130, 100) == 0);
-    CHECK(d.get(159, 143) == 3);
-}
 
 
 TEST_CASE("Test OAMData and OAMAttr functions")
