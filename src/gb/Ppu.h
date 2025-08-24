@@ -590,6 +590,7 @@ struct OAMRegister {
     }
 
     size_t size() const { return oams.size(); }
+    bool full() const { return oams.size() >= maxCount; }
 
     OAMData& operator[](size_t i) { return oams[i]; }
     const OAMData& operator[](size_t i) const { return oams[i]; }
@@ -657,7 +658,7 @@ public:
 
 private:
 
-    struct OAMPixelInfo {
+    struct PixelInfo {
         const OAMData* oam;
         uint8_t colorId;
         RgbaPixel colorVal;
@@ -692,7 +693,7 @@ private:
 
 
     typedef List<const OAMData*, OAMRegister::maxCount> OAMDataPtrList;
-    typedef List<OAMPixelInfo, OAMRegister::maxCount>   OAMPixelInfoList;
+    typedef List<PixelInfo, OAMRegister::maxCount>   OAMPixelInfoList;
 
 
 
@@ -710,11 +711,10 @@ private:
     bool renderPixelDMGGetWinVal(uint32_t dispX, uint8_t& colorId);
 
     void renderPixelCGB(uint32_t dispX);
-    void renderPixelCGBGetBgVal(uint32_t dispX, uint8_t& bgColorId, RgbaPixel& bgColor, bool& bgPriority);
-    bool renderPixelCGBGetWinVal(uint32_t dispX, uint8_t& bgColorId, RgbaPixel& bgColor, bool& bgPriority);
-
+    PixelInfo renderPixelCGBGetBgVal(uint32_t dispX);
+    
     OAMPixelInfoList renderPixelGetObjsValues(uint32_t currX);
-    std::optional<OAMPixelInfo> renderPixelGetObjInfo(uint32_t currX);
+    std::optional<PixelInfo> renderPixelGetObjInfo(uint32_t currX);
 
 
     Bus* mBus;

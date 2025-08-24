@@ -267,7 +267,7 @@ OAMData OAMRam::getOAMData(uint8_t id) const
 
     uint16_t addr = mStartAddr + (id * OAMData::size);
 
-    return OAMData(addr, getPtr(addr));
+    return OAMData(addr, getPtr(addr), id);
 }
 
 

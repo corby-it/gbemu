@@ -129,7 +129,7 @@ struct BGMapAttr : public MemoryMappedObj {
 
 
     uint8_t cgbBgPalette() { return *ptr & 0x07; }
-    uint8_t vramBank() { return (*ptr & 0x80) >> 3; }
+    uint8_t vramBank() { return (*ptr & 0x08) >> 3; }
     bool hFlip() { return (*ptr & 0x20) >> 5; }
     bool vFlip() { return (*ptr & 0x40) >> 6; }
     bool priority() { return (*ptr & 0x80) >> 7; }
@@ -206,7 +206,7 @@ struct OAMAttr : public MemoryMappedObj {
     static constexpr size_t size = 1;
 
     uint8_t cgbObjPalette() { return *ptr & 0x07; }
-    uint8_t vramBank() { return (*ptr & 0x80) >> 3; }
+    uint8_t vramBank() { return (*ptr & 0x08) >> 3; }
     bool dmgPalette() { return (*ptr & 0x10) >> 4; }
     bool hFlip() { return (*ptr & 0x20) >> 5; }
     bool vFlip() { return (*ptr & 0x40) >> 6; }
@@ -249,8 +249,9 @@ struct OAMAttr : public MemoryMappedObj {
 
 struct OAMData : public MemoryMappedObj {
 
-    OAMData(uint16_t gbAddr, uint8_t* p)
+    OAMData(uint16_t gbAddr, uint8_t* p, uint8_t id)
         : MemoryMappedObj(gbAddr, p, size)
+        , oamId(id)
     {}
 
     static constexpr size_t size = 4;
@@ -264,6 +265,7 @@ struct OAMData : public MemoryMappedObj {
     // Attributes
     OAMAttr attr() const { return OAMAttr(gbAddr + 3, ptr + 3); }
 
+    
     bool isInside(uint32_t dispX, uint32_t dispY, bool doubleHeight = false) const 
     {
         const int32_t xl = x() - 8;
@@ -273,6 +275,12 @@ struct OAMData : public MemoryMappedObj {
 
         return (int32_t)dispX >= xl && (int32_t)dispX < xr && (int32_t)dispY >= yt && (int32_t)dispY < yb;
     }
+
+
+    // OAM number associated with this object (order in which the 
+    // oam appears in oam memory)
+    uint8_t oamId;
+
 };
 
 

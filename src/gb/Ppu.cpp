@@ -653,11 +653,13 @@ void PPU::oamScan()
     // the 40 OAMs are scanned sequentially and of those 40, up to 10 OAMs can be 
     // selected for each scanline, priority is given to the oams with the lowest id
 
+    // the oam scan register is always sorted by oam id
+
     mOamScanRegister.reset();
 
     int32_t currY = regs.LY;
 
-    for (uint8_t id = 0; id < OAMRam::oamCount && mOamScanRegister.size() < OAMRegister::maxCount; ++id) {
+    for (uint8_t id = 0; id < OAMRam::oamCount && !mOamScanRegister.full(); ++id) {
         auto oam = oamRam.getOAMData(id);
 
         int32_t objY = oam.y() - 16;
@@ -677,6 +679,9 @@ PPU::OAMDataPtrList PPU::findCurrOams(uint32_t currX) const
 {
     // we scan the register to find if we have objects whose x-range corresponds the
     // the currX position of the screen
+
+    // the oam scan register is already sorted by oam id so the ptr list
+    // returned by this function is sorted by oam id as well
 
     OAMDataPtrList oams;
 
@@ -837,7 +842,7 @@ PPU::OAMPixelInfoList PPU::renderPixelGetObjsValues(uint32_t currX)
         // get tile data from vram
         auto tile = vram.getObjTile(oam->tileId(), regs.LCDC.objDoubleH);
 
-        OAMPixelInfo info;
+        PixelInfo info;
         info.oam = oam;
         info.colorId = tile.get(objX, objY);
         info.priority = oamAttr.priority();
@@ -862,7 +867,7 @@ PPU::OAMPixelInfoList PPU::renderPixelGetObjsValues(uint32_t currX)
     if (mIsCgb) {
         // in the CGB priority is always given to the object with the lowest id, regardless of coordinates
 
-        std::sort(pixInfo.begin(), pixInfo.end(), [](const OAMPixelInfo& lhs, const OAMPixelInfo& rhs) {
+        std::sort(pixInfo.begin(), pixInfo.end(), [](const PixelInfo& lhs, const PixelInfo& rhs) {
             return lhs.oam->tileId() < rhs.oam->tileId();
         });
     }
@@ -872,7 +877,7 @@ PPU::OAMPixelInfoList PPU::renderPixelGetObjsValues(uint32_t currX)
         // - if objects have the same X coordinates: priority is given to the one with the lowest ID
         // in this sorting we put the objects with the priority flag == false first
 
-        std::sort(pixInfo.begin(), pixInfo.end(), [](const OAMPixelInfo& lhs, const OAMPixelInfo& rhs) {
+        std::sort(pixInfo.begin(), pixInfo.end(), [](const PixelInfo& lhs, const PixelInfo& rhs) {
             if (lhs.priority != rhs.priority)
                 return lhs.priority ? false : true;
             else if (lhs.oam->x() == rhs.oam->x())
@@ -885,10 +890,14 @@ PPU::OAMPixelInfoList PPU::renderPixelGetObjsValues(uint32_t currX)
     return pixInfo;
 }
 
-std::optional<PPU::OAMPixelInfo> PPU::renderPixelGetObjInfo(uint32_t currX)
+std::optional<PPU::PixelInfo> PPU::renderPixelGetObjInfo(uint32_t currX)
 {
     // to find the color ids of the objects on the current pixel we first have to find from which
-    // objects we have to extract color 
+    // objects we have to extract color
+
+    // the list returned by findCurrOams() is sorted by oam id so the pixel info list
+    // built here will be sorted by oam id as well
+
     OAMPixelInfoList pixInfo;
 
     // get the objects involved in the current pixel
@@ -917,7 +926,7 @@ std::optional<PPU::OAMPixelInfo> PPU::renderPixelGetObjInfo(uint32_t currX)
             continue;
 
 
-        OAMPixelInfo info;
+        PixelInfo info;
         info.oam = oam;
         info.colorId = colorId;
         info.priority = oamAttr.priority();
@@ -944,11 +953,8 @@ std::optional<PPU::OAMPixelInfo> PPU::renderPixelGetObjInfo(uint32_t currX)
     // sort the objects so that the first is also the one with the highest priority
 
     if (mIsCgb) {
-        // in the CGB priority is always given to the object with the lowest id, regardless of coordinates
-
-        std::sort(pixInfo.begin(), pixInfo.end(), [](const OAMPixelInfo& lhs, const OAMPixelInfo& rhs) {
-            return lhs.oam->tileId() < rhs.oam->tileId();
-        });
+        // in the CGB priority is always given to the object with the lowest oam id, regardless of coordinates
+        // so, considering that the list is already sorted by oam id there is no need to sort it
     }
     else {
         // in the DMG different objects will be given priority as follows:
@@ -956,7 +962,7 @@ std::optional<PPU::OAMPixelInfo> PPU::renderPixelGetObjInfo(uint32_t currX)
         // - if objects have the same X coordinates: priority is given to the one with the lowest ID
         // in this sorting we put the objects with the priority flag == false first
 
-        std::sort(pixInfo.begin(), pixInfo.end(), [](const OAMPixelInfo& lhs, const OAMPixelInfo& rhs) {
+        std::sort(pixInfo.begin(), pixInfo.end(), [](const PixelInfo& lhs, const PixelInfo& rhs) {
             if (lhs.priority != rhs.priority)
                 return lhs.priority ? false : true;
             else if (lhs.oam->x() == rhs.oam->x())
@@ -972,116 +978,80 @@ std::optional<PPU::OAMPixelInfo> PPU::renderPixelGetObjInfo(uint32_t currX)
 
 void PPU::renderPixelCGB(uint32_t dispX)
 {
-    bool bgPriority = false;
-    uint8_t bgColorId = 0;
-    RgbaPixel bgColor = whiteA;
-    
     // get background info for this pixel
-    bool hasWindow = renderPixelCGBGetWinVal(dispX, bgColorId, bgColor, bgPriority);
-    if (!hasWindow) {
-        // if the window must not be displayed or if the current pixel 
-        // is not involved with the window we have to get the regular bg pixel
-        renderPixelCGBGetBgVal(dispX, bgColorId, bgColor, bgPriority);
-    }
-
+    auto bg = renderPixelCGBGetBgVal(dispX);
 
     // get the back buffer for the display
     auto& dispBuf = display.getBackBuf();
 
-    // get objects info for this pixel
-    auto objInfo = renderPixelGetObjInfo(dispX);
-
-    if (!objInfo) {
-        // no objects for this pixel, draw the background color
-        dispBuf(dispX, regs.LY) = bgColor;
+    // if objects are not enabled in LCDC draw the bg color and return
+    if (!regs.LCDC.objEnable) {
+        dispBuf(dispX, regs.LY) = bg.colorVal;
+        return;
     }
-    else {
+
+    // get objects info for this pixel
+    
+    if (auto objInfo = renderPixelGetObjInfo(dispX); objInfo.has_value()) {
         // find which color must be drawn on screen, it's not really easy to understand,
         // use the table shown here: https://gbdev.io/pandocs/Tile_Maps.html#bg-to-obj-priority-in-cgb-mode
 
+        auto obj = objInfo.value();
         bool drawObj = false;
 
         if (!regs.LCDC.bgWinEnable) {
-            // if bgWinEnable is 0, priority goes to the object
+            // if bgWinEnable is 0, priority always goes to the object
             drawObj = true;
         }
-        else if (!bgPriority && !objInfo.value().priority) {
+        else if (!bg.priority && !obj.priority) {
             // otherwise, if both bgPriority and obj priority are 0, priority goes to the obj
             drawObj = true;
         }
-        else if (bgColorId == 0) {
+        else if (bg.colorId == 0) {
             // otherwise, priority goes to the bg UNLESS the color id is 0, in that case 
             // priority still goes to the obj
             drawObj = true;
         }
 
         dispBuf(dispX, regs.LY) = drawObj
-            ? objInfo.value().colorVal 
-            : bgColor;
+            ? obj.colorVal 
+            : bg.colorVal;
+    }
+    else {
+        // no objects for this pixel, draw the background color
+        dispBuf(dispX, regs.LY) = bg.colorVal;
     }
 }
 
 
-void PPU::renderPixelCGBGetBgVal(uint32_t dispX, uint8_t& bgColorId, RgbaPixel& bgColor, bool& bgPriority)
+PPU::PixelInfo PPU::renderPixelCGBGetBgVal(uint32_t dispX)
 {
     // we are rendering the display pixel with coordinates (dispX, dispY)
     uint32_t dispY = regs.LY;
+    uint32_t bgX = 0;
+    uint32_t bgY = 0;
+    bool tileArea = false;
 
-    // get the coordinates of the bg corresponding to the current display coordinates
-    uint32_t bgX = (dispX + regs.SCX) % 256;
-    uint32_t bgY = (dispY + regs.SCY) % 256;
-
-    // get the current background tile and attribute maps
-    auto bgTileMap = vram.getTileMap(regs.LCDC.bgTileMapArea);
-    auto bgAttrMap = vram.getAttrMap(regs.LCDC.bgTileMapArea);
-
-    // get the current tile id 
-    auto bgTileId = bgTileMap.get(bgX / 8, bgY / 8);
-    auto bgAttr = bgAttrMap.getBgMapAttr(bgX / 8, bgY / 8);
-
-
-    // get tile data
-    auto bgTile = vram.getBgTile(bgTileId, regs.LCDC.bgWinTileDataArea, bgAttr.vramBank());
-    auto palette = colors.getBgPalette(bgAttr.cgbBgPalette());
-
-    uint32_t tileX = bgX % 8;
-    uint32_t tileY = bgY % 8;
-
-    if (bgAttr.hFlip())
-        tileX = 7 - tileX;
-    if (bgAttr.vFlip())
-        tileY = 7 - tileY;
-
-    bgPriority = bgAttr.priority();
-    bgColorId = bgTile.get(tileX, tileY);
-    bgColor = palette.getColor(bgColorId);
-}
-
-bool PPU::renderPixelCGBGetWinVal(uint32_t dispX, uint8_t& bgColorId, RgbaPixel& bgColor, bool& bgPriority)
-{
-    // check if the current display coordinate is inside the window
-    uint32_t dispY = regs.LY;
-    uint32_t winX = regs.WX - 7; // x coord of the window must always be shifted by 7
-    uint32_t winY = regs.WY;
-
-    if (dispY < regs.WY || dispX < winX) {
-        bgColorId = 0;
-        bgColor = whiteA;
-        return false;
+    // first check if it's in the window
+    // the x coord of the window must always be shifted by 7
+    uint32_t winX = regs.WX - 7; 
+    
+    if (!regs.LCDC.winEnable || dispY < regs.WY || dispX < winX) {
+        // no, pick from the background
+        bgX = (dispX + regs.SCX) % 256;
+        bgY = (dispY + regs.SCY) % 256;
+        tileArea = regs.LCDC.bgTileMapArea;
+    }
+    else {
+        // yes, use window coordinates
+        bgX = dispX - winX;
+        bgY = dispY - regs.WY;
+        tileArea = regs.LCDC.winTileMapArea;
     }
 
-    // find the coordinates in the background space
-    uint32_t bgX = dispX - winX;
-    uint32_t bgY = dispY - winY;
-
-    // get the current background tile and attribute maps
-    auto bgTileMap = vram.getTileMap(regs.LCDC.winTileMapArea);
-    auto bgAttrMap = vram.getAttrMap(regs.LCDC.winTileMapArea);
-
-    // get the current tile id 
-    auto bgTileId = bgTileMap.get(bgX / 8, bgY / 8);
-    auto bgAttr = bgAttrMap.getBgMapAttr(bgX / 8, bgY / 8);
-
+    // get the current tile id and background attributes
+    auto bgTileId = vram.getTileMap(tileArea).get(bgX / 8, bgY / 8);
+    auto bgAttr = vram.getAttrMap(tileArea).getBgMapAttr(bgX / 8, bgY / 8);
 
     // get tile data
     auto bgTile = vram.getBgTile(bgTileId, regs.LCDC.bgWinTileDataArea, bgAttr.vramBank());
@@ -1095,12 +1065,15 @@ bool PPU::renderPixelCGBGetWinVal(uint32_t dispX, uint8_t& bgColorId, RgbaPixel&
     if (bgAttr.vFlip())
         tileY = 7 - tileY;
 
-    bgColorId = bgTile.get(tileX, tileY);
-    bgColor = palette.getColor(bgColorId);
-    bgPriority = bgAttr.priority();
+    PixelInfo bgInfo;
+    bgInfo.oam = nullptr;
+    bgInfo.colorId = bgTile.get(tileX, tileY);
+    bgInfo.colorVal = palette.getColor(bgInfo.colorId);
+    bgInfo.priority = bgAttr.priority();
 
-    return true;
+    return bgInfo;
 }
+
 
 
 
