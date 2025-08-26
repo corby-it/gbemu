@@ -23,7 +23,7 @@ static const fs::path blarggsFilesRoot = testFilesRoot / "blarggs-test-roms";
 // Blargg's test shouldn't run for more than 60 emulated seconds:
 // source: https://github.com/c-sp/game-boy-test-roms/blob/master/src/howto/blargg.md
 
-static constexpr uint64_t cyclesLimit = GameBoyIf::timeToCyclesBase(60s);
+static constexpr uint64_t cyclesLimit = GameBoy::timeToCyclesBase(60s);
 
 
 // Blargg's test roms don't have a single way to detect success or failure
@@ -87,7 +87,7 @@ public:
 
 class MemoryResultChecker {
 public:
-    MemoryResultChecker(GameBoyIf& gameboy)
+    MemoryResultChecker(GameBoy& gameboy)
         : gb(gameboy)
         , status(TestStatus::NotStarted)
         , failedTest(0)
@@ -148,7 +148,7 @@ public:
     }
 
 
-    GameBoyIf& gb;
+    GameBoy& gb;
     TestStatus status;
     int failedTest;
     std::string msg;
@@ -159,10 +159,10 @@ public:
 TEST_CASE("Blargg's test roms - Serial monitor roms") {
 
     fs::path romRelPath = "";
-    std::unique_ptr<GameBoyIf> gb;
+    GameBoy gb;
 
     SUBCASE("DMG") {
-        gb = std::make_unique<GameBoyClassic>();
+        gb.setType(GbType::DMG);
 
         // CPU instructions test roms 
         SUBCASE("") { romRelPath = "cpu_instrs/individual/01-special.gb"; }
@@ -187,7 +187,7 @@ TEST_CASE("Blargg's test roms - Serial monitor roms") {
     }
 
     SUBCASE("CGB") {
-        gb = std::make_unique<GameBoyColor>();
+        gb.setType(GbType::CGB);
 
         // CPU instructions test roms 
         SUBCASE("") { romRelPath = "cpu_instrs/individual/01-special.gb"; }
@@ -216,16 +216,16 @@ TEST_CASE("Blargg's test roms - Serial monitor roms") {
 
     SerialResultChecker checker;
 
-    REQUIRE(gb->loadCartridge(romPath) == CartridgeLoadingRes::Ok);
+    REQUIRE(gb.loadCartridge(romPath) == CartridgeLoadingRes::Ok);
 
-    gb->serial.setSerialDataReadyCb(std::bind(&SerialResultChecker::onData, &checker, _1));
-    gb->play();
+    gb.serial.setSerialDataReadyCb(std::bind(&SerialResultChecker::onData, &checker, _1));
+    gb.play();
 
 
     uint64_t cycles = 0;
     auto startTp = hr_clock::now();
     while (cycles < cyclesLimit && checker.status == TestStatus::Running) {
-        auto [stillGoing, stepsRes] = gb->emulate();
+        auto [stillGoing, stepsRes] = gb.emulate();
         cycles += stepsRes.cpuRes.cycles;
     }
     auto elapsed = duration_cast<microseconds>(hr_clock::now() - startTp).count();
@@ -246,10 +246,10 @@ TEST_CASE("Blargg's test roms - Memory monitor roms") {
 
     fs::path romRelPath = "";
 
-    std::unique_ptr<GameBoyIf> gb;
+    GameBoy gb;
 
     SUBCASE("DMG Blargg's roms") {
-        gb = std::make_unique<GameBoyClassic>();
+        gb.setType(GbType::DMG);
 
         // OAM bug roms
         //SUBCASE("") { romRelPath = "oam_bug/rom_singles/1-lcd_sync.gb"; }
@@ -282,7 +282,7 @@ TEST_CASE("Blargg's test roms - Memory monitor roms") {
     }
 
     SUBCASE("CGB Blargg's roms") {
-        gb = std::make_unique<GameBoyColor>();
+        gb.setType(GbType::CGB);
 
         // OAM bug roms
         //SUBCASE("") { romRelPath = "oam_bug/rom_singles/1-lcd_sync.gb"; }
@@ -319,17 +319,17 @@ TEST_CASE("Blargg's test roms - Memory monitor roms") {
 
 
     //GameBoyClassic gb;
-    MemoryResultChecker checker(*gb);
+    MemoryResultChecker checker(gb);
 
-    REQUIRE(gb->loadCartridge(romPath) == CartridgeLoadingRes::Ok);
+    REQUIRE(gb.loadCartridge(romPath) == CartridgeLoadingRes::Ok);
 
-    gb->play();
+    gb.play();
 
 
     uint64_t cycles = 0;
     auto startTp = hr_clock::now();
     while (cycles < cyclesLimit && (checker.status == TestStatus::NotStarted || checker.status == TestStatus::Running)) {
-        auto [stillGoing, stepsRes] = gb->emulate();
+        auto [stillGoing, stepsRes] = gb.emulate();
         cycles += stepsRes.cpuRes.cycles;
 
         checker.check();
@@ -356,31 +356,31 @@ TEST_CASE("Blargg's test roms - HALT bug") {
     fs::path romRelPath = "halt_bug.gb";
     fs::path romPath = blarggsFilesRoot / romRelPath;
 
-    std::unique_ptr<GameBoyIf> gb;
+    GameBoy gb;
 
-    SUBCASE("DMG") { gb = std::make_unique<GameBoyClassic>(); }
-    SUBCASE("CGB") { gb = std::make_unique<GameBoyColor>(); }
+    SUBCASE("DMG") { gb.setType(GbType::DMG); }
+    SUBCASE("CGB") { gb.setType(GbType::CGB); }
 
-    REQUIRE(gb->loadCartridge(romPath) == CartridgeLoadingRes::Ok);
+    REQUIRE(gb.loadCartridge(romPath) == CartridgeLoadingRes::Ok);
 
-    gb->play();
+    gb.play();
 
     // running for 5 emulated seconds should be enough to run the test
 
     uint64_t cycles = 0;
     auto startTp = hr_clock::now();
-    while (cycles < gb->timeToCyclesBase(5s)) {
-        auto [stillGoing, stepsRes] = gb->emulate();
+    while (cycles < GameBoy::timeToCyclesBase(5s)) {
+        auto [stillGoing, stepsRes] = gb.emulate();
         cycles += stepsRes.cpuRes.cycles;
     }
     auto elapsed = duration_cast<microseconds>(hr_clock::now() - startTp).count();
 
-    auto result = compareDisplayWithFile(*gb, blarggsFilesRoot / "halt_bug-dmg-cgb.png");
+    auto result = compareDisplayWithFile(gb, blarggsFilesRoot / "halt_bug-dmg-cgb.png");
 
     INFO("Test name: ", romRelPath.string());
     INFO("This test took ", elapsed, "us");
     INFO("Executed ", cycles, " cycles");
-    
+
     CHECK(result);
 
 }

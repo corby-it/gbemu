@@ -203,7 +203,7 @@ TEST_CASE("Test TileMap set() function")
 TEST_CASE("Test OAMData and OAMAttr functions")
 {
     uint8_t mem[OAMData::size] = { 0 };
-    OAMData oam(0x2222, mem);
+    OAMData oam(0x2222, mem, 0);
 
     CHECK(oam.x() == 0);
     CHECK(oam.y() == 0);

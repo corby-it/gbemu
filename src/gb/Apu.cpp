@@ -405,7 +405,7 @@ bool APU::step(uint32_t mCycles)
         auto samplePeriod = duration_cast<nanoseconds>(1s) / mDownsamplingFreq;
 
         // the APU always runs at the base clock speed, even if the CGB is running at double clock speed
-        mTimeCounter += GameBoyClassic::machinePeriod;
+        mTimeCounter += GameBoy::machinePeriod;
 
         if (mTimeCounter >= samplePeriod) {
             mTimeCounter -= samplePeriod;

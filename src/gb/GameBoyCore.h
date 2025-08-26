@@ -78,7 +78,7 @@ struct GBTimingInfo {
 typedef std::map<uint16_t, ReadWriteIf*>    AddressMap;
 
 
-class GameBoyIf : public Bus {
+class GameBoy : public Bus {
 public:
     enum class Status {
         Stopped,
@@ -89,8 +89,9 @@ public:
     static const char* statusToStr(Status st);
 
 
-    GameBoyIf(GbType type);
+    GameBoy();
 
+    void setType(GbType type);
     GbType type() const { return mType; }
 
     EmulateRes emulate();
@@ -106,6 +107,9 @@ public:
 
     CartridgeLoadingRes loadCartridge(const std::filesystem::path& path);
     CartridgeLoadingRes loadCartridge(const uint8_t* data, size_t size);
+
+    uint8_t read8(uint16_t addr) const override;
+    void write8(uint16_t addr, uint8_t val) override;
 
 
     std::filesystem::path romFilePath;
@@ -168,8 +172,12 @@ protected:
 
 
 private:
-    virtual GbStepRes gbStep() = 0;
+    AddressMap initAddressMap();
+    
+    GbStepRes gbStep();
 
+
+    const AddressMap mAddrMap;
     GbType mType;
     bool mStepInstruction;
 
@@ -180,22 +188,22 @@ private:
 // ------------------------------------------------------------------------------------------------
 // GameBoyClassic
 // ------------------------------------------------------------------------------------------------
-
-class GameBoyClassic : public GameBoyIf {
-public:
-
-    GameBoyClassic();
-
-    uint8_t read8(uint16_t addr) const override;
-    void write8(uint16_t addr, uint8_t val) override;
-
-
-private:
-    GbStepRes gbStep() override;
-    AddressMap initAddressMap();
-
-    const AddressMap mAddrMap;
-};
+//
+//class GameBoyClassic : public GameBoyIf {
+//public:
+//
+//    GameBoyClassic();
+//
+//    uint8_t read8(uint16_t addr) const override;
+//    void write8(uint16_t addr, uint8_t val) override;
+//
+//
+//private:
+//    GbStepRes gbStep() override;
+//    AddressMap initAddressMap();
+//
+//    const AddressMap mAddrMap;
+//};
 
 
 
@@ -203,21 +211,23 @@ private:
 // GameBoyColor
 // ------------------------------------------------------------------------------------------------
 
-class GameBoyColor : public GameBoyIf {
-public:
+//class GameBoyColor : public GameBoyIf {
+//public:
+//
+//    GameBoyColor();
+//
+//    uint8_t read8(uint16_t addr) const override;
+//    void write8(uint16_t addr, uint8_t val) override;
+//
+//
+//private:
+//    GbStepRes gbStep() override;
+//    AddressMap initAddressMap();
+//
+//    const AddressMap mAddrMap;
+//};
 
-    GameBoyColor();
 
-    uint8_t read8(uint16_t addr) const override;
-    void write8(uint16_t addr, uint8_t val) override;
-
-
-private:
-    GbStepRes gbStep() override;
-    AddressMap initAddressMap();
-
-    const AddressMap mAddrMap;
-};
 
 
 

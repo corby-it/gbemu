@@ -6,9 +6,9 @@
 #include <filesystem>
 
 
-void saveDisplayToFile(const GameBoyIf& gb, std::filesystem::path pngPath, uint32_t scaling = 1);
+void saveDisplayToFile(const GameBoy& gb, std::filesystem::path pngPath, uint32_t scaling = 1);
 
-bool compareDisplayWithFile(const GameBoyIf& gb, std::filesystem::path pngPath);
+bool compareDisplayWithFile(const GameBoy& gb, std::filesystem::path pngPath);
 
 
 

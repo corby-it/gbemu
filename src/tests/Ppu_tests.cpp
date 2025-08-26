@@ -757,14 +757,21 @@ TEST_CASE("DMA transfer")
 
 TEST_CASE("CGBColor test") {
 
+    // execute color test on the 5 bit color value as 
+    // there could be different ways to translate the 
+    // RGB555 value to the RGB888 value, resulting in
+    // final values that can't be compared with the ==
+    // operator
+    // the RGB555 values must still be correct though
+
     SUBCASE("Test with NULL") {
         CGBColor col;
 
         col.set(255, 255, 255);
         CHECK(col.raw() == 0x00);
-        CHECK(col.R() == 0x00);
-        CHECK(col.G() == 0x00);
-        CHECK(col.B() == 0x00);
+        CHECK(col.R5() == 0x00);
+        CHECK(col.G5() == 0x00);
+        CHECK(col.B5() == 0x00);
     }
 
     SUBCASE("Test with ptr") {
@@ -777,33 +784,33 @@ TEST_CASE("CGBColor test") {
 
             CHECK(data == 0x7FFF);
             CHECK(col.raw() == 0x7FFF);
-            CHECK(col.R() == 0xF8);
-            CHECK(col.G() == 0xF8);
-            CHECK(col.B() == 0xF8);
+            CHECK(col.R5() == 0x1F);
+            CHECK(col.G5() == 0x1F);
+            CHECK(col.B5() == 0x1F);
         }
         SUBCASE("Test red functions") {
             col.setR(255);
             CHECK(data == 0x001F);
             CHECK(col.raw() == 0x001F);
-            CHECK(col.R() == 0xF8);
-            CHECK(col.G() == 0x00);
-            CHECK(col.B() == 0x00);
+            CHECK(col.R5() == 0x1F);
+            CHECK(col.G5() == 0x00);
+            CHECK(col.B5() == 0x00);
         }
         SUBCASE("Test green functions") {
             col.setG(255);
             CHECK(data == 0x03E0);
             CHECK(col.raw() == 0x03E0);
-            CHECK(col.R() == 0x00);
-            CHECK(col.G() == 0xF8);
-            CHECK(col.B() == 0x00);
+            CHECK(col.R5() == 0x00);
+            CHECK(col.G5() == 0x1F);
+            CHECK(col.B5() == 0x00);
         }
         SUBCASE("Test blue functions") {
             col.setB(255);
             CHECK(data == 0x7C00);
             CHECK(col.raw() == 0x7C00);
-            CHECK(col.R() == 0x00);
-            CHECK(col.G() == 0x00);
-            CHECK(col.B() == 0xF8);
+            CHECK(col.R5() == 0x00);
+            CHECK(col.G5() == 0x00);
+            CHECK(col.B5() == 0x1F);
         }
     }
 }
@@ -825,8 +832,8 @@ TEST_CASE("CGBPalette test") {
     SUBCASE("Test with ptr") {
         uint16_t data[4] = {
             0x0000, // black
-            0x0842, // all colors 0x02 -> scaled is 0x10
-            0x1CE7, // all colors 0x07 -> scaled is 0x38
+            0x0842, // all colors 0x02
+            0x1CE7, // all colors 0x07
             0x7FFF, // white
         };
 
@@ -844,13 +851,13 @@ TEST_CASE("CGBPalette test") {
         CHECK(col3.raw() == data[3]);
         CHECK(col5.raw() == data[3]);
 
-        CHECK(col1.R() == 0x10);
-        CHECK(col1.G() == 0x10);
-        CHECK(col1.B() == 0x10);
+        CHECK(col1.R5() == 0x02);
+        CHECK(col1.G5() == 0x02);
+        CHECK(col1.B5() == 0x02);
 
-        CHECK(col2.R() == 0x38);
-        CHECK(col2.G() == 0x38);
-        CHECK(col2.B() == 0x38);
+        CHECK(col2.R5() == 0x07);
+        CHECK(col2.G5() == 0x07);
+        CHECK(col2.B5() == 0x07);
 
         col1.set(255, 255, 255);
         CHECK(col1.raw() == 0x7FFF);

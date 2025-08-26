@@ -378,9 +378,9 @@ uint8_t PPU::read8(uint16_t addr) const
     case lcdreg::scx: return regs.SCX;
     case lcdreg::ly: return regs.LY;
     case lcdreg::lyc: return regs.LYC;
-    case lcdreg::bgp: return regs.BGP.asU8();
-    case lcdreg::obp0: return regs.OBP0.asU8();
-    case lcdreg::obp1: return regs.OBP1.asU8();
+    case lcdreg::bgp: return mIsCgb ? 0xff : regs.BGP.asU8();
+    case lcdreg::obp0: return mIsCgb ? 0xff : regs.OBP0.asU8();
+    case lcdreg::obp1: return mIsCgb ? 0xff : regs.OBP1.asU8();
     case lcdreg::wy: return regs.WY;
     case lcdreg::wx: return regs.WX;
     default:
@@ -397,9 +397,9 @@ void PPU::write8(uint16_t addr, uint8_t val)
     case lcdreg::scy: regs.SCY = val; break;
     case lcdreg::ly: break; // LY is read-only
     case lcdreg::lyc: regs.LYC = val; break;
-    case lcdreg::bgp: regs.BGP.fromU8(val); break;
-    case lcdreg::obp0: regs.OBP0.fromU8(val); break;
-    case lcdreg::obp1: regs.OBP1.fromU8(val); break;
+    case lcdreg::bgp: if(!mIsCgb) regs.BGP.fromU8(val); break;
+    case lcdreg::obp0: if(!mIsCgb) regs.OBP0.fromU8(val); break;
+    case lcdreg::obp1: if(!mIsCgb) regs.OBP1.fromU8(val); break;
     case lcdreg::wy: regs.WY = val; break;
     case lcdreg::wx: regs.WX = val; break;
     default:

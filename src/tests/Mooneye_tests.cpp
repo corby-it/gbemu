@@ -20,7 +20,7 @@ static const fs::path mooneyeResFilesRoot = testFilesRoot / "mts-results";
 // mooneye test shouldn't run for more than 120 emulated seconds:
 // source: https://github.com/Gekkio/mooneye-gb/blob/master/core/tests/mooneye_suite.rs
 
-static constexpr uint64_t cyclesLimit = GameBoyClassic::timeToCyclesBase(120s);
+static constexpr uint64_t cyclesLimit = GameBoy::timeToCyclesBase(120s);
 
 
 enum class MooneyeRes : int32_t {
@@ -29,7 +29,7 @@ enum class MooneyeRes : int32_t {
     Unrecognized = -1
 };
 
-MooneyeRes checkMooneyeResult(const GameBoyClassic& gb)
+MooneyeRes checkMooneyeResult(const GameBoy& gb)
 {
     // before executing the LD B,B instruction, all mooneye tests write 
     // specific values in the registers to report the test result
@@ -127,7 +127,7 @@ TEST_CASE("Mooneye test roms") {
 
     auto romPath = mooneyeFilesRoot / romRelPath; 
         
-    GameBoyClassic gb; 
+    GameBoy gb;
     REQUIRE(gb.loadCartridge(romPath) == CartridgeLoadingRes::Ok); 
         
     gb.dbg.breakOnLdbb = true; 
@@ -135,7 +135,7 @@ TEST_CASE("Mooneye test roms") {
         
     uint64_t cycles = 0; 
     auto startTp = hr_clock::now(); 
-    while (cycles < cyclesLimit && gb.status == GameBoyClassic::Status::Running) {    
+    while (cycles < cyclesLimit && gb.status == GameBoy::Status::Running) {    
         auto [stillGoing, stepsRes] = gb.emulate();
         cycles += stepsRes.cpuRes.cycles;
     }

@@ -15,7 +15,7 @@ namespace fs = std::filesystem;
 
 
 
-void saveDisplayToFile(const GameBoyIf& gb, fs::path pngPath, uint32_t scaling)
+void saveDisplayToFile(const GameBoy& gb, fs::path pngPath, uint32_t scaling)
 {
     if (fs::exists(pngPath)) {
         fs::remove(pngPath);
@@ -47,7 +47,7 @@ void saveDisplayToFile(const GameBoyIf& gb, fs::path pngPath, uint32_t scaling)
 }
 
 
-bool compareDisplayWithFile(const GameBoyIf& gb, std::filesystem::path pngPath)
+bool compareDisplayWithFile(const GameBoy& gb, std::filesystem::path pngPath)
 {
     static const auto dispW = Display::w;
     static const auto dispH = Display::h;

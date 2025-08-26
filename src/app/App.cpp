@@ -42,6 +42,8 @@ App::App()
     }
     catch (const cereal::Exception& /*ex*/) {}
 
+    // set default gameboy type
+    mGameboy.setType(GbType::CGB);
 
     // create an OpenGL texture identifier for the display image
     glGenTextures(1, &mGLDisplayTexture);
@@ -210,9 +212,9 @@ bool App::emulate()
 
     // if the pause key is pressed on the keyboard pause/restart the emulation
     if (ImGui::IsKeyReleased(mConfig.inputCfg[InputFn::Pause])) {
-        if (mGameboy.status == GameBoyClassic::Status::Paused)
+        if (mGameboy.status == GameBoy::Status::Paused)
             mGameboy.play();
-        else if(mGameboy.status == GameBoyClassic::Status::Running)
+        else if(mGameboy.status == GameBoy::Status::Running)
             mGameboy.pause();
     }
 
@@ -528,7 +530,7 @@ void App::UIDrawControlWindow()
     // --------------------------------------------------------------------------------------------
     ImGui::SeparatorText("Controls");
 
-    ImGui::Text("Status: %s", GameBoyClassic::statusToStr(mGameboy.status));
+    ImGui::Text("Status: %s", GameBoy::statusToStr(mGameboy.status));
 
 
     auto btnSize = ImVec2(60, 0);

@@ -211,9 +211,13 @@ struct CGBColor {
     static constexpr uint16_t maskG = 0x03E0;
     static constexpr uint16_t maskB = 0x7C00;
     
-    uint8_t R() const { return uint8_t((raw() & maskR) << 3); }
-    uint8_t G() const { return uint8_t(((raw() & maskG) >> 5) << 3); }
-    uint8_t B() const { return uint8_t(((raw() & maskB) >> 10) << 3); }
+    uint8_t R5() const { return uint8_t(raw() & maskR); }
+    uint8_t G5() const { return uint8_t((raw() & maskG) >> 5); }
+    uint8_t B5() const { return uint8_t((raw() & maskB) >> 10); }
+
+    uint8_t R() const { return conv5to8(R5()); }
+    uint8_t G() const { return conv5to8(G5()); }
+    uint8_t B() const { return conv5to8(B5()); }
 
     void setR(uint8_t r);
     void setG(uint8_t g);
@@ -226,10 +230,14 @@ struct CGBColor {
         return RgbaPixel(R(), G(), B());
     }
 
+    static uint8_t conv5to8(uint8_t v) {
+        // to convert a 5 bit color value to an 8 bit color value 
+        // we shift the 5 bits up and fill the lower 3 bits by propagating
+        // the top 3 bits
+        return (v << 3) | ((v >> 2) & 0x07);
+    }
 
-    // colors in the CGB are stored as RGB555 in an u16,
-    // to get the actual shade the 5-bit value must be shifted left by 3
-    // (that is, mapped in the 0-255 range)
+    // colors in the CGB are stored as RGB555 in an u16
     uint16_t raw() const {
         if (!ptr)
             return 0;

@@ -48,10 +48,10 @@ const char* saveStateErrorToStr(SaveStateError err)
 
 
 // ------------------------------------------------------------------------------------------------
-// GameBoyIf
+// GameBoy
 // ------------------------------------------------------------------------------------------------
 
-const char* GameBoyIf::statusToStr(Status st)
+const char* GameBoy::statusToStr(Status st)
 {
     switch (st) {
     default:
@@ -63,7 +63,7 @@ const char* GameBoyIf::statusToStr(Status st)
 }
 
 
-GameBoyIf::GameBoyIf(GbType type)
+GameBoy::GameBoy()
     : cpu(*this)
     , wram()
     , ppu(*this)
@@ -75,11 +75,77 @@ GameBoyIf::GameBoyIf(GbType type)
     , serial(*this)
     , hiRam(mmap::hiram::start)
     , status(Status::Stopped)
-    , mType(type)
+    , mAddrMap(initAddressMap())
+    , mType(GbType::DMG)
     , mStepInstruction(false)
 {}
 
-void GameBoyIf::gbReset()
+AddressMap GameBoy::initAddressMap()
+{
+    // highlighted by comments are registers specific to the CGB
+
+    AddressMap map = {
+        // memory -------------------------------------------------------------
+        { mmap::rom::start, &cartridge },
+        { mmap::rom::end, &cartridge },
+        { mmap::vram::start, &ppu.vram },
+        { mmap::vram::end, &ppu.vram },
+        { mmap::external_ram::start, &cartridge },
+        { mmap::external_ram::end, &cartridge },
+        { mmap::wram::start, &wram },
+        { mmap::wram::end, &wram },
+        { mmap::echoram::start, &wram },
+        { mmap::echoram::end, &wram },
+        { mmap::oam::start, &ppu.oamRam },
+        { mmap::oam::end, &ppu.oamRam },
+        { mmap::prohibited::start, nullptr },
+        { mmap::prohibited::end, nullptr },
+
+        // control registers --------------------------------------------------
+        { mmap::regs::joypad, &joypad },
+        { mmap::regs::serial_data, &serial },
+        { mmap::regs::serial_ctrl, &serial },
+        { mmap::regs::timer::start - 1, nullptr },
+        { mmap::regs::timer::start, &timer },
+        { mmap::regs::timer::end, &timer },
+        { mmap::regs::IF - 1, nullptr },
+        { mmap::regs::IF, &cpu },
+        { mmap::regs::audio::start, &apu },
+        { mmap::regs::audio::end, &apu },
+        { mmap::regs::lcd::start, &ppu },
+        { mmap::regs::lcd::lyc, &ppu },
+        { mmap::regs::lcd::dma, &dma },
+        { mmap::regs::lcd::bgp, &ppu },
+        { mmap::regs::lcd::end, &ppu },
+        { mmap::regs::key0, nullptr },      // KEY0
+        { mmap::regs::key1, &cpu },         // KEY1
+        { mmap::regs::vbk - 1, nullptr },   // VBK
+        { mmap::regs::vbk, &ppu.vram },     // VBK
+        { mmap::regs::boot, nullptr },      // BOOT
+        { mmap::regs::hdma::start, &ppu.hdma },   // HDMA
+        { mmap::regs::hdma::end, &ppu.hdma },     // HDMA
+        { mmap::regs::infrared, &infrared },    // Infrared
+        { mmap::regs::col_palette::start - 1, nullptr },     // Color palette
+        { mmap::regs::col_palette::start, &ppu.colors },    // Color palette
+        { mmap::regs::col_palette::end, &ppu.colors },      // Color palette
+        { mmap::regs::opri, nullptr },      // OPRI
+        { mmap::regs::svbk - 1, nullptr },  // SVBK
+        { mmap::regs::svbk, &wram },        // SVBK
+        { mmap::regs::undocumented::start - 1, nullptr },   // undoc regs
+        { mmap::regs::undocumented::start, &undocRegs },    // undoc regs
+        { mmap::regs::undocumented::end, &undocRegs },      // undoc regs
+        { mmap::regs::pcm12, &apu },  // PCM regs
+        { mmap::regs::pcm34, &apu },  // PCM regs
+        { mmap::hiram::start - 1, nullptr },
+        { mmap::hiram::start, &hiRam },
+        { mmap::hiram::end, &hiRam },
+        { mmap::IE, &cpu },
+    };
+
+    return map;
+}
+
+void GameBoy::gbReset()
 {
     cpu.reset();
     wram.reset();
@@ -97,7 +163,7 @@ void GameBoyIf::gbReset()
     dbg.updateInstructionToStr(*this);
 }
 
-const GBTimingInfo& GameBoyIf::getCurrTimingInfo() const
+const GBTimingInfo& GameBoy::getCurrTimingInfo() const
 {
     static const GBTimingInfo baseSpeed = {
         clockFreq,
@@ -119,8 +185,31 @@ const GBTimingInfo& GameBoyIf::getCurrTimingInfo() const
 }
 
 
+void GameBoy::setType(GbType type)
+{
+    if (type == GbType::DMG) {
+        cpu.setIsCgb(false);
+        wram.setIsCgb(false);
+        ppu.setIsCgb(false);
+        apu.setIsCgb(false);
+        infrared.setIsCgb(false);
+        undocRegs.setIsCgb(false);
+    }
+    else {
+        cpu.setIsCgb(true);
+        wram.setIsCgb(true);
+        ppu.setIsCgb(true);
+        apu.setIsCgb(true);
+        infrared.setIsCgb(true);
+        undocRegs.setIsCgb(true);
+    }
 
-EmulateRes GameBoyIf::emulate()
+    // make sure to reset everything 
+    gbReset();
+}
+
+
+EmulateRes GameBoy::emulate()
 {
     ZoneScoped;
 
@@ -132,13 +221,13 @@ EmulateRes GameBoyIf::emulate()
 
     switch (status) {
     default:
-    case GameBoyClassic::Status::Stopped:
-    case GameBoyClassic::Status::Paused: {
+    case Status::Stopped:
+    case Status::Paused: {
         // if the emulation is stopped or paused there is nothing to do
         break;
     }
 
-    case GameBoyClassic::Status::Running:
+    case Status::Running:
     {
         // emulate the gameboy, full speed
         res.stepRes = gbStep();
@@ -146,7 +235,7 @@ EmulateRes GameBoyIf::emulate()
         break;
     }
 
-    case GameBoyClassic::Status::Stepping: {
+    case Status::Stepping: {
         // execute 1 instruction only if the user wants to
         if (mStepInstruction) {
             res.stepRes = gbStep();
@@ -174,30 +263,30 @@ EmulateRes GameBoyIf::emulate()
     return res;
 }
 
-void GameBoyIf::play()
+void GameBoy::play()
 {
     status = Status::Running;
 }
 
-void GameBoyIf::pause()
+void GameBoy::pause()
 {
     status = Status::Paused;
 }
 
-void GameBoyIf::stop()
+void GameBoy::stop()
 {
     // on stop we also reset the whole gameboy
     status = Status::Stopped;
     gbReset();
 }
 
-void GameBoyIf::step()
+void GameBoy::step()
 {
     status = Status::Stepping;
     mStepInstruction = true;
 }
 
-void GameBoyIf::stepReturn()
+void GameBoy::stepReturn()
 {
     // we can't step to a return instruction if the cpu
     // is not inside a function call
@@ -209,8 +298,28 @@ void GameBoyIf::stepReturn()
     status = Status::Running;
 }
 
+uint8_t GameBoy::read8(uint16_t addr) const
+{
+    auto it = mAddrMap.lower_bound(addr);
+    if (it == mAddrMap.end())
+        return 0xff;
 
-CartridgeLoadingRes GameBoyIf::loadCartridge(const std::filesystem::path& path)
+    return it->second ? it->second->read8(addr) : 0xff;
+}
+
+void GameBoy::write8(uint16_t addr, uint8_t val)
+{
+    auto it = mAddrMap.lower_bound(addr);
+    if (it == mAddrMap.end())
+        return;
+
+    if (auto* writeObj = it->second; writeObj) {
+        writeObj->write8(addr, val);
+    }
+}
+
+
+CartridgeLoadingRes GameBoy::loadCartridge(const std::filesystem::path& path)
 {
     // load cartridge from file
 
@@ -227,7 +336,7 @@ CartridgeLoadingRes GameBoyIf::loadCartridge(const std::filesystem::path& path)
     return res;
 }
 
-CartridgeLoadingRes GameBoyIf::loadCartridge(const uint8_t* data, size_t size)
+CartridgeLoadingRes GameBoy::loadCartridge(const uint8_t* data, size_t size)
 {
     // load cartridge from memory
 
@@ -247,7 +356,7 @@ CartridgeLoadingRes GameBoyIf::loadCartridge(const uint8_t* data, size_t size)
 
 
 
-SaveStateError GameBoyIf::saveState(const fs::path& path)
+SaveStateError GameBoy::saveState(const fs::path& path)
 {
     std::ofstream ofs(path, std::ios::binary);
     if (!ofs)
@@ -283,7 +392,7 @@ SaveStateError GameBoyIf::saveState(const fs::path& path)
     return SaveStateError::NoError;
 }
 
-SaveStateError GameBoyIf::loadState(const fs::path& path)
+SaveStateError GameBoy::loadState(const fs::path& path)
 {
     std::ifstream ifs(path, std::ios::binary);
     if (!ifs)
@@ -359,240 +468,7 @@ SaveStateError GameBoyIf::loadState(const fs::path& path)
 
 
 
-
-
-
-// ------------------------------------------------------------------------------------------------
-// GameBoyClassic
-// ------------------------------------------------------------------------------------------------
-
-GameBoyClassic::GameBoyClassic()
-    : GameBoyIf(GbType::DMG)
-    , mAddrMap(initAddressMap())
-{
-    cpu.setIsCgb(false);
-    wram.setIsCgb(false);
-    ppu.setIsCgb(false);
-    apu.setIsCgb(false);
-    infrared.setIsCgb(false);
-    undocRegs.setIsCgb(false);
-
-    // make sure to reset everything 
-    gbReset();
-}
-
-
-
-AddressMap GameBoyClassic::initAddressMap()
-{
-    AddressMap map = {
-        // memory -------------------------------------------------------------
-        { mmap::rom::start, &cartridge },
-        { mmap::rom::end, &cartridge },
-        { mmap::vram::start, &ppu.vram },
-        { mmap::vram::end, &ppu.vram },
-        { mmap::external_ram::start, &cartridge },
-        { mmap::external_ram::end, &cartridge },
-        { mmap::wram::start, &wram },
-        { mmap::wram::end, &wram },
-        { mmap::echoram::start, &wram },
-        { mmap::echoram::end, &wram },
-        { mmap::oam::start, &ppu.oamRam },
-        { mmap::oam::end, &ppu.oamRam },
-        { mmap::prohibited::start, nullptr },
-        { mmap::prohibited::end, nullptr },
-
-        // control registers --------------------------------------------------
-        { mmap::regs::joypad, &joypad },
-        { mmap::regs::serial_data, &serial },
-        { mmap::regs::serial_ctrl, &serial },
-        { mmap::regs::serial_ctrl + 1, nullptr },
-        { mmap::regs::timer::start, &timer },
-        { mmap::regs::timer::end, &timer },
-        { mmap::regs::timer::end + 1, nullptr },
-        { mmap::regs::IF - 1, nullptr },
-        { mmap::regs::IF, &cpu },
-        { mmap::regs::audio::start, &apu },
-        { mmap::regs::audio::end, &apu },
-        { mmap::regs::lcd::start, &ppu },
-        { mmap::regs::lcd::lyc, &ppu },
-        { mmap::regs::lcd::dma, &dma },
-        { mmap::regs::lcd::bgp, &ppu },
-        { mmap::regs::lcd::end, &ppu },
-        { mmap::regs::lcd::end + 1, nullptr },
-        { mmap::hiram::start - 1, nullptr },
-        { mmap::hiram::start, &hiRam },
-        { mmap::hiram::end, &hiRam },
-        { mmap::IE, &cpu },
-    };
-
-    return map;
-}
-
-uint8_t GameBoyClassic::read8(uint16_t addr) const
-{
-    auto it = mAddrMap.lower_bound(addr);
-    if (it == mAddrMap.end())
-        return 0xff;
-
-    return it->second ? it->second->read8(addr) : 0xff;
-}
-
-void GameBoyClassic::write8(uint16_t addr, uint8_t val)
-{
-    auto it = mAddrMap.lower_bound(addr);
-    if (it == mAddrMap.end())
-        return;
-
-    if (auto* writeObj = it->second; writeObj) {
-        writeObj->write8(addr, val);
-    }
-}
-
-
-
-GbStepRes GameBoyClassic::gbStep()
-{
-    ZoneScoped;
-
-    auto cpuRes = cpu.step();
-
-    bool frameReady = false;
-
-    if (!cpu.isStopped()) {
-        // when the cpu is stopped the main clock is stopped 
-        // so the other components don't step
-        dma.step(cpuRes.cycles);
-        frameReady = ppu.step(cpuRes.cycles);
-        timer.step(cpuRes.cycles, cpu.isStopped());
-        serial.step(cpuRes.cycles);
-        joypad.step(cpuRes.cycles);
-        apu.step(cpuRes.cycles);
-    }
-
-    if (status != Status::Running) {
-        ZoneScoped;
-        dbg.updateInstructionToStr(*this);
-    }
-
-    GbStepRes res;
-    res.cpuRes = cpuRes;
-    res.frameReady = frameReady;
-
-    return res;
-}
-
-
-
-
-// ------------------------------------------------------------------------------------------------
-// GameBoyColor
-// ------------------------------------------------------------------------------------------------
-
-GameBoyColor::GameBoyColor()
-    : GameBoyIf(GbType::CGB)
-    , mAddrMap(initAddressMap())
-{
-    cpu.setIsCgb(true);
-    wram.setIsCgb(true);
-    ppu.setIsCgb(true);
-    apu.setIsCgb(true);
-    infrared.setIsCgb(true);
-    undocRegs.setIsCgb(false);
-
-    // make sure to reset everything 
-    gbReset();
-}
-
-
-AddressMap GameBoyColor::initAddressMap()
-{
-    // highlighted by comments are registers specific to the CGB
-
-    AddressMap map = {
-        // memory -------------------------------------------------------------
-        { mmap::rom::start, &cartridge },
-        { mmap::rom::end, &cartridge },
-        { mmap::vram::start, &ppu.vram },
-        { mmap::vram::end, &ppu.vram },
-        { mmap::external_ram::start, &cartridge },
-        { mmap::external_ram::end, &cartridge },
-        { mmap::wram::start, &wram },
-        { mmap::wram::end, &wram },
-        { mmap::echoram::start, &wram },
-        { mmap::echoram::end, &wram },
-        { mmap::oam::start, &ppu.oamRam },
-        { mmap::oam::end, &ppu.oamRam },
-        { mmap::prohibited::start, nullptr },
-        { mmap::prohibited::end, nullptr },
-
-        // control registers --------------------------------------------------
-        { mmap::regs::joypad, &joypad },
-        { mmap::regs::serial_data, &serial },
-        { mmap::regs::serial_ctrl, &serial },
-        { mmap::regs::timer::start - 1, nullptr },
-        { mmap::regs::timer::start, &timer },
-        { mmap::regs::timer::end, &timer },
-        { mmap::regs::IF - 1, nullptr },
-        { mmap::regs::IF, &cpu },
-        { mmap::regs::audio::start, &apu },
-        { mmap::regs::audio::end, &apu },
-        { mmap::regs::lcd::start, &ppu },
-        { mmap::regs::lcd::lyc, &ppu },
-        { mmap::regs::lcd::dma, &dma },
-        { mmap::regs::lcd::bgp, &ppu },
-        { mmap::regs::lcd::end, &ppu },
-        { mmap::regs::key0, nullptr },      // KEY0
-        { mmap::regs::key1, &cpu },         // KEY1
-        { mmap::regs::vbk - 1, nullptr },   // VBK
-        { mmap::regs::vbk, &ppu.vram },     // VBK
-        { mmap::regs::boot, nullptr },      // BOOT
-        { mmap::regs::hdma::start, &ppu.hdma },   // HDMA
-        { mmap::regs::hdma::end, &ppu.hdma },     // HDMA
-        { mmap::regs::infrared, &infrared },    // Infrared
-        { mmap::regs::col_palette::start -1, nullptr },     // Color palette
-        { mmap::regs::col_palette::start, &ppu.colors },    // Color palette
-        { mmap::regs::col_palette::end, &ppu.colors },      // Color palette
-        { mmap::regs::opri, nullptr },      // OPRI
-        { mmap::regs::svbk - 1, nullptr },  // SVBK
-        { mmap::regs::svbk, &wram },        // SVBK
-        { mmap::regs::undocumented::start - 1, nullptr },   // undoc regs
-        { mmap::regs::undocumented::start, &undocRegs },    // undoc regs
-        { mmap::regs::undocumented::end, &undocRegs },      // undoc regs
-        { mmap::regs::pcm12, &apu },  // PCM regs
-        { mmap::regs::pcm34, &apu },  // PCM regs
-        { mmap::hiram::start - 1, nullptr },
-        { mmap::hiram::start, &hiRam },
-        { mmap::hiram::end, &hiRam },
-        { mmap::IE, &cpu },
-    };
-
-    return map;
-}
-
-uint8_t GameBoyColor::read8(uint16_t addr) const
-{
-    auto it = mAddrMap.lower_bound(addr);
-    if (it == mAddrMap.end())
-        return 0xff;
-
-    return it->second ? it->second->read8(addr) : 0xff;
-}
-
-void GameBoyColor::write8(uint16_t addr, uint8_t val)
-{
-    auto it = mAddrMap.lower_bound(addr);
-    if (it == mAddrMap.end())
-        return;
-
-    if (auto* writeObj = it->second; writeObj) {
-        writeObj->write8(addr, val);
-    }
-}
-
-
-
-GbStepRes GameBoyColor::gbStep()
+GbStepRes GameBoy::gbStep()
 {
     ZoneScoped;
 
@@ -629,7 +505,7 @@ GbStepRes GameBoyColor::gbStep()
         }
 
         // handle bus events (if any)
-        for ( ; !mEvtQueue.empty(); mEvtQueue.pop()) {
+        for (; !mEvtQueue.empty(); mEvtQueue.pop()) {
 
             // when an HDMA transfer starts the cpu is halted and it automatically
             // returns to its normal state when the transfer is over
