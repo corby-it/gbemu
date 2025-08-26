@@ -348,6 +348,7 @@ void PPU::reset()
 
     regs.reset();
     colors.reset();
+    hdma.reset();
     vram.reset();
     oamRam.reset();
     display.clear();

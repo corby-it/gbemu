@@ -507,9 +507,15 @@ GbStepRes GameBoy::gbStep()
         // handle bus events (if any)
         for (; !mEvtQueue.empty(); mEvtQueue.pop()) {
 
+            switch (mEvtQueue.front()) {
+            // when the cpu executes a HALT instruction, a running hdma hblank 
+            // transfer must be paused and will resume only when the cpu resumes
+            // from the halt state
+            case BusEvent::CpuExecHalt: ppu.hdma.pauseOnCpuHalt(); break;
+            case BusEvent::CpuResumesFromHalt: ppu.hdma.resumeOnCpuHalt(); break;
+
             // when an HDMA transfer starts the cpu is halted and it automatically
             // returns to its normal state when the transfer is over
-            switch (mEvtQueue.front()) {
             case BusEvent::HdmaStarted: cpu.halt(true); break;
             case BusEvent::HdmaStopped: cpu.halt(false); break;
             default:

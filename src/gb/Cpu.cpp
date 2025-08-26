@@ -159,6 +159,8 @@ CpuStepRes CPU::step()
         // if an interrupt has been requested we resume from the HALT state, even if the 
         // interrupt will not be handled 
         mIsHalted = false;
+        mBus->sendEvent(BusEvent::CpuResumesFromHalt);
+
         
         // if IME is not set no interrupt will handled
         if (irqs.ime) {
@@ -2281,11 +2283,15 @@ uint8_t CPU::opHalt()
     // on the next call
     mCheckForHaltBug = true;
 
+    mBus->sendEvent(BusEvent::CpuExecHalt);
+
     return 1;
 }
 
 void CPU::halt(bool val)
 {
+    // cpu halted from other reasons, not the execution of the HALT instruction,
+    // should only happen when a HDMA transfer is running
     mIsHalted = val;
 }
 

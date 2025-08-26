@@ -33,17 +33,22 @@ public:
     HdmaMode currMode() const { return mMode; }
 
 
+    void pauseOnCpuHalt();
+    void resumeOnCpuHalt();
+
 
     template<class Archive>
     void save(Archive& archive, uint32_t const /*version*/) const {
         uint8_t modeU8 = static_cast<uint8_t>(mMode);
-        archive(modeU8, mLen, mSrc, mDst, mSubcount, mSrcInternal, mDstInternal);
+        archive(modeU8, mLen, mSrc, mDst, mPrevPpuHblank);
+        archive(mPauseHblankOnHalt, mSubcount, mSrcInternal, mDstInternal);
     }
 
     template<class Archive>
     void load(Archive& archive, uint32_t const /*version*/) {
         uint8_t modeU8 = 0;
-        archive(modeU8, mLen, mSrc, mDst, mSubcount, mSrcInternal, mDstInternal);
+        archive(modeU8, mLen, mSrc, mDst, mPrevPpuHblank);
+        archive(mPauseHblankOnHalt, mSubcount, mSrcInternal, mDstInternal);
         mMode = static_cast<HdmaMode>(modeU8);
     }
 
@@ -61,6 +66,7 @@ private:
     uint16_t mDst;
 
     bool mPrevPpuHblank;
+    bool mPauseHblankOnHalt;
     uint8_t mSubcount;
     uint16_t mSrcInternal;
     uint16_t mDstInternal;

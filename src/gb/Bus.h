@@ -17,6 +17,8 @@
 // ------------------------------------------------------------------------------------------------
 
 enum class BusEvent {
+    CpuExecHalt,
+    CpuResumesFromHalt,
     HdmaStarted,
     HdmaStopped,
 };

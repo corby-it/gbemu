@@ -24,6 +24,7 @@ void Hdma::reset()
     mDst = 0;
 
     mPrevPpuHblank = false;
+    mPauseHblankOnHalt = false;
     mSubcount = 0;
     mSrcInternal = 0;
     mDstInternal = 0;
@@ -101,7 +102,9 @@ void Hdma::write8(uint16_t addr, uint8_t val)
             // so that the address is always in vram
             mDstInternal = (mDst & ~0xE00F) | mmap::vram::start;
 
-            // reset the subcounter
+            // reset internal stuff
+            mPrevPpuHblank = false;
+            mPauseHblankOnHalt = false;
             mSubcount = 0;
 
             // tell everybody that a generic transfer started
@@ -156,7 +159,9 @@ void Hdma::step(bool isPPUInHblank)
             evt = BusEvent::HdmaStopped;
         }
 
-        run = isPPUInHblank;
+        // if the cpu entered the halt state on its own by executing the HALT instruction
+        // the hblank transfer is paused
+        run = isPPUInHblank && !mPauseHblankOnHalt;
     }
 
     mPrevPpuHblank = isPPUInHblank;
@@ -191,5 +196,23 @@ void Hdma::step(bool isPPUInHblank)
 
     if (sendEvt)
         mBus->sendEvent(evt);
+}
+
+void Hdma::pauseOnCpuHalt()
+{
+    // as explained in https://gbdev.io/pandocs/CGB_Registers.html#bit-7--1--hblank-dma
+    // when the cpu executes the halt instruction, an hblank transfer is paused
+    // as well and will resume only when the cpu resumes from the halt state
+
+    if (mIsCgb && mMode == HdmaMode::HBlank) {
+        mPauseHblankOnHalt = true;
+    }
+}
+
+void Hdma::resumeOnCpuHalt()
+{
+    if (mIsCgb && mMode == HdmaMode::HBlank) {
+        mPauseHblankOnHalt = false;
+    }
 }
 
