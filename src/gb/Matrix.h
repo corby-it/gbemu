@@ -5,6 +5,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <functional>
 #include <cassert>
 #include <cereal/cereal.hpp>
 #include <cereal/types/polymorphic.hpp>
@@ -239,6 +240,8 @@ private:
 
 
 
+typedef std::function<RgbaPixel(uint8_t)>   ValToColorFn;
+
 
 class Matrix {
 public:
@@ -267,11 +270,11 @@ public:
     uint32_t height() const { return mHeight; }
 
 
-    virtual void fillRgbaBuffer(RgbaBufferIf& buf) const
+    virtual void fillRgbaBuffer(RgbaBufferIf& buf, ValToColorFn convFn = dmgVal2RGB) const
     {
         for (uint32_t y = 0; y < mHeight; ++y) {
             for (uint32_t x = 0; x < mWidth; ++x) {
-                buf(x, y) = dmgVal2RGB(get(x, y));
+                buf(x, y) = convFn(get(x, y));
             }
         }
     }

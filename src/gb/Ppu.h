@@ -148,7 +148,7 @@ struct DMGPaletteReg : public RegU8 {
     uint8_t asU8() const override;
     void fromU8(uint8_t b) override;
 
-    uint8_t id2val(uint8_t colorId)
+    uint8_t id2val(uint8_t colorId) const
     {
         switch (colorId) {
         default:
@@ -511,17 +511,27 @@ struct BgHelperConfig {
 
 class BgHelper : public Matrix {
 public:
-    BgHelper(VRam& vram, BgHelperConfig config)
+    BgHelper(VRam& vram, CGBPalettes& bgColors, DMGPaletteReg& dmgPalette, BgHelperConfig config)
         : Matrix(w, h)
         , mVram(vram)
+        , mBgColors(bgColors)
+        , mDmgColors(dmgPalette)
         , mConfig(config)
         , mTileMap(0, nullptr)
+        , mAttrMap(0, nullptr)
     {
         switch (mConfig.tileMapSelection) {
         default:
         case BgHelperTileMap::Active: mTileMap = mVram.getTileMap(mConfig.lcdcTileMapBit); break;
         case BgHelperTileMap::At9800: mTileMap = mVram.getTileMap(false); break;
         case BgHelperTileMap::At9C00: mTileMap = mVram.getTileMap(true); break;
+        }
+
+        switch (mConfig.tileMapSelection) {
+        default:
+        case BgHelperTileMap::Active: mAttrMap = mVram.getAttrMap(mConfig.lcdcTileMapBit); break;
+        case BgHelperTileMap::At9800: mAttrMap = mVram.getAttrMap(false); break;
+        case BgHelperTileMap::At9C00: mAttrMap = mVram.getAttrMap(true); break;
         }
     }
 
@@ -558,6 +568,19 @@ public:
         return mVram.getBgTile(tileId, getTileParam);
     }
 
+    BGMapAttr getBgAttr(uint32_t r, uint32_t c) const
+    {
+        return mAttrMap.getBgMapAttr(c, r);
+    }
+
+    CGBPalette getCgbPalette(uint32_t r, uint32_t c) const
+    {
+        auto id = mAttrMap.getBgMapAttr(c, r).cgbBgPalette();
+        return mBgColors.getBgPalette(id);
+    }
+
+    const DMGPaletteReg& getDmgPalette() const { return mDmgColors; }
+
     TileMap tileMap() const { return mTileMap; }
 
     static constexpr uint32_t w = 256;
@@ -569,9 +592,11 @@ public:
 
 private:
     VRam& mVram;
+    CGBPalettes& mBgColors;
+    DMGPaletteReg& mDmgColors;
     BgHelperConfig mConfig;
     TileMap mTileMap;
-
+    AttrMap mAttrMap;
 };
 
 

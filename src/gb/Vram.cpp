@@ -89,7 +89,7 @@ void TileMap::setImpl(uint32_t x, uint32_t y, uint8_t val)
     ptr[y * TileMap::w + x] = val;
 }
 
-void TileMap::fillRgbaBuffer(RgbaBufferIf& buf) const
+void TileMap::fillRgbaBuffer(RgbaBufferIf& buf, ValToColorFn /*convFn*/) const
 {
     for (uint32_t y = 0; y < mHeight; ++y) {
         for (uint32_t x = 0; x < mWidth; ++x) {

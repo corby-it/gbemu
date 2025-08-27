@@ -1086,6 +1086,6 @@ BgHelper PPU::getBgHelper(BgHelperTileMap mapSelection, BgHelperTileAddressing t
     config.lcdcTileMapBit = regs.LCDC.bgTileMapArea;
     config.lcdcTileAddressingBit = regs.LCDC.bgWinTileDataArea;
 
-    return BgHelper(vram, config);
+    return BgHelper(vram, colors, regs.BGP, config);
 }
 

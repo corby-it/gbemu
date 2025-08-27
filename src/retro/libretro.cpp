@@ -6,7 +6,7 @@
 #include <memory>
 
 
-static GameBoyClassic gb;
+static GameBoy gb;
 static std::unique_ptr<uint8_t[]> framebuf;
 
 // color data for each pixel will be stored as RGB565 so 2 bytes for each pixel

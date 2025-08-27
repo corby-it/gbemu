@@ -78,7 +78,16 @@ GameBoy::GameBoy()
     , mAddrMap(initAddressMap())
     , mType(GbType::DMG)
     , mStepInstruction(false)
-{}
+{
+    cpu.setIsCgb(false);
+    wram.setIsCgb(false);
+    ppu.setIsCgb(false);
+    apu.setIsCgb(false);
+    infrared.setIsCgb(false);
+    undocRegs.setIsCgb(false);
+
+    gbReset();
+}
 
 AddressMap GameBoy::initAddressMap()
 {
@@ -187,23 +196,20 @@ const GBTimingInfo& GameBoy::getCurrTimingInfo() const
 
 void GameBoy::setType(GbType type)
 {
-    if (type == GbType::DMG) {
-        cpu.setIsCgb(false);
-        wram.setIsCgb(false);
-        ppu.setIsCgb(false);
-        apu.setIsCgb(false);
-        infrared.setIsCgb(false);
-        undocRegs.setIsCgb(false);
-    }
-    else {
-        cpu.setIsCgb(true);
-        wram.setIsCgb(true);
-        ppu.setIsCgb(true);
-        apu.setIsCgb(true);
-        infrared.setIsCgb(true);
-        undocRegs.setIsCgb(true);
-    }
+    if (type == mType)
+        return;
 
+    mType = type;
+
+    bool isCgb = type == GbType::CGB;
+
+    cpu.setIsCgb(isCgb);
+    wram.setIsCgb(isCgb);
+    ppu.setIsCgb(isCgb);
+    apu.setIsCgb(isCgb);
+    infrared.setIsCgb(isCgb);
+    undocRegs.setIsCgb(isCgb);
+    
     // make sure to reset everything 
     gbReset();
 }

@@ -73,7 +73,7 @@ private:
     RgbaBuffer mDisplayBuffer;
 
     GLuint mGLDisplayTexture;
-    std::vector<GLuint> mTileTextures;
+    std::array<std::vector<GLuint>, 2> mTileTextures;
     std::vector<GLuint> mOamTextures;
     std::vector<GLuint> mBgTextures;
 
