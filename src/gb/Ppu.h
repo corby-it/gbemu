@@ -551,7 +551,7 @@ public:
         return mTileMap.get(c, r);
     }
 
-    TileData getTile(uint32_t r, uint32_t c) const
+    TileData getTile(uint32_t r, uint32_t c, uint8_t bank = 0) const
     {
         // get the tile id
         auto tileId = getTileId(r, c);
@@ -565,7 +565,7 @@ public:
         case BgHelperTileAddressing::At8800: getTileParam = false; break;
         }
 
-        return mVram.getBgTile(tileId, getTileParam);
+        return mVram.getBgTile(tileId, getTileParam, bank);
     }
 
     BGMapAttr getBgAttr(uint32_t r, uint32_t c) const

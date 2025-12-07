@@ -270,11 +270,14 @@ public:
     uint32_t height() const { return mHeight; }
 
 
-    virtual void fillRgbaBuffer(RgbaBufferIf& buf, ValToColorFn convFn = dmgVal2RGB) const
+    virtual void fillRgbaBuffer(RgbaBufferIf& buf, ValToColorFn convFn = dmgVal2RGB, bool hflip = false, bool vflip = false) const
     {
         for (uint32_t y = 0; y < mHeight; ++y) {
             for (uint32_t x = 0; x < mWidth; ++x) {
-                buf(x, y) = convFn(get(x, y));
+                uint32_t getX = hflip ? (mWidth - 1) - x : x;
+                uint32_t getY = vflip ? (mHeight - 1) - y : y;
+
+                buf(x, y) = convFn(get(getX, getY));
             }
         }
     }

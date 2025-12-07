@@ -919,7 +919,7 @@ std::optional<PPU::PixelInfo> PPU::renderPixelGetObjInfo(uint32_t currX)
             objY = (regs.LCDC.objDoubleH ? 15 : 7) - objY;
 
         // get tile data from vram
-        auto tile = vram.getObjTile(oam->tileId(), regs.LCDC.objDoubleH);
+        auto tile = vram.getObjTile(oam->tileId(), regs.LCDC.objDoubleH, oamAttr.vramBank());
         auto colorId = tile.get(objX, objY);
 
         // if the color id of the current object is 0 (transparent) we can skip it 

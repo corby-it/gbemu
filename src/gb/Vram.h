@@ -89,7 +89,7 @@ struct TileMap : public MemoryMappedObj, public Matrix {
         , Matrix(w, h)
     {}
 
-    void fillRgbaBuffer(RgbaBufferIf& buf, ValToColorFn convFn = dmgVal2RGB) const override;
+    void fillRgbaBuffer(RgbaBufferIf& buf, ValToColorFn convFn = dmgVal2RGB, bool hflip = false, bool vflip = false) const override;
 
 
     static constexpr uint8_t w = 32;

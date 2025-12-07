@@ -150,11 +150,11 @@ static void LoadTextureFromMatrix(const Matrix& mat, GLuint& outTexture)
 }
 
 template<size_t W, size_t H>
-static void LoadTextureFromMatrix(const Matrix& mat, GLuint& outTexture, ValToColorFn convFn)
+static void LoadTextureFromMatrix(const Matrix& mat, GLuint& outTexture, ValToColorFn convFn, bool hflip = false, bool vflip = false)
 {
     // turn the matrix data into an RGB buffer using a specific color conversion function
     RgbaBufferArray<W, H> buffer;
-    mat.fillRgbaBuffer(buffer, convFn);
+    mat.fillRgbaBuffer(buffer, convFn, hflip, vflip);
     loadTextureFromRgbaBuffer(outTexture, buffer);
 }
 
@@ -983,7 +983,9 @@ void App::UIDrawTileViewerWindow()
 
             auto oam = mGameboy.ppu.oamRam.getOAMData(id);
             auto oamAttr = oam.attr();
-            auto objTile = mGameboy.ppu.vram.getObjTile(oam.tileId(), doubleH);
+            uint8_t vramBank = mGameboy.type() == GbType::DMG ? 0 : oamAttr.vramBank();
+
+            auto objTile = mGameboy.ppu.vram.getObjTile(oam.tileId(), doubleH, vramBank);
             
             auto cgbPalette = mGameboy.ppu.colors.getObjPalette(oamAttr.cgbObjPalette());
             auto dmgPalette = oamAttr.dmgPalette() ? mGameboy.ppu.regs.OBP1 : mGameboy.ppu.regs.OBP1;
@@ -1238,7 +1240,14 @@ void App::UIDrawBackgroundViewerWindow()
         for (uint32_t c = 0; c < BgHelper::cols; ++c) {
             auto textureId = mBgTextures[r * BgHelper::cols + c];
             auto tileId = bg.getTileId(r, c);
-            auto tile = bg.getTile(r, c);
+            auto attr = bg.getBgAttr(r, c);
+
+            uint8_t vramBank = mGameboy.type() == GbType::DMG ? 0 : attr.vramBank();
+            auto tile = bg.getTile(r, c, vramBank);
+
+            bool textureHFlip = mGameboy.type() == GbType::DMG ? false : attr.hFlip();
+            bool textureVFlip = mGameboy.type() == GbType::DMG ? false : attr.vFlip();
+
             auto cgbPalette = bg.getCgbPalette(r, c);
             auto& dmgPalette = bg.getDmgPalette();
             
@@ -1253,7 +1262,7 @@ void App::UIDrawBackgroundViewerWindow()
                 }
             };
 
-            LoadTextureFromMatrix<TileData::w, TileData::h>(tile, textureId, colorConvFn);
+            LoadTextureFromMatrix<TileData::w, TileData::h>(tile, textureId, colorConvFn, textureHFlip, textureVFlip);
             ImGui::Image((void*)(intptr_t)textureId, ImVec2(TileData::w * scaling, TileData::h * scaling));
 
             if (ImGui::IsItemHovered()) {
