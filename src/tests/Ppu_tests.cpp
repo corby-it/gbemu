@@ -812,6 +812,33 @@ TEST_CASE("CGBColor test") {
             CHECK(col.G5() == 0x00);
             CHECK(col.B5() == 0x1F);
         }
+        SUBCASE("Test red functions with other values") {
+            col.set(255, 255, 255);
+            col.setR(0);
+            CHECK(data == 0x7FE0);
+            CHECK(col.raw() == 0x7FE0);
+            CHECK(col.R5() == 0x00);
+            CHECK(col.G5() == 0x1F);
+            CHECK(col.B5() == 0x1F);
+        }
+        SUBCASE("Test green functions with other values") {
+            col.set(255, 255, 255);
+            col.setG(0);
+            CHECK(data == 0x7C1F);
+            CHECK(col.raw() == 0x7C1F);
+            CHECK(col.R5() == 0x1F);
+            CHECK(col.G5() == 0x00);
+            CHECK(col.B5() == 0x1F);
+        }
+        SUBCASE("Test blue functions with other values") {
+            col.set(255, 255, 255);
+            col.setB(0);
+            CHECK(data == 0x03FF);
+            CHECK(col.raw() == 0x03FF);
+            CHECK(col.R5() == 0x1F);
+            CHECK(col.G5() == 0x1F);
+            CHECK(col.B5() == 0x00);
+        }
     }
 }
 

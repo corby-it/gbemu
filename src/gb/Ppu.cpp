@@ -137,8 +137,8 @@ void CGBColor::setG(uint8_t g) {
     g >>= 3;
     uint8_t gLo = g << 5;
     uint8_t gHi = g >> 3;
-    *ptr = (*ptr & 0xE0) | gLo;
-    *(ptr + 1) = (*(ptr + 1) & 0x03) | gHi;
+    *ptr = (*ptr & ~0xE0) | gLo;
+    *(ptr + 1) = (*(ptr + 1) & ~0x03) | gHi;
 }
 
 void CGBColor::setB(uint8_t b) {
@@ -146,10 +146,10 @@ void CGBColor::setB(uint8_t b) {
         return;
 
     b >>= 3;
-    *(ptr + 1) = (*(ptr + 1) & 0x7C) | (b << 2);
+    *(ptr + 1) = (*(ptr + 1) & ~0x7C) | (b << 2);
 }
 
-void CGBColor::set(uint8_t r, uint8_t g, uint8_t  b) {
+void CGBColor::set(uint8_t r, uint8_t g, uint8_t b) {
     if (!ptr)
         return;
 
