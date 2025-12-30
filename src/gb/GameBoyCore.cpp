@@ -8,6 +8,7 @@
 #include <cereal/archives/binary.hpp>
 #include <cereal/types/array.hpp>
 #include <fstream>
+#include <utility>
 
 
 
@@ -170,6 +171,187 @@ void GameBoy::gbReset()
     undocRegs.reset();
 
     dbg.updateInstructionToStr(*this);
+
+    setupDMGCompatMode();
+}
+
+
+static const std::array<uint8_t, 94> titleChecksums = {
+    0x00, // Default
+    0x88, // ALLEY WAY
+    0x16, // YAKUMAN
+    0x36, // BASEBALL, (Game and Watch 2)
+    0xD1, // TENNIS
+    0xDB, // TETRIS
+    0xF2, // QIX
+    0x3C, // DR.MARIO
+    0x8C, // RADARMISSION
+    0x92, // F1RACE
+    0x3D, // YOSSY NO TAMAGO
+    0x5C,
+    0x58, // X
+    0xC9, // MARIOLAND2
+    0x3E, // YOSSY NO COOKIE
+    0x70, // ZELDA
+    0x1D,
+    0x59,
+    0x69, // TETRIS FLASH
+    0x19, // DONKEY KONG
+    0x35, // MARIO'S PICROSS
+    0xA8,
+    0x14, // POKEMON RED, (GAMEBOYCAMERA G)
+    0xAA, // POKEMON GREEN
+    0x75, // PICROSS 2
+    0x95, // YOSSY NO PANEPON
+    0x99, // KIRAKIRA KIDS
+    0x34, // GAMEBOY GALLERY
+    0x6F, // POCKETCAMERA
+    0x15,
+    0xFF, // BALLOON KID
+    0x97, // KINGOFTHEZOO
+    0x4B, // DMG FOOTBALL
+    0x90, // WORLD CUP
+    0x17, // OTHELLO
+    0x10, // SUPER RC PRO - AM
+    0x39, // DYNABLASTER
+    0xF7, // BOY AND BLOB GB2
+    0xF6, // MEGAMAN
+    0xA2, // STAR WARS - NOA
+    0x49,
+    0x4E, // WAVERACE
+    0x43,
+    0x68, // LOLO2
+    0xE0, // YOSHI'S COOKIE
+    0x8B, // MYSTIC QUEST
+    0xF0,
+    0xCE, // TOPRANKINGTENNIS
+    0x0C, // MANSELL
+    0x29, // MEGAMAN3
+    0xE8, // SPACE INVADERS
+    0xB7, // GAME& WATCH
+    0x86, // DONKEYKONGLAND95
+    0x9A, // ASTEROIDS / MISCMD
+    0x52, // STREET FIGHTER 2
+    0x01, // DEFENDER / JOUST
+    0x9D, // KILLERINSTINCT95
+    0x71, // TETRIS BLAST
+    0x9C, // PINOCCHIO
+    0xBD,
+    0x5D, // BA.TOSHINDEN
+    0x6D, // NETTOU KOF 95
+    0x67,
+    0x3F, // TETRIS PLUS
+    0x6B, // DONKEYKONGLAND 3
+    
+    // the next ones must be disambiguated using the fourth letter of the title,
+    // for example:
+    // if the checksum is 0x61 and the 4th letter of the title is 'E' then the index is found
+    // if the letter is not 'E', we must advance the index by 14 and check again
+
+    0xB3, // ???[B]????????
+    0x46, // SUP[E]R MARIOLAND
+    0x28, // GOL[F]
+    0xA5, // SOL[A]RSTRIKER
+    0xC6, // GBW[A]RS
+    0xD3, // KAE[R]UNOTAMENI
+    0x27, // ???[B]????????
+    0x61, // POK[E]MON BLUE
+    0x18, // DON[K]EYKONGLAND
+    0x66, // GAM[E]BOY GALLERY2
+    0x6A, // DON[K]EYKONGLAND 2
+    0xBF, // KID[]ICARUS
+    0x0D, // TET[R]IS2
+    0xF4, // ???[-]????????
+
+    0xB3, // MOG[U]RANYA
+    0x46, // ???[R]????????
+    0x28, // GAL[A]GA& GALAXIAN
+    0xA5, // BT2[R]AGNAROKWORLD
+    0xC6, // KEN[]GRIFFEY JR
+    0xD3, // ???[I]????????
+    0x27, // MAG[N]ETIC SOCCER
+    0x61, // VEG[A]S STAKES
+    0x18, // ???[I]????????
+    0x66, // MIL[L]I/CENTI/PEDE
+    0x6A, // MAR[I]O& YOSHI
+    0xBF, // SOC[C]ER
+    0x0D, // POK[E]BOM
+    0xF4, // G&W[ ]GALLERY
+    
+    0xB3, // TET[R]IS ATTACK
+};
+
+
+
+
+void GameBoy::setupDMGCompatMode()
+{
+    // if the current emulation is working as DMG or if the 
+    // game is compatible with the CGB there's nothing to do
+    if (type() == GbType::DMG || cartridge.header.cgbFlag() != CGBFlag::CGBIncompatible) {
+        return;
+    }
+
+    // everything that follows, and also the PPU DMG compatibility mode setup, is 
+    // performed by the CGB boot rom, not the game cartridge code!
+
+    // given the game title we have to obtain a "palette index"
+    // the algorithm used to get the palette index is described here:
+    // https://gbdev.io/pandocs/Power_Up_Sequence.html#compatibility-palettes
+
+
+    uint8_t paletteId = 0;
+
+    // first, check licensee code, basically checks if the licensee is Nintendo,
+    // if it's not Nintendo use palette 0x00
+    auto oldLc = cartridge.header.oldLicenseeCodeU8();
+    auto newLc = cartridge.header.newLicenseeCodeRaw();
+
+    if ((oldLc == 0x33 && newLc == "01") || oldLc == 0x01) {
+        
+        // a "checksum" must be computed using the game title string from 
+        // the cartridge header, alla characters must be added together into a u8 variable (aka mod 256)
+
+        // sum all title characters to get the "checksum"
+        auto title = cartridge.header.title();
+        uint8_t checksum = 0;
+        for (char c : title) {
+            checksum += c;
+        }
+
+        // lookup the computed checksum in the hardcoded table, the index where it will be found 
+        // is also the palette index we are looking for.
+        // after index 64, checksums are not unique anymore and must be disambiguated by comparing
+        // the 4th letter of the title with the letter found in another table in the corresponding position,
+        // if the letters are equal then we are done, if not, the search continues
+        uint8_t id = 0;
+        for ( ; id < titleChecksums.size(); ++id) {
+            if (id <= 64) {
+                // ids <= 64 are unique and can be checked using just "=="
+                if (titleChecksums[id] == checksum)
+                    break;
+            }
+            else {
+                // ids > 64 are not unique and must be disambiguated 
+                // using the 4th letter of the title and compare it with a table
+                const std::string lettersTable = "BEFAARBEKEK R-URAR INAILICE R";
+                
+                uint8_t letterIdx = id - 65;
+                if (titleChecksums[id] == checksum && lettersTable[letterIdx] == title[3])
+                    break;
+            }
+        }
+
+        // if the checksum is not found then palette index 0 will be used,
+        // otherwise the index becomes the palette index
+        if (id == titleChecksums.size()) 
+            paletteId = 0;
+        else
+            paletteId = id;
+    }
+    
+    // setup PPU for DMG compatibility mode
+    ppu.setupDmgCompatMode(paletteId);
 }
 
 const GBTimingInfo& GameBoy::getCurrTimingInfo() const

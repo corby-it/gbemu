@@ -418,7 +418,7 @@ CGBFlag CartridgeHeader::cgbFlag() const
         return CGBFlag::Unknown;
 }
 
-const char* CartridgeHeader::newLicenseeCode() const
+std::string_view CartridgeHeader::newLicenseeCodeRaw() const
 {
     if (!mRomBaseAddr)
         return "";
@@ -426,7 +426,15 @@ const char* CartridgeHeader::newLicenseeCode() const
     auto start = mRomBaseAddr + 0x144;
     std::string_view code((char*)start, 2);
 
-    auto it = newLicenseeCodeMap.find(code);
+    return code;
+}
+
+const char* CartridgeHeader::newLicenseeCode() const
+{
+    if (!mRomBaseAddr)
+        return "";
+
+    auto it = newLicenseeCodeMap.find(newLicenseeCodeRaw());
 
     if (it != newLicenseeCodeMap.end())
         return it->second;
@@ -498,12 +506,20 @@ DestCode CartridgeHeader::destCode() const
     }
 }
 
+uint8_t CartridgeHeader::oldLicenseeCodeU8() const
+{
+    if (!mRomBaseAddr)
+        return 0;
+
+    return mRomBaseAddr[0x14B];
+}
+
 const char* CartridgeHeader::oldLicenseeCode() const
 {
     if (!mRomBaseAddr)
         return "";
 
-    auto it = oldLicenseeCodeMap.find(mRomBaseAddr[0x14B]);
+    auto it = oldLicenseeCodeMap.find(oldLicenseeCodeU8());
 
     if (it != oldLicenseeCodeMap.end())
         return it->second;

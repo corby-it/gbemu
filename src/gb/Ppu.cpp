@@ -342,6 +342,7 @@ PPU::PPU(Bus& bus)
 
 void PPU::reset()
 {
+    mUseDmgCompatMode = false;
     mDotCounter = 0;
     mOamScanRegister.reset();
     mFirstStep = true;
@@ -408,6 +409,186 @@ void PPU::write8(uint16_t addr, uint8_t val)
     }
 }
 
+
+
+static const std::array<uint8_t, 94> paletteIndexesAndFlags = {
+    0x7C, 0x08, 0x12, 0xA3, 0xA2, 0x07, 0x87, 0x4B, 0x20, 0x12, 0x65, 0xA8, 0x16, 0xA9, 0x86, 0xB1,
+    0x68, 0xA0, 0x87, 0x66, 0x12, 0xA1, 0x30, 0x3C, 0x12, 0x85, 0x12, 0x64, 0x1B, 0x07, 0x06, 0x6F,
+    0x6E, 0x6E, 0xAE, 0xAF, 0x6F, 0xB2, 0xAF, 0xB2, 0xA8, 0xAB, 0x6F, 0xAF, 0x86, 0xAE, 0xA2, 0xA2,
+    0x12, 0xAF, 0x13, 0x12, 0xA1, 0x6E, 0xAF, 0xAF, 0xAD, 0x06, 0x4C, 0x6E, 0xAF, 0xAF, 0x12, 0x7C,
+    0xAC, 0xA8, 0x6A, 0x6E, 0x13, 0xA0, 0x2D, 0xA8, 0x2B, 0xAC, 0x64, 0xAC, 0x6D, 0x87, 0xBC, 0x60,
+    0xB4, 0x13, 0x72, 0x7C, 0xB5, 0xAE, 0xAE, 0x7C, 0x7C, 0x65, 0xA2, 0x6C, 0x64, 0x85
+};
+
+static const std::array<uint8_t, 29 * 3> paletteIndexes = {
+    0x80, 0xB0, 0x40,
+    0x88, 0x20, 0x68,
+    0xDE, 0x00, 0x70,
+    0xDE, 0x20, 0x78,
+    0x20, 0x20, 0x38,
+    0x20, 0xB0, 0x90,
+    0x20, 0xB0, 0xA0,
+    0xE0, 0xB0, 0xC0,
+    0x98, 0xB6, 0x48,
+    0x80, 0xE0, 0x50,
+    0x1E, 0x1E, 0x58,
+    0x20, 0xB8, 0xE0,
+    0x88, 0xB0, 0x10,
+    0x20, 0x00, 0x10,
+    0x20, 0xE0, 0x18,
+    0xE0, 0x18, 0x00,
+    0x18, 0xE0, 0x20,
+    0xA8, 0xE0, 0x20,
+    0x18, 0xE0, 0x00,
+    0x20, 0x18, 0xD8,
+    0xC8, 0x18, 0xE0,
+    0x00, 0xE0, 0x40,
+    0x28, 0x28, 0x28,
+    0x18, 0xE0, 0x60,
+    0x20, 0x18, 0xE0,
+    0x00, 0x00, 0x08,
+    0xE0, 0x18, 0x30,
+    0xD0, 0xD0, 0xD0,
+    0x20, 0xE0, 0xE8,
+};
+
+#define RGB555(valR, valG, valB)    uint16_t((valR & 0x1F) | ((valG & 0x1F) << 5) | ((valB & 0x1F) << 10))
+
+static const std::array<uint16_t, 30 * 4> compatPalettes = {
+    RGB555(0x1F, 0x1F, 0x1F), RGB555(0x1F, 0x15, 0x0C), RGB555(0x10, 0x06, 0x00), RGB555(0x00, 0x00, 0x00),
+    RGB555(0x1F, 0x1C, 0x18), RGB555(0x19, 0x13, 0x10), RGB555(0x10, 0x0D, 0x05), RGB555(0x0B, 0x06, 0x01),
+    RGB555(0x1F, 0x1F, 0x1F), RGB555(0x11, 0x11, 0x1B), RGB555(0x0A, 0x0A, 0x11), RGB555(0x00, 0x00, 0x00),
+    RGB555(0x1F, 0x1F, 0x1F), RGB555(0x0F, 0x1F, 0x06), RGB555(0x00, 0x10, 0x00), RGB555(0x00, 0x00, 0x00),
+    RGB555(0x1F, 0x1F, 0x1F), RGB555(0x1F, 0x10, 0x10), RGB555(0x12, 0x07, 0x07), RGB555(0x00, 0x00, 0x00),
+    RGB555(0x1F, 0x1F, 0x1F), RGB555(0x14, 0x14, 0x14), RGB555(0x0A, 0x0A, 0x0A), RGB555(0x00, 0x00, 0x00),
+    RGB555(0x1F, 0x1F, 0x1F), RGB555(0x1F, 0x1F, 0x00), RGB555(0x0F, 0x09, 0x00), RGB555(0x00, 0x00, 0x00),
+    RGB555(0x1F, 0x1F, 0x1F), RGB555(0x0F, 0x1F, 0x00), RGB555(0x16, 0x0E, 0x00), RGB555(0x00, 0x00, 0x00),
+    RGB555(0x1F, 0x1F, 0x1F), RGB555(0x15, 0x15, 0x10), RGB555(0x08, 0x0E, 0x0F), RGB555(0x00, 0x00, 0x00),
+    RGB555(0x14, 0x13, 0x1F), RGB555(0x1F, 0x1F, 0x00), RGB555(0x00, 0x0C, 0x00), RGB555(0x00, 0x00, 0x00),
+    RGB555(0x1F, 0x1F, 0x19), RGB555(0x0C, 0x1D, 0x1D), RGB555(0x13, 0x10, 0x06), RGB555(0x0B, 0x0B, 0x0B),
+    RGB555(0x16, 0x16, 0x1F), RGB555(0x1F, 0x1F, 0x12), RGB555(0x15, 0x0B, 0x08), RGB555(0x00, 0x00, 0x00),
+    RGB555(0x1F, 0x1F, 0x14), RGB555(0x1F, 0x12, 0x12), RGB555(0x12, 0x12, 0x1F), RGB555(0x00, 0x00, 0x00),
+    RGB555(0x1F, 0x1F, 0x13), RGB555(0x12, 0x16, 0x1F), RGB555(0x0C, 0x12, 0x0E), RGB555(0x00, 0x07, 0x07),
+    RGB555(0x0D, 0x1F, 0x00), RGB555(0x1F, 0x1F, 0x1F), RGB555(0x1F, 0x0A, 0x09), RGB555(0x00, 0x00, 0x00),
+    RGB555(0x0A, 0x1B, 0x00), RGB555(0x1F, 0x10, 0x00), RGB555(0x1F, 0x1F, 0x00), RGB555(0x1F, 0x1F, 0x1F),
+    RGB555(0x1F, 0x1F, 0x1F), RGB555(0x1F, 0x0E, 0x00), RGB555(0x12, 0x08, 0x00), RGB555(0x00, 0x00, 0x00),
+    RGB555(0x1F, 0x18, 0x08), RGB555(0x1F, 0x1A, 0x00), RGB555(0x12, 0x07, 0x00), RGB555(0x09, 0x00, 0x00),
+    RGB555(0x1F, 0x1F, 0x1F), RGB555(0x0A, 0x1F, 0x00), RGB555(0x1F, 0x08, 0x00), RGB555(0x00, 0x00, 0x00),
+    RGB555(0x1F, 0x0C, 0x0A), RGB555(0x1A, 0x00, 0x00), RGB555(0x0C, 0x00, 0x00), RGB555(0x00, 0x00, 0x00),
+    RGB555(0x1F, 0x1F, 0x1F), RGB555(0x1F, 0x13, 0x00), RGB555(0x1F, 0x00, 0x00), RGB555(0x00, 0x00, 0x00),
+    RGB555(0x1F, 0x1F, 0x1F), RGB555(0x00, 0x1F, 0x00), RGB555(0x06, 0x10, 0x00), RGB555(0x00, 0x09, 0x00),
+    RGB555(0x1F, 0x1F, 0x1F), RGB555(0x0B, 0x17, 0x1F), RGB555(0x1F, 0x00, 0x00), RGB555(0x00, 0x00, 0x1F),
+    RGB555(0x1F, 0x1F, 0x1F), RGB555(0x1F, 0x1F, 0x0F), RGB555(0x00, 0x10, 0x1F), RGB555(0x1F, 0x00, 0x00),
+    RGB555(0x1F, 0x1F, 0x1F), RGB555(0x1F, 0x1F, 0x00), RGB555(0x1F, 0x00, 0x00), RGB555(0x00, 0x00, 0x00),
+    RGB555(0x1F, 0x1F, 0x00), RGB555(0x1F, 0x00, 0x00), RGB555(0x0C, 0x00, 0x00), RGB555(0x00, 0x00, 0x00),
+    RGB555(0x1F, 0x1F, 0x1F), RGB555(0x1F, 0x19, 0x00), RGB555(0x13, 0x0C, 0x00), RGB555(0x00, 0x00, 0x00),
+    RGB555(0x00, 0x00, 0x00), RGB555(0x00, 0x10, 0x10), RGB555(0x1F, 0x1B, 0x00), RGB555(0x1F, 0x1F, 0x1F),
+    RGB555(0x1F, 0x1F, 0x1F), RGB555(0x0C, 0x14, 0x1F), RGB555(0x00, 0x00, 0x1F), RGB555(0x00, 0x00, 0x00),
+    RGB555(0x1F, 0x1F, 0x1F), RGB555(0x0F, 0x1F, 0x06), RGB555(0x00, 0x0C, 0x18), RGB555(0x00, 0x00, 0x00),
+};
+
+void PPU::setupDmgCompatMode(uint8_t paletteId)
+{
+    if (!mIsCgb)
+        return;
+
+    // the algorithm to pick a default palette is hard to understand and it has been 
+    // copied (sort of) from the CGB boot rom from:
+    // https://codeberg.org/ISSOtm/gb-bootroms/src/commit/443d7f057ae06e8d1d76fa8083650cf0be2cd0ae/src/cgb.asm
+    // there are probably more efficient ways to get the same results but i won't bother
+    // examples of games and associated palettes can be found at:
+    // https://tcrf.net/Notes:Game_Boy_Color_Bootstrap_ROM#Assigned_Palette_Configurations
+
+    // the paletteId is computed using a checksum of the title and a table,
+    // the paletteId is then used to pick a set of flags from another table
+    if (paletteId >= paletteIndexesAndFlags.size())
+        return;
+
+    uint8_t indexAndFlags = paletteIndexesAndFlags[paletteId];
+
+    // the lower 5 bits identify a triplet
+    // the upper 3 bits identify the flags
+    uint8_t tripletIdx = indexAndFlags & 0x1F;
+    uint8_t shuffleFlags = (indexAndFlags & 0xE0) >> 5;
+
+    // using the flags we have to shuffle the hardcoded paletteIndexes array into the shuffled array,
+    // the rules for the shuffling are:
+    // - 1st entry (OBP0) is set to 3rd elem if bit 0 is set, otherwise to 1st element
+    // - 2nd entry (OBP1) is set to 2nd elem if bit 2 is set, otherwise 3rd element if bit 1 is set, otherwise 1st element
+    // - 3rd entry (BGP0) is always set to 3rd element
+    // 
+    // NOTE: apparently reversing rule 1 gives results that are more consistent with 
+    //      real hardware examples and other well known emulators, who knows...
+
+    std::array<uint8_t, 29 * 3> shuffled;
+
+    for (uint32_t i = 0; i < shuffled.size(); i += 3) {
+        // 1st entry OBP0
+        shuffled[i] = shuffleFlags & 0x01 ? paletteIndexes[i] : paletteIndexes[i + 2];
+        
+        // 2nd entry OBP1
+        if (shuffleFlags & 0x04)
+            shuffled[i + 1] = paletteIndexes[i + 1];
+        else if (shuffleFlags & 0x02)
+            shuffled[i + 1] = paletteIndexes[i + 2];
+        else 
+            shuffled[i + 1] = paletteIndexes[i];
+
+        // 3rd entry BGP
+        shuffled[i + 2] = paletteIndexes[i + 2];
+    }
+
+    // now we have to create a palette table using the shuffled palette indexes,
+    // each value in the shuffled array is used as an offset to pick a palette 
+    // (4 colors = 8 bytes) in the hardcoded compatPalettes array
+    // 
+    // the index in the shuffled array is used as a byte offset so it must be 
+    // divided by 2 in order to be used as offset for the compatPalettes array 
+    // which stores u16 values for colors
+    std::array<uint16_t, 29 * 3 * 4> paletteValues;
+
+    for (uint32_t i = 0; i < shuffled.size(); ++i) {
+        auto offset = shuffled[i] / 2;
+
+        // we extract 4 u16 values (4 colors) from the compatPalettes array
+        for (uint32_t k = 0; k < 4; ++k) {
+            // make sure we don't read outside the array
+            if (offset + k >= compatPalettes.size())
+                paletteValues[i * 4 + k] = 0;
+            else
+                paletteValues[i * 4 + k] = compatPalettes[offset + k];
+        }
+    }
+
+    // now, with the tripletIdx used as offset into the paletteValues array,
+    // a set of 3 palettes is picked
+    // tripletIdx is used to pick a triplet of palettes so:
+    // - 0 picks the first three palettes (u16 values from 0 to 11)
+    // - 1 picks the second threes palettes (u16 values from 12 to 23)
+    // - and so on
+    
+    // tripletIdx is a 5-bit uint, make sure it's not greater than 28, which is the last
+    // available palette triplet in the paletteValues array
+    if (tripletIdx > 28)
+        tripletIdx = 28;
+
+    uint16_t obp0[4], obp1[4], bgp0[4];
+
+    for (uint32_t i = 0; i < 4; ++i) {
+        obp0[i] = paletteValues[tripletIdx * 12 + 0 + i];
+        obp1[i] = paletteValues[tripletIdx * 12 + 4 + i];
+        bgp0[i] = paletteValues[tripletIdx * 12 + 8 + i];
+    }
+
+    // now finally setup the values in the actual palette memory of the PPU
+    for (uint8_t i = 0; i < 4; ++i) {
+        colors.getObjPalette(0).setColor(i, obp0[i]);
+        colors.getObjPalette(1).setColor(i, obp1[i]);
+        colors.getBgPalette(0).setColor(i, bgp0[i]);
+    }
+
+    mUseDmgCompatMode = true;
+}
 
 
 
@@ -935,8 +1116,17 @@ std::optional<PPU::PixelInfo> PPU::renderPixelGetObjInfo(uint32_t currX)
         if (mIsCgb) {
             // in the CGB the palette is picked considering the cgb palette value in 
             // the oam attribute
-            auto palette = colors.getObjPalette(oamAttr.cgbObjPalette());
-            info.colorVal = palette.getColor(info.colorId);
+            // BUT, when in DMG compatibility mode, the old monochrome OBP0 and OBP1 are
+            // still used to index into the color palette OBP0 and OBP1
+            if (mUseDmgCompatMode) {
+                auto& obp = oamAttr.dmgPalette() ? regs.OBP1 : regs.OBP0;
+                auto palette = colors.getObjPalette(oamAttr.dmgPalette() ? 1 : 0);
+                info.colorVal = palette.getColor(obp.id2val(info.colorId));
+            }
+            else {
+                auto palette = colors.getObjPalette(oamAttr.cgbObjPalette());
+                info.colorVal = palette.getColor(info.colorId);
+            }
         }
         else {
             // in the DMG only one of the two OBP0 or OBP1 palettes can be used
@@ -1056,7 +1246,10 @@ PPU::PixelInfo PPU::renderPixelCGBGetBgVal(uint32_t dispX)
 
     // get tile data
     auto bgTile = vram.getBgTile(bgTileId, regs.LCDC.bgWinTileDataArea, bgAttr.vramBank());
-    auto palette = colors.getBgPalette(bgAttr.cgbBgPalette());
+
+    // get current palette
+    // when in DMG compatibility mode make sure that only BGP0 is used
+    auto palette = colors.getBgPalette(mUseDmgCompatMode ? 0 : bgAttr.cgbBgPalette());
 
     uint32_t tileX = bgX % 8;
     uint32_t tileY = bgY % 8;

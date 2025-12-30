@@ -109,12 +109,14 @@ public:
     LogoData logoData() const;
     std::string title() const;
     CGBFlag cgbFlag() const;
+    std::string_view newLicenseeCodeRaw() const;
     const char* newLicenseeCode() const;
     SGBFlag sgbFlag() const;
     CartridgeType cartType() const;
     uint32_t romSize() const;
     uint32_t ramSize() const;
     DestCode destCode() const;
+    uint8_t oldLicenseeCodeU8() const;
     const char* oldLicenseeCode() const;
     uint8_t maskRomVersionNum() const;
     uint8_t headerChecksum() const;

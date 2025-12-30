@@ -268,6 +268,14 @@ struct CGBPalette {
         return CGBColor(ptr + idx * 2);
     }
 
+    void setColor(uint8_t idx, uint16_t value) {
+        if (!ptr || idx >= 4)
+            return;
+
+        ptr[idx * 2] = (uint8_t)value;
+        ptr[idx * 2 + 1] = (uint8_t)(value >> 8);
+    }
+
     uint8_t* ptr;
 };
 
@@ -647,6 +655,7 @@ public:
     void reset();
 
     void setIsCgb(bool val);
+    void setupDmgCompatMode(uint8_t paletteId);
 
     bool step(uint32_t mCycles);
     void stepLine(uint32_t n = 1);
@@ -753,6 +762,7 @@ private:
     Bus* mBus;
 
     bool mIsCgb;
+    bool mUseDmgCompatMode;
 
     uint32_t mDotCounter;
     OAMRegister mOamScanRegister;

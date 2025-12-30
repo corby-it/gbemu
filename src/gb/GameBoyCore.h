@@ -167,12 +167,11 @@ public:
     }
 
 
-protected:
-    void gbReset();
-
-
 private:
     AddressMap initAddressMap();
+
+    void gbReset();
+    void setupDMGCompatMode();
     
     GbStepRes gbStep();
 
@@ -182,51 +181,6 @@ private:
     bool mStepInstruction;
 
 };
-
-
-
-// ------------------------------------------------------------------------------------------------
-// GameBoyClassic
-// ------------------------------------------------------------------------------------------------
-//
-//class GameBoyClassic : public GameBoyIf {
-//public:
-//
-//    GameBoyClassic();
-//
-//    uint8_t read8(uint16_t addr) const override;
-//    void write8(uint16_t addr, uint8_t val) override;
-//
-//
-//private:
-//    GbStepRes gbStep() override;
-//    AddressMap initAddressMap();
-//
-//    const AddressMap mAddrMap;
-//};
-
-
-
-// ------------------------------------------------------------------------------------------------
-// GameBoyColor
-// ------------------------------------------------------------------------------------------------
-
-//class GameBoyColor : public GameBoyIf {
-//public:
-//
-//    GameBoyColor();
-//
-//    uint8_t read8(uint16_t addr) const override;
-//    void write8(uint16_t addr, uint8_t val) override;
-//
-//
-//private:
-//    GbStepRes gbStep() override;
-//    AddressMap initAddressMap();
-//
-//    const AddressMap mAddrMap;
-//};
-
 
 
 
