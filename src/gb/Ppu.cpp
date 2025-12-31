@@ -8,6 +8,12 @@
 #include <cstdlib>
 
 
+const char* const plotDotCounter = "PPU_DotCounter";
+const char* const plotLY = "PPU_LY";
+const char* const plotPpuMode = "PPU_Mode";
+
+
+
 // ------------------------------------------------------------------------------------------------
 // LCDCReg
 // ------------------------------------------------------------------------------------------------
@@ -737,6 +743,11 @@ bool PPU::step(uint32_t mCycles)
     // or unlock video related memory depending on the current PPU mode
     // and on the lcd enable flag
     lockRamAreas(regs.LCDC.lcdEnable);
+
+
+    TracyPlot(plotDotCounter, (int64_t)mDotCounter);
+    TracyPlot(plotLY, (int64_t)regs.LY);
+    TracyPlot(plotPpuMode, (int64_t)regs.STAT.ppuMode);
 
     
     // handle HDMA transfers

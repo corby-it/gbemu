@@ -668,20 +668,25 @@ GbStepRes GameBoy::gbStep()
 
         if (cpu.key1.doubleSpeed) {
             // when the cpu is running at double speed, everything is running at
-            // double clock speed as well, except for the PPU and the APU
-            static bool runPpuApu = false;
+            // double clock speed as well, except for the PPU and the APU that still run
+            // at normal speed, that's why they step once every two cpu cycles
 
-            if (runPpuApu) {
-                frameReady = ppu.step(cpuRes.cycles);
-                apu.step(cpuRes.cycles);
+            for (uint32_t i = 0; i < cpuRes.cycles; ++i) {
+                static bool runPpuApu = false;
+
+                dma.step(1);
+                if (runPpuApu) 
+                    frameReady = ppu.step(1);
+                
+                timer.step(1, cpu.isStopped());
+                serial.step(1);
+                joypad.step(1);
+
+                if (runPpuApu)
+                    apu.step(1);
+
+                runPpuApu = !runPpuApu;
             }
-
-            dma.step(cpuRes.cycles);
-            timer.step(cpuRes.cycles, cpu.isStopped());
-            serial.step(cpuRes.cycles);
-            joypad.step(cpuRes.cycles);
-
-            runPpuApu = !runPpuApu;
         }
         else {
             dma.step(cpuRes.cycles);

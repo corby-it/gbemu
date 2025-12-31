@@ -70,8 +70,6 @@ private:
 
     GameBoy mGameboy;
 
-    RgbaBuffer mDisplayBuffer;
-
     GLuint mGLDisplayTexture;
     std::array<std::vector<GLuint>, 2> mTileTextures;
     std::vector<GLuint> mOamTextures;

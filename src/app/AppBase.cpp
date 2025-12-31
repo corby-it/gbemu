@@ -181,7 +181,7 @@ void AppBase::run()
         }
 
         {
-            //ZoneScopedN("Draw UI");
+            ZoneScopedN("Update UI");
             // Start the Dear ImGui frame
             ImGui_ImplOpenGL3_NewFrame();
             ImGui_ImplGlfw_NewFrame();
@@ -221,7 +221,7 @@ void AppBase::run()
             ZoneScopedN("Sleep");
             double timeToNextFrame = (mLastFrameTime + fpsPeriod) - glfwGetTime();
 
-            while (timeToNextFrame > 0.002) {
+            while (timeToNextFrame > 0.001) {
                 std::this_thread::sleep_for(1ms);
                 timeToNextFrame = (mLastFrameTime + fpsPeriod) - glfwGetTime();
             }
@@ -230,7 +230,7 @@ void AppBase::run()
 
         {
             ZoneScopedN("Busywait");
-            // busy wait for the last 2ms
+            // busy wait for the last 1ms
             double now = glfwGetTime();
 
             while (true) {

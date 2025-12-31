@@ -9,9 +9,9 @@
 
 
 
-const char* const plotRequestedAudioFrames = "RequestedAudioFrames";
-const char* const plotAvailableAudioFrames = "AvailableAudioFrames";
-const char* const plotResamplingErrComp = "ResamplingErrComp";
+const char* const plotRequestedAudioFrames = "AUDIO_RequestedAudioFrames";
+const char* const plotAvailableAudioFrames = "AUDIO_AvailableAudioFrames";
+const char* const plotResamplingErrComp = "AUDIO_ResamplingErrComp";
 
 
 AudioHandler::AudioHandler(float resamplingRatio)
@@ -86,7 +86,7 @@ bool AudioHandler::initialize()
         ma_pcm_rb_reset(&mAudioRingBuffer);
     }
     else {
-        success &= false;
+        success = false;
         mInitResult = res;
     }
 
@@ -118,12 +118,12 @@ bool AudioHandler::initialize()
     if (res == MA_SUCCESS) {
         res = ma_device_start(mAudioDevice.get());
         if (res != MA_SUCCESS) {
-            success &= false;
+            success = false;
             mInitResult = res;
         }
     }
     else {
-        success &= false;
+        success = false;
         mInitResult = res;
     }
 

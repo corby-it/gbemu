@@ -28,7 +28,6 @@ using hr_clock = std::chrono::high_resolution_clock;
 
 App::App()
     : mConfigSavePath(fs::current_path() / "appConfig.json")
-    , mDisplayBuffer(Display::w, Display::h)
     , mLastEmulateCall(-1ns)
     , mAudioInitSuccess(false)
 {
@@ -84,17 +83,25 @@ App::~App()
 
 
 // Simple helper functions to load an image into a OpenGL texture with common settings
-const char* const plotOvershootPlotName = "EmulateOvershoot";
-const char* const plotTimeSinceLastEmulateCall = "TimeSinceLastEmulateCall";
-const char* const plotRequiredFrames = "RequiredFrames";
+const char* const plotOvershootPlotName = "APP_EmulateOvershoot";
+const char* const plotGbEmulatedTime = "APP_GbEmulatedTime";
+const char* const plotGbEmulateTargetTime = "APP_GbEmulateTargetTime";
+const char* const plotTimeSinceLastEmulateCall = "APP_TimeSinceLastEmulateCall";
+const char* const plotRequiredFrames = "APP_RequiredFrames";
 
 
 void App::startup()
 {
     // setup tracy stuff
     TracyPlotConfig(plotOvershootPlotName, tracy::PlotFormatType::Number, false, false, 0);
+    TracyPlotConfig(plotGbEmulatedTime, tracy::PlotFormatType::Number, false, false, 0);
+    TracyPlotConfig(plotGbEmulateTargetTime, tracy::PlotFormatType::Number, false, false, 0);
     TracyPlotConfig(plotTimeSinceLastEmulateCall, tracy::PlotFormatType::Number, false, false, 0);
     TracyPlotConfig(plotRequiredFrames, tracy::PlotFormatType::Number, false, false, 0);
+
+    TracyPlotConfig(plotDotCounter, tracy::PlotFormatType::Number, false, false, 0);
+    TracyPlotConfig(plotLY, tracy::PlotFormatType::Number, false, false, 0);
+    TracyPlotConfig(plotPpuMode, tracy::PlotFormatType::Number, true, false, 0);
 
     // setup audio stuff
     mAudioInitSuccess = mAudioHandler.initialize();
@@ -248,11 +255,11 @@ bool App::emulate()
 
 bool App::emulateFullSpeed(std::chrono::nanoseconds currTime)
 {
-    // when emulating at 100% speed we emulate exactly for the required number of availableFrames, taking into 
+    // when emulating at 100% speed we emulate exactly for the required number of frames, taking into 
     // account how much time elapsed between the current call and the last App::emulate() call
     // 
-    // if the requested number of availableFrames is not reached in the corresponding gb time we return anyway,
-    // if the ppu is disabled availableFrames won't be ready but the emulation must keep going.
+    // if the requested number of frames is not reached in the corresponding gb time we return anyway,
+    // if the ppu is disabled frames won't be ready but the emulation must keep going.
 
     uint32_t requiredFrames = 1;
 
@@ -291,6 +298,8 @@ bool App::emulateFullSpeed(std::chrono::nanoseconds currTime)
             break;
     }
 
+    TracyPlot(plotGbEmulatedTime, elapsedGbTime.count());
+    TracyPlot(plotGbEmulateTargetTime, realTargetGbTime.count());
     TracyPlot(plotOvershootPlotName, (elapsedGbTime - realTargetGbTime).count());
 
     if (renderedFrames == 0) {
@@ -765,10 +774,11 @@ void App::UIDrawControlWindow()
 
 void App::UIDrawGBDisplayWindow()
 {
-    /*LoadTextureFromMatrix(mGameboy.ppu.display.getFrontBuf(), mGLDisplayTexture, mDisplayBuffer);*/
-    loadTextureFromRgbaBuffer(mGLDisplayTexture, mGameboy.ppu.display.getFrontBuf());
+    auto& frontBuf = mGameboy.ppu.display.getFrontBuf();
 
-    FrameImage(mDisplayBuffer.ptr(), mGameboy.ppu.display.w, mGameboy.ppu.display.h, 0, false);
+    loadTextureFromRgbaBuffer(mGLDisplayTexture, frontBuf);
+
+    FrameImage(frontBuf.ptr(), mGameboy.ppu.display.w, mGameboy.ppu.display.h, 0, false);
 
     ImGui::Begin("GB Display");
     ImGui::Image((void*)(intptr_t)mGLDisplayTexture, ImVec2(320, 288));
@@ -1821,6 +1831,8 @@ void App::UIDrawRegsTables()
     ImGui::SeparatorText("CPU");
     UIDrawCpuRegTable();
     UIDrawCpuFlagsTable();
+    bool doubleSpeed = mGameboy.cpu.key1.doubleSpeed;
+    ImGui::Checkbox("Double speed", &doubleSpeed);
 
     ImGui::SeparatorText("Current instruction");
     ImGui::Text("%s", mGameboy.dbg.currInstructionStr().c_str());

@@ -15,6 +15,11 @@
 
 
 
+extern const char* const plotDotCounter;
+extern const char* const plotLY;
+extern const char* const plotPpuMode;
+
+
 
 
 // ------------------------------------------------------------------------------------------------
