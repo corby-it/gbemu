@@ -928,9 +928,15 @@ void PPU::renderPixelDMG(uint32_t dispX)
 
     // get the back buffer for the display
     auto& dispBuf = display.getBackBuf();
+
+    // if objects are not enabled in the LCDC register, draw the bg color and return
+    if (!regs.LCDC.objEnable) {
+        dispBuf(dispX, regs.LY) = bgColorVal;
+        return;
+    }
     
     // get objects info for this pixel
-    auto objsPixInfo = renderPixelGetObjsValues(dispX);
+    auto objsPixInfo = renderPixelDMGGetObjsValues(dispX);
 
     if (objsPixInfo.empty()) {
         // no objects for this pixel, draw the background color
@@ -1036,7 +1042,7 @@ bool PPU::renderPixelDMGGetWinVal(uint32_t dispX, uint8_t& colorId)
     return true;
 }
 
-PPU::OAMPixelInfoList PPU::renderPixelGetObjsValues(uint32_t currX)
+PPU::OAMPixelInfoList PPU::renderPixelDMGGetObjsValues(uint32_t currX)
 {
     ZoneScoped;
 
@@ -1048,7 +1054,6 @@ PPU::OAMPixelInfoList PPU::renderPixelGetObjsValues(uint32_t currX)
     // get the objects involved in the current pixel
     for (auto oam : findCurrOams(currX)) {
 
-        // TODO check signed/unsigned math
         auto oamAttr = oam->attr();
 
         // find coordinates inside the object
@@ -1070,50 +1075,33 @@ PPU::OAMPixelInfoList PPU::renderPixelGetObjsValues(uint32_t currX)
         info.colorId = tile.get(objX, objY);
         info.priority = oamAttr.priority();
 
-        if (mIsCgb) {
-            // in the CGB the palette is picked considering the cgb palette value in 
-            // the oam attribute
-            auto palette = colors.getObjPalette(oamAttr.cgbObjPalette());
-            info.colorVal = palette.getColor(info.colorId);
-        }
-        else {
-            // in the DMG only one of the two OBP0 or OBP1 palettes can be used
-            auto& obp = oamAttr.dmgPalette() ? regs.OBP1 : regs.OBP0;
-            info.colorVal = dmgVal2RGB(obp.id2val(info.colorId));
-        }
+        // in the DMG only one of the two OBP0 or OBP1 palettes can be used
+        auto& obp = oamAttr.dmgPalette() ? regs.OBP1 : regs.OBP0;
+        info.colorVal = dmgVal2RGB(obp.id2val(info.colorId));
 
         pixInfo.add(info);
     }
 
     // sort the objects so that the first is also the one with the highest priority
 
-    if (mIsCgb) {
-        // in the CGB priority is always given to the object with the lowest id, regardless of coordinates
+    // in the DMG or in DMG compatibility mode different objects will be given priority as follows:
+    // - if objects have different X coordinates: priority is given to the one with the lowest X
+    // - if objects have the same X coordinates: priority is given to the one with the lowest ID
+    // in this sorting we put the objects with the priority flag == false first
 
-        std::sort(pixInfo.begin(), pixInfo.end(), [](const PixelInfo& lhs, const PixelInfo& rhs) {
-            return lhs.oam->tileId() < rhs.oam->tileId();
-        });
-    }
-    else {
-        // in the DMG different objects will be given priority as follows:
-        // - if objects have different X coordinates: priority is given to the one with the lowest X
-        // - if objects have the same X coordinates: priority is given to the one with the lowest ID
-        // in this sorting we put the objects with the priority flag == false first
-
-        std::sort(pixInfo.begin(), pixInfo.end(), [](const PixelInfo& lhs, const PixelInfo& rhs) {
-            if (lhs.priority != rhs.priority)
-                return lhs.priority ? false : true;
-            else if (lhs.oam->x() == rhs.oam->x())
-                return lhs.oam->tileId() < rhs.oam->tileId();
-            else
-                return lhs.oam->x() < rhs.oam->x();
-        });
-    }
-
+    std::sort(pixInfo.begin(), pixInfo.end(), [](const PixelInfo& lhs, const PixelInfo& rhs) {
+        if (lhs.priority != rhs.priority)
+            return lhs.priority ? false : true;
+        else if (lhs.oam->x() == rhs.oam->x())
+            return lhs.oam->oamId < rhs.oam->oamId;
+        else
+            return lhs.oam->x() < rhs.oam->x();
+    });
+    
     return pixInfo;
 }
 
-std::optional<PPU::PixelInfo> PPU::renderPixelGetObjInfo(uint32_t currX)
+std::optional<PPU::PixelInfo> PPU::renderPixelCGBGetObjInfo(uint32_t currX)
 {
     ZoneScoped;
 
@@ -1156,27 +1144,20 @@ std::optional<PPU::PixelInfo> PPU::renderPixelGetObjInfo(uint32_t currX)
         info.colorId = colorId;
         info.priority = oamAttr.priority();
 
-        if (mIsCgb) {
-            // in the CGB the palette is picked considering the cgb palette value in 
-            // the oam attribute
-            // BUT, when in DMG compatibility mode, the old monochrome OBP0 and OBP1 are
-            // still used to index into the color palette OBP0 and OBP1
-            if (mUseDmgCompatMode) {
-                auto& obp = oamAttr.dmgPalette() ? regs.OBP1 : regs.OBP0;
-                auto palette = colors.getObjPalette(oamAttr.dmgPalette() ? 1 : 0);
-                info.colorVal = palette.getColor(obp.id2val(info.colorId));
-            }
-            else {
-                auto palette = colors.getObjPalette(oamAttr.cgbObjPalette());
-                info.colorVal = palette.getColor(info.colorId);
-            }
+        // in the CGB the palette is picked considering the cgb palette value in 
+        // the oam attribute
+        // BUT, when in DMG compatibility mode, the old monochrome OBP0 and OBP1 are
+        // still used to index into the color palette OBP0 and OBP1
+        if (mUseDmgCompatMode) {
+            auto& obp = oamAttr.dmgPalette() ? regs.OBP1 : regs.OBP0;
+            auto palette = colors.getObjPalette(oamAttr.dmgPalette() ? 1 : 0);
+            info.colorVal = palette.getColor(obp.id2val(info.colorId));
         }
         else {
-            // in the DMG only one of the two OBP0 or OBP1 palettes can be used
-            auto& obp = oamAttr.dmgPalette() ? regs.OBP1 : regs.OBP0;
-            info.colorVal = dmgVal2RGB(obp.id2val(info.colorId));
+            auto palette = colors.getObjPalette(oamAttr.cgbObjPalette());
+            info.colorVal = palette.getColor(info.colorId);
         }
-
+        
         pixInfo.add(info);
     }
 
@@ -1184,13 +1165,12 @@ std::optional<PPU::PixelInfo> PPU::renderPixelGetObjInfo(uint32_t currX)
         return {};
 
 
-    // sort the objects so that the first is also the one with the highest priority
-
-    if (mIsCgb) {
-        // in the CGB priority is always given to the object with the lowest oam id, regardless of coordinates
-        // so, considering that the list is already sorted by oam id there is no need to sort it
-    }
-    else {
+    // in the CGB priority is always given to the object with the lowest oam id, regardless of coordinates
+    // so, considering that the list is already sorted by oam id there is no need to sort it again
+    
+    // when in DMG compatibility mode though, DMG rules must be used
+    
+    if (mUseDmgCompatMode) {
         // in the DMG different objects will be given priority as follows:
         // - if objects have different X coordinates: priority is given to the one with the lowest X
         // - if objects have the same X coordinates: priority is given to the one with the lowest ID
@@ -1200,12 +1180,11 @@ std::optional<PPU::PixelInfo> PPU::renderPixelGetObjInfo(uint32_t currX)
             if (lhs.priority != rhs.priority)
                 return lhs.priority ? false : true;
             else if (lhs.oam->x() == rhs.oam->x())
-                return lhs.oam->tileId() < rhs.oam->tileId();
+                return lhs.oam->oamId < rhs.oam->oamId;
             else
                 return lhs.oam->x() < rhs.oam->x();
         });
     }
-
 
     return *pixInfo.begin();
 }
@@ -1228,7 +1207,7 @@ void PPU::renderPixelCGB(uint32_t dispX)
 
     // get objects info for this pixel
     
-    if (auto objInfo = renderPixelGetObjInfo(dispX); objInfo.has_value()) {
+    if (auto objInfo = renderPixelCGBGetObjInfo(dispX); objInfo.has_value()) {
         // find which color must be drawn on screen, it's not really easy to understand,
         // use the table shown here: https://gbdev.io/pandocs/Tile_Maps.html#bg-to-obj-priority-in-cgb-mode
 
@@ -1296,6 +1275,19 @@ PPU::PixelInfo PPU::renderPixelCGBGetBgVal(uint32_t dispX)
     // get the current tile id and background attributes
     auto bgTileId = vram.getTileMap(tileArea).get(bgX / 8, bgY / 8);
     auto bgAttr = vram.getAttrMap(tileArea).getBgMapAttr(bgX / 8, bgY / 8);
+
+    if (mUseDmgCompatMode && !regs.LCDC.bgWinEnable) {
+        // when in DMG compatibility mode the bgWinEnable flag has the same 
+        // meaning it has in the DMG, that is, when the flag is 0 the background 
+        // or window are not visibile and color 0 from BGP0 will be used
+        PixelInfo bgInfo;
+        bgInfo.oam = nullptr;
+        bgInfo.colorId = 0;
+        bgInfo.colorVal = colors.getBgPalette(0).getColor(0);
+        bgInfo.priority = bgAttr.priority();
+
+        return bgInfo;
+    }
 
     // get tile data
     auto bgTile = vram.getBgTile(bgTileId, regs.LCDC.bgWinTileDataArea, bgAttr.vramBank());

@@ -711,7 +711,7 @@ private:
         RgbaPixel colorVal;
         bool priority;
     };
-    
+
     template<typename T, size_t N>
     class List {
     public:
@@ -760,8 +760,8 @@ private:
     void renderPixelCGB(uint32_t dispX);
     PixelInfo renderPixelCGBGetBgVal(uint32_t dispX);
     
-    OAMPixelInfoList renderPixelGetObjsValues(uint32_t currX);
-    std::optional<PixelInfo> renderPixelGetObjInfo(uint32_t currX);
+    OAMPixelInfoList renderPixelDMGGetObjsValues(uint32_t currX);
+    std::optional<PixelInfo> renderPixelCGBGetObjInfo(uint32_t currX);
 
 
     Bus* mBus;
