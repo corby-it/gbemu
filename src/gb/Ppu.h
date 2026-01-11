@@ -770,6 +770,11 @@ private:
     bool mUseDmgCompatMode;
 
     uint32_t mDotCounter;
+
+    // window internal counters and flags
+    uint32_t mWinYCounter;
+    bool mWinRenderedOnCurrLine;
+
     OAMRegister mOamScanRegister;
 
     bool mFirstStep;

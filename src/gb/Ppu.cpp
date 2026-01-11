@@ -350,6 +350,10 @@ void PPU::reset()
 {
     mUseDmgCompatMode = false;
     mDotCounter = 0;
+
+    mWinYCounter = 0;
+    mWinRenderedOnCurrLine = false;
+
     mOamScanRegister.reset();
     mFirstStep = true;
 
@@ -674,6 +678,9 @@ bool PPU::step(uint32_t mCycles)
                 if (regs.LY < 144) {
                     oamScan();
 
+                    // reset the window rendered flag for this scanline
+                    mWinRenderedOnCurrLine = false;
+
                     // check if we have to trigger mode 2 (OAM Scan) STAT irq
                     if (regs.STAT.mode2IrqEnable) {
                         auto currIF = mBus->read8(mmap::regs::IF);
@@ -683,6 +690,9 @@ bool PPU::step(uint32_t mCycles)
                 
                 // as soon as we enter v-blank mode the ppu triggers the v-blank interrupt in the cpu
                 if (regs.LY == 144) {
+                    // reset window stuff
+                    mWinYCounter = 0; // the window counter is reset each time the PPU enters v-blank
+
                     auto currIF = mBus->read8(mmap::regs::IF);
                     uint8_t newIrqMask = Irqs::mask(Irqs::Type::VBlank);
 
@@ -705,11 +715,19 @@ bool PPU::step(uint32_t mCycles)
                     mBus->write8(mmap::regs::IF, Irqs::mask(Irqs::Type::Lcd) | currIF);
                 }
             }
-            // check if we have to trigger mode 0 (H-Blank) STAT irq
-            if (regs.STAT.mode0IrqEnable && mDotCounter == 252) {
-                auto currIF = mBus->read8(mmap::regs::IF);
-                mBus->write8(mmap::regs::IF, Irqs::mask(Irqs::Type::Lcd) | currIF);
+            // entering H-Blank mode
+            if (mDotCounter == 252) {
+                // check if we have to trigger mode 0 (H-Blank) STAT irq
+                if (regs.STAT.mode0IrqEnable) {
+                    auto currIF = mBus->read8(mmap::regs::IF);
+                    mBus->write8(mmap::regs::IF, Irqs::mask(Irqs::Type::Lcd) | currIF);
+                }
+
+                // also check if the internal window Y counter must be incremented
+                if (mWinRenderedOnCurrLine)
+                    mWinYCounter++;
             }
+            
             if (mFirstStep) {
                 mFirstStep = false;
                 oamScan();
@@ -991,8 +1009,7 @@ bool PPU::renderPixelDMGGetWinVal(uint32_t dispX, uint8_t& colorId)
     // check if the current display coordinate is inside the window
     uint32_t dispY = regs.LY;
     uint32_t winX = regs.WX - 7; // x coord of the window must always be shifted by 7
-    uint32_t winY = regs.WY;
-
+    
     if (dispY < regs.WY || dispX < winX) {
         colorId = 0;
         return false;
@@ -1000,7 +1017,7 @@ bool PPU::renderPixelDMGGetWinVal(uint32_t dispX, uint8_t& colorId)
 
     // find the coordinates in the background space
     uint32_t bgX = dispX - winX;
-    uint32_t bgY = dispY - winY;
+    uint32_t bgY = mWinYCounter;
 
     // get the current background tile map
     auto bgTileMap = vram.getTileMap(regs.LCDC.winTileMapArea);
@@ -1010,6 +1027,11 @@ bool PPU::renderPixelDMGGetWinVal(uint32_t dispX, uint8_t& colorId)
     auto bgTile = vram.getBgTile(bgTileId, regs.LCDC.bgWinTileDataArea);
 
     colorId = bgTile.get(bgX % 8, bgY % 8);
+    
+    // the window Y counter is incremented at the end of a scanline 
+    // but ONLY if the window is actually drawn on the current scanline,
+    // otherwise it's not touched and it doesn't follow the LY value
+    mWinRenderedOnCurrLine = true;
 
     return true;
 }
@@ -1260,9 +1282,15 @@ PPU::PixelInfo PPU::renderPixelCGBGetBgVal(uint32_t dispX)
     }
     else {
         // yes, use window coordinates
+        // the Y coordinates must also take into account the internal window Y counter
         bgX = dispX - winX;
-        bgY = dispY - regs.WY;
+        bgY = mWinYCounter;
         tileArea = regs.LCDC.winTileMapArea;
+
+        // the window Y counter is incremented at the end of a scanline 
+        // but ONLY if the window is actually drawn on the current scanline,
+        // otherwise it's not touched and it doesn't follow the LY value
+        mWinRenderedOnCurrLine = true;
     }
 
     // get the current tile id and background attributes
