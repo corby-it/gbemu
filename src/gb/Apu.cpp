@@ -2,6 +2,7 @@
 
 #include "Apu.h"
 #include "GameBoyCore.h"
+#include <tracy/Tracy.hpp>
 #include <cstring>
 #include <algorithm>
 #include <cassert>
@@ -352,6 +353,8 @@ void APU::updatePCMReg(uint32_t chId)
 
 bool APU::step(uint32_t mCycles)
 {
+    ZoneScoped;
+
     // for each cpu cycle we:
     // - run the onStep() function of each channel
     // - run the frame sequencer

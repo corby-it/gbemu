@@ -280,7 +280,7 @@ bool App::emulateFullSpeed(std::chrono::nanoseconds currTime)
     auto realTargetGbTime = emulateFor().value();
     // add the length (in ns) of the longest possible instruction so that we always emulate for at 
     // least the realTargetGbTime
-    auto targetGbTime = realTargetGbTime + (2 * CPU::longestInstructionCycles * timingInfo.machinePeriod);
+    auto targetGbTime = realTargetGbTime + (1000 * CPU::longestInstructionCycles * timingInfo.machinePeriod);
     
     nanoseconds elapsedGbTime = 0ns;
 

@@ -893,6 +893,8 @@ PPU::OAMDataPtrList PPU::findCurrOams(uint32_t currX) const
 
 void PPU::renderPixelDMG(uint32_t dispX)
 {
+    ZoneScoped;
+
     uint8_t bgColorId = 0;
     auto bgColorVal = whiteA;
   
@@ -952,6 +954,8 @@ void PPU::renderPixelDMG(uint32_t dispX)
 
 uint8_t PPU::renderPixelDMGGetBgVal(uint32_t dispX)
 {
+    ZoneScoped;
+
     // if bit 0 of the LCDC reg is false the background and window will be blank (white)
     if (!regs.LCDC.bgWinEnable)
         return 0;
@@ -975,6 +979,8 @@ uint8_t PPU::renderPixelDMGGetBgVal(uint32_t dispX)
 
 bool PPU::renderPixelDMGGetWinVal(uint32_t dispX, uint8_t& colorId)
 {
+    ZoneScoped;
+
     // if bit 0 of the LCDC reg is false the background and window will be blank (white)
     // if bit 5 of the LCDC reg is false the window is disabled
     if (!regs.LCDC.bgWinEnable || !regs.LCDC.winEnable) {
@@ -1010,6 +1016,8 @@ bool PPU::renderPixelDMGGetWinVal(uint32_t dispX, uint8_t& colorId)
 
 PPU::OAMPixelInfoList PPU::renderPixelGetObjsValues(uint32_t currX)
 {
+    ZoneScoped;
+
     // to find the color ids of the objects on the current pixel we first have to find from which
     // objects we have to extract color data
 
@@ -1085,6 +1093,8 @@ PPU::OAMPixelInfoList PPU::renderPixelGetObjsValues(uint32_t currX)
 
 std::optional<PPU::PixelInfo> PPU::renderPixelGetObjInfo(uint32_t currX)
 {
+    ZoneScoped;
+
     // to find the color ids of the objects on the current pixel we first have to find from which
     // objects we have to extract color
 
@@ -1180,6 +1190,8 @@ std::optional<PPU::PixelInfo> PPU::renderPixelGetObjInfo(uint32_t currX)
 
 void PPU::renderPixelCGB(uint32_t dispX)
 {
+    ZoneScoped;
+
     // get background info for this pixel
     auto bg = renderPixelCGBGetBgVal(dispX);
 
@@ -1228,6 +1240,8 @@ void PPU::renderPixelCGB(uint32_t dispX)
 
 PPU::PixelInfo PPU::renderPixelCGBGetBgVal(uint32_t dispX)
 {
+    ZoneScoped;
+
     // we are rendering the display pixel with coordinates (dispX, dispY)
     uint32_t dispY = regs.LY;
     uint32_t bgX = 0;
