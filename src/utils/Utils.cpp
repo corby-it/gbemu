@@ -14,8 +14,7 @@
 namespace fs = std::filesystem;
 
 
-
-void saveDisplayToFile(const GameBoy& gb, fs::path pngPath, uint32_t scaling)
+void saveDisplayToFile(const PPU& ppu, std::filesystem::path pngPath, uint32_t scaling)
 {
     if (fs::exists(pngPath)) {
         fs::remove(pngPath);
@@ -27,7 +26,7 @@ void saveDisplayToFile(const GameBoy& gb, fs::path pngPath, uint32_t scaling)
     static const auto w = Display::w;
     static const auto h = Display::h;
 
-    auto& buf = gb.ppu.display.getFrontBuf();
+    auto& buf = ppu.display.getFrontBuf();
 
     if (scaling <= 1) {
         stbi_write_png(pngPath.string().c_str(), w, h, 4, static_cast<const void*>(buf.ptr()), w * 4);
@@ -45,6 +44,7 @@ void saveDisplayToFile(const GameBoy& gb, fs::path pngPath, uint32_t scaling)
         free(upscaled);
     }
 }
+
 
 
 bool compareDisplayWithFile(const GameBoy& gb, std::filesystem::path pngPath)

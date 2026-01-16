@@ -678,12 +678,14 @@ public:
     void save(Archive& ar, uint32_t const /*version*/) const {
         ar(regs, colors, vram, oamRam, display);
         ar(mDotCounter, mFirstStep);
+        ar(mWinYCounter, mWinRenderedOnCurrLine);
     }
 
     template<class Archive>
     void load(Archive& ar, uint32_t const /*version*/) {
         ar(regs, colors, vram, oamRam, display);
         ar(mDotCounter, mFirstStep);
+        ar(mWinYCounter, mWinRenderedOnCurrLine);
 
         // since the oam scan register contains pointer to the memory it can't
         // be serialized directly, it's easier to do an oam scan now and fill it again

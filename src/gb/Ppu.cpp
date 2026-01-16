@@ -673,13 +673,14 @@ bool PPU::step(uint32_t mCycles)
                 // if the new value of the dot counter is zero it means it wrapped around 
                 // and a new line just started
                 regs.LY = (regs.LY + 1) % 154;
+                
+                // reset the window rendered flag for this scanline
+                mWinRenderedOnCurrLine = false;
 
                 // at the beginning of a non-vblank new line the ppu enters mode 2 so we scan the OAM now
                 if (regs.LY < 144) {
                     oamScan();
 
-                    // reset the window rendered flag for this scanline
-                    mWinRenderedOnCurrLine = false;
 
                     // check if we have to trigger mode 2 (OAM Scan) STAT irq
                     if (regs.STAT.mode2IrqEnable) {

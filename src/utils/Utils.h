@@ -6,7 +6,12 @@
 #include <filesystem>
 
 
-void saveDisplayToFile(const GameBoy& gb, std::filesystem::path pngPath, uint32_t scaling = 1);
+void saveDisplayToFile(const PPU& gb, std::filesystem::path pngPath, uint32_t scaling = 1);
+
+static inline void saveDisplayToFile(const GameBoy& gb, std::filesystem::path pngPath, uint32_t scaling = 1)
+{
+    saveDisplayToFile(gb.ppu, pngPath, scaling);
+}
 
 bool compareDisplayWithFile(const GameBoy& gb, std::filesystem::path pngPath);
 
