@@ -77,7 +77,7 @@
             "dependsOn": "premake gmake"
         },
         {
-            "label": "Build tests",
+            "label": "Build tests debug",
             "type": "shell",
             "group": "test",
             "presentation": {
@@ -94,6 +94,35 @@
                 "build",
                 "gbemu-tests",
                 "config=debug",
+                "-j8"
+            ],
+            "problemMatcher": {
+                "base": "$gcc",
+                "fileLocation": [
+                    "relative",
+                    "${workspaceFolder}/src"
+                ]
+            },
+            "dependsOn": "premake gmake"
+        },
+        {
+            "label": "Build tests release",
+            "type": "shell",
+            "group": "test",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": false
+            },
+            "command": "make",
+            "args": [
+                "-C",
+                "build",
+                "gbemu-tests",
+                "config=release",
                 "-j8"
             ],
             "problemMatcher": {
@@ -146,8 +175,8 @@
 				"showReuseMessage": true,
 				"clear": false
 			},
-			"dependsOn": "Build tests",
-			"command": "${workspaceFolder}/build/bin/debug/gbemu-tests",
+			"dependsOn": "Build tests release",
+			"command": "${workspaceFolder}/build/bin/release/gbemu-tests",
 			"problemMatcher": []
 		},
         {

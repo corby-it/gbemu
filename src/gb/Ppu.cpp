@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <array>
 #include <cstdlib>
+#include <ctime>
 
 
 const char* const plotDotCounter = "PPU_DotCounter";
@@ -339,9 +340,9 @@ namespace lcdreg = mmap::regs::lcd;
 
 
 PPU::PPU(Bus& bus)
-    : mBus(&bus)
+    : hdma(bus)
+    , mBus(&bus)
     , mIsCgb(false)
-    , hdma(bus)
 {
     reset();
 }
