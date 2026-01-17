@@ -17,7 +17,7 @@ using hr_clock = std::chrono::high_resolution_clock;
 
 
 static const fs::path testFilesRoot = getTestRoot();
-static const fs::path romsRoot = testFilesRoot / "MagenTests-0.5.0/bin";
+static const fs::path romsRoot = testFilesRoot / "MagenTests-0.5.0/roms";
 static const fs::path resultsRoot = testFilesRoot / "MagenTests-0.5.0/expected-results";
 
 
