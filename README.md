@@ -1,6 +1,6 @@
 # `gbemu` - GameBoy Emulator
 
-Repository for a multi-platform Gameboy emulator. This project's aim is to write an emulator for the original Gameboy in C++ and maybe extend the support to Gameboy Color in the future. No-one pretends to be working on the most cycle accurate emulator here, this is just a hobby project and a way to learn how to write a working emulator for a (relatively) simple platform.
+Repository for a multi-platform Gameboy emulator. This project's aim is to write an emulator for the original Gameboy and the Gameboy Color in C++. No-one pretends to be working on the most cycle accurate emulator here, this is just a hobby project and a way to learn how to write a working emulator for a (relatively) simple platform.
 
 Dependencies (as submodules or included in the repo):
 
@@ -23,7 +23,11 @@ Implemented features
 - Basically fully playable, almost all subsystems are implemented, audio included. Not all Gameboy quirks are implemented though.
 - The project can also be compiled as a `libretro` core
 - Partial unit testing.
-- Partial ROM testing (passes some Blargg's and Mooneye test roms).
+- Partial ROM testing:
+    * Passes some Blargg's and Mooneye test roms.
+    * Passes cgb-acid2 test.
+    * Passes dmg-acid2 test.
+    * Passes MagenTest tests.
 - Some debug features are present:
     * Register display
     * Loaded cartridge info
@@ -40,7 +44,6 @@ Some things still have to be implemented or improved:
 
 - Improve cycle accuracy
 - Improve test ROMs results
-- Gameboy Color support
 - Save states support in the `libretro` core
 - More unit testing
 - Improve code coverage
@@ -83,14 +86,18 @@ $> make gbemu-core config=release -j8
 
 ## Screenshots
 
-The main UI on Windows while playing Pokemon Red:
+The main UI on Windows while playing Pokemon Red emulated in the DMG:
 
-![Main UI on Windows](./screenshots/ui-windows.png)
+![Main UI on Windows](./screenshots/ui-win-dmg.png)
 
-Some game screenshot:
+The main UI on Windows while playing Pokemon Silver emulated in the CGB, showing also some background and tiles debug features:
+
+![Main UI on Windows](./screenshots/ui-win-cgb-bg-tiles.png)
+
+Some game screenshot from both DMG and CGB games:
 
 |  |  |
 |---|---|
-| ![Pokemon Red](./screenshots/pokemon-red.png) | ![The Legend of Zelda - Link's Awakening](./screenshots/links-awakening.png) |
-| ![Kirby's Dream Land 2](./screenshots/kirby.png) | ![Bubble Bobble](./screenshots/bubble-bobble.png) |
-| ![Tetris](./screenshots/tetris.png) | ![Super Mario Land 2](./screenshots/super-mario-land-2.png) |
+| ![Pokemon Red](./screenshots/pokemon-red.png) | ![Pokemon Silver](./screenshots/pokemon-silver.png) |
+| ![The Legend of Zelda - Link's Awakening](./screenshots/links-awakening.png) | ![The Legend of Zelda - Oracle Of Seasons](./screenshots/zelda-oracle-of-seasons.png) |
+| ![Super Mario Land 2](./screenshots/super-mario-land-2.png) | ![Super Mario Bros Deluxe](./screenshots/super-mario-bros-deluxe.png) |
