@@ -1,13 +1,17 @@
 
 
 #include "App.h"
+#include "Version.h"
 #include "utils/Utils.h"
+#include <imgui.h>
 #include <imgui/imgui_internal.h>
 #include <ImGuiFileDialog/ImGuiFileDialog.h>
 #include <imgui_memory_editor.h>
 #include <implot.h>
 #include <tracy/Tracy.hpp>
+#include <tracy/public/common/TracyVersion.hpp>
 #include <cereal/cereal.hpp>
+#include <cereal/version.hpp>
 #include <cereal/archives/json.hpp>
 #include <cassert>
 
@@ -390,6 +394,8 @@ void App::UICheckAudioInitialization()
 
 void App::UIDrawMenu()
 {
+    bool openAbout = false;
+
     if (ImGui::BeginMainMenuBar())
     {
         if (ImGui::BeginMenu("File")) {
@@ -450,9 +456,8 @@ void App::UIDrawMenu()
             }
             ImGui::EndMenu();
         }
-        if (ImGui::BeginMenu("About")) {
-            if (ImGui::MenuItem("About gbemu")) {}
-            ImGui::EndMenu();
+        if (ImGui::MenuItem("About")) {
+            openAbout = true;
         }
         ImGui::EndMainMenuBar();
     }
@@ -491,6 +496,34 @@ void App::UIDrawMenu()
         }
 
         ImGuiFileDialog::Instance()->Close();
+    }
+
+    if(openAbout)
+        ImGui::OpenPopup("About this software");
+
+    if (ImGui::BeginPopupModal("About this software", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::Text(PROJECT_NAME_STR " " VERSION_STR);
+        ImGui::Text("Gameboy and Gameboy Color emulator\n\n");
+        ImGui::Text("Author: Andrea Corbelli\n");
+        ImGui::Text("Github: https://github.com/corby-it/gbemu\n\n");
+
+        ImGui::Separator();
+        ImGui::Text("\n");
+        ImGui::Text("Libraries used in this project:");
+        ImGui::BulletText("ImGui v" IMGUI_VERSION);
+        ImGui::BulletText("ImPlot v" IMPLOT_VERSION);
+        ImGui::BulletText("ImGuiMemoryEditor v0.55");
+        ImGui::BulletText("ImGuiFileDialog v" IMGUIFILEDIALOG_VERSION);
+        ImGui::BulletText("cereal v%d.%d.%d", CEREAL_VERSION_MAJOR, CEREAL_VERSION_MINOR, CEREAL_VERSION_PATCH);
+        ImGui::BulletText("miniaudio v" MA_VERSION_STRING);
+        ImGui::BulletText("stb v2.30");
+        ImGui::BulletText("Tracy v%d.%d.%d", tracy::Version::Major, tracy::Version::Minor, tracy::Version::Patch);
+        ImGui::Text("\n");
+
+        if (ImGui::Button("Close", ImVec2(120, 0))) {
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
     }
 }
 

@@ -39,6 +39,7 @@ workspace(project_name)
     -- the only files common to both projects are the ones related
     -- to gameboy core emulation
     files {
+        src_base .. "/Version.h",
         src_base .. "/gb/**.cpp",
         src_base .. "/gb/**.h",
         src_base .. "/gbdebug/**.h",
@@ -123,9 +124,13 @@ workspace(project_name)
             src_base .. "/third-party/imgui/*.h",
             src_base .. "/third-party/imgui/backends/imgui_impl_glfw.cpp",
             src_base .. "/third-party/imgui/backends/imgui_impl_opengl3.cpp",
+            src_base .. "/third-party/ImGuiFileDialog/ImGuiFileDialog.h",
             src_base .. "/third-party/ImGuiFileDialog/ImGuiFileDialog.cpp",
+            src_base .. "/third-party/implot/implot.h",
             src_base .. "/third-party/implot/implot.cpp",
             src_base .. "/third-party/implot/implot_items.cpp",
+            src_base .. "/third-party/imgui_memory_editor.h",
+            src_base .. "/third-party/miniaudio/miniaudio.h",
         }
 
         externalincludedirs {
