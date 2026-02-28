@@ -20,6 +20,7 @@
 #include <chrono>
 #include <filesystem>
 #include <map>
+#include <array>
 
 
 
@@ -72,11 +73,23 @@ struct GBTimingInfo {
 
 
 // ------------------------------------------------------------------------------------------------
-// GameBoyIf
+// GameBoy
 // ------------------------------------------------------------------------------------------------
 
-typedef std::map<uint16_t, ReadWriteIf*>    AddressMap;
 
+struct EmptyAddrSpace : public ReadWriteIf {
+    // used to implement what happens when trying to access
+    // address space that is not connected to anything
+    
+    // reads return 0xff and writes have no effect
+
+    uint8_t read8(uint16_t /*addr*/) const override { return 0xff; }
+    void write8(uint16_t /*addr*/, uint8_t /*val*/) override {}
+};
+
+
+
+typedef std::map<uint16_t, ReadWriteIf*>    AddressMap;
 
 class GameBoy : public Bus {
 public:
@@ -108,8 +121,31 @@ public:
     CartridgeLoadingRes loadCartridge(const std::filesystem::path& path);
     CartridgeLoadingRes loadCartridge(const uint8_t* data, size_t size);
 
-    uint8_t read8(uint16_t addr) const override;
-    void write8(uint16_t addr, uint8_t val) override;
+    uint8_t read8(uint16_t addr) const override
+    {
+        uint8_t lo = (uint8_t)addr;
+        uint8_t hi = addr >> 8;
+
+        switch (hi) {
+        case 0xFE: return oamSpace[lo >> 4]->read8(addr);
+        case 0xFF: return regsSpace[lo]->read8(addr);
+        default:
+            return mainSpace[hi]->read8(addr);
+        }
+    }
+
+    void write8(uint16_t addr, uint8_t val) override
+    {
+        uint8_t lo = (uint8_t)addr;
+        uint8_t hi = addr >> 8;
+
+        switch (hi) {
+        case 0xFE: oamSpace[lo >> 4]->write8(addr, val); break;
+        case 0xFF: regsSpace[lo]->write8(addr, val); break;
+        default:
+            mainSpace[hi]->write8(addr, val);
+        }
+    }
 
 
     std::filesystem::path romFilePath;
@@ -126,6 +162,8 @@ public:
     HiRam hiRam;
     Infrared infrared;
     UndocumentedRegs undocRegs;
+
+    EmptyAddrSpace emptySpace;
 
 
     Status status;
@@ -168,15 +206,18 @@ public:
 
 
 private:
-    AddressMap initAddressMap();
+    void initAddrMap();
 
     void gbReset();
     void setupDMGCompatMode();
     
     GbStepRes gbStep();
 
+    // address maps
+    std::array<ReadWriteIf*, 256> mainSpace;
+    std::array<ReadWriteIf*, 16> oamSpace;
+    std::array<ReadWriteIf*, 256> regsSpace;
 
-    const AddressMap mAddrMap;
     GbType mType;
     bool mStepInstruction;
 

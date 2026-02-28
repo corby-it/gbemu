@@ -131,19 +131,8 @@ private:
 class GameBoyDirect : public Bus {
 public:
     GameBoyDirect()
-        : bins{}
-        , subBins{}
-        , regsBins{}
     {
-        for (auto& obj : bins) {
-            obj = &cpu;
-        }
-        for (auto& obj : subBins) {
-            obj = &ppu;
-        }
-        for (auto& obj : regsBins) {
-            obj = &apu;
-        }
+        initAddrMap();
     }
 
     uint8_t read8(uint16_t addr) const override
@@ -152,9 +141,10 @@ public:
         uint8_t hi = addr >> 8;
 
         switch (hi) {
-        case 0xFE: return subBins[lo]->read8(addr);
-        case 0xFF: return regsBins[lo]->read8(addr);
-        default: return bins[hi]->read8(addr);
+        case 0xFE: return oamSpace[lo >> 4]->read8(addr);
+        case 0xFF: return regsSpace[lo]->read8(addr);
+        default:
+            return mainSpace[hi]->read8(addr);
         }
     }
 
@@ -164,68 +154,157 @@ public:
         uint8_t hi = addr >> 8;
 
         switch (hi) {
-        case 0xFE: subBins[lo]->write8(addr, val); break;
-        case 0xFF: regsBins[lo]->write8(addr, val); break;
-        default: bins[hi]->write8(addr, val); break;
+        case 0xFE: oamSpace[lo >> 4]->write8(addr, val); break;
+        case 0xFF: regsSpace[lo]->write8(addr, val); break;
+        default:
+            mainSpace[hi]->write8(addr, val);
         }
     }
 
 private:
+    void initAddrMap()
+    {
+        // fill all address with the empty address space handler so that there 
+        // are no nullptrs in the arrays
+        mainSpace.fill(&emptySpace);
+        oamSpace.fill(&emptySpace);
+        regsSpace.fill(&emptySpace);
 
-    std::array<RWMock*, 256> bins;
-    std::array<RWMock*, 256> subBins;
-    std::array<RWMock*, 256> regsBins;
+        // the mainSpace map handles addresses from 00xx to FDxx using the upper byte of the address:
+        // - ROM (0000 - 7FFF)
+        // - VRAM (8000 - 9FFF)
+        // - external RAM (A000 - BFFF)
+        // - work RAM (C000 - DFFF)
+        // - echo RAM (E000 - FDFF)
+
+        for (uint32_t addr = mmap::rom::start >> 8; addr <= mmap::rom::end >> 8; addr++)
+            mainSpace[addr] = &cartridge;
+        for (uint32_t addr = mmap::vram::start >> 8; addr <= mmap::vram::end >> 8; addr++)
+            mainSpace[addr] = &ppu;
+        for (uint32_t addr = mmap::external_ram::start >> 8; addr <= mmap::external_ram::end >> 8; addr++)
+            mainSpace[addr] = &cartridge;
+        for (uint32_t addr = mmap::wram::start >> 8; addr <= mmap::wram::end >> 8; addr++)
+            mainSpace[addr] = &wram;
+        for (uint32_t addr = mmap::echoram::start >> 8; addr <= mmap::echoram::end >> 8; addr++)
+            mainSpace[addr] = &wram;
+
+        // the oamSpace map handles addresses from FE00 - FEFF using the top nibble of the lower byte:
+        // - OAM RAM (FE000 - FE9F)
+        // - forbidden space (FEA0 - FEFF), same as empty space
+
+        for (uint32_t addr = 0; addr < 0x0A; addr++)
+            oamSpace[addr] = &ppu;
+
+        // the regsSpace map handles addresses from FF00 - FFFF using the lower byte of the address:
+        // - registers (FF00 - FF7F)
+        // - high RAM (FF80 - FFFE)
+        // - interrupt enable reg (FFFF)
+
+        regsSpace[mmap::regs::joypad & 0xFF] = &joypad;
+        regsSpace[mmap::regs::serial_data & 0xFF] = &serial;
+        regsSpace[mmap::regs::serial_ctrl & 0xFF] = &serial;
+
+        for (uint32_t addr = mmap::regs::timer::start & 0xFF; addr <= (mmap::regs::timer::end & 0xFF); addr++)
+            regsSpace[addr] = &timer;
+
+        regsSpace[mmap::regs::IF & 0xFF] = &cpu;
+
+        for (uint32_t addr = mmap::regs::audio::start & 0xFF; addr <= (mmap::regs::audio::end & 0xFF); addr++)
+            regsSpace[addr] = &apu;
+
+        for (uint32_t addr = mmap::regs::lcd::start & 0xFF; addr <= (mmap::regs::lcd::end & 0xFF); addr++)
+            regsSpace[addr] = &ppu;
+
+        regsSpace[mmap::regs::lcd::dma & 0xFF] = &dma;
+        regsSpace[mmap::regs::key1 & 0xFF] = &cpu;
+        regsSpace[mmap::regs::vbk & 0xFF] = &ppu;
+
+        for (uint32_t addr = mmap::regs::hdma::start & 0xFF; addr <= (mmap::regs::hdma::end & 0xFF); addr++)
+            regsSpace[addr] = &ppu;
+
+        regsSpace[mmap::regs::infrared & 0xFF] = &infrared;
+
+        for (uint32_t addr = mmap::regs::col_palette::start & 0xFF; addr <= (mmap::regs::col_palette::end & 0xFF); addr++)
+            regsSpace[addr] = &ppu;
+
+        regsSpace[mmap::regs::svbk & 0xFF] = &wram;
+
+        for (uint32_t addr = mmap::regs::undocumented::start & 0xFF; addr <= (mmap::regs::undocumented::end & 0xFF); addr++)
+            regsSpace[addr] = &undocRegs;
+
+        regsSpace[mmap::regs::pcm12 & 0xFF] = &apu;
+        regsSpace[mmap::regs::pcm34 & 0xFF] = &apu;
+
+        for (uint32_t addr = mmap::hiram::start & 0xFF; addr <= (mmap::hiram::end & 0xFF); addr++)
+            regsSpace[addr] = &hiRam;
+
+        regsSpace[mmap::IE & 0xFF] = &cpu;
+    }
 
     RWMock cpu;
+    RWMock wram;
     RWMock ppu;
+    RWMock dma;
+    RWMock cartridge;
+    RWMock timer;
+    RWMock joypad;
     RWMock apu;
+    RWMock serial;
+    RWMock hiRam;
+    RWMock infrared;
+    RWMock undocRegs;
+
+    EmptyAddrSpace emptySpace;
+
+
+    std::array<ReadWriteIf*, 256> mainSpace;
+    std::array<ReadWriteIf*, 16> oamSpace;
+    std::array<ReadWriteIf*, 256> regsSpace;
 };
 
 
 
 
 
-
-
-TEST_CASE("Benchmark read/write") {
-
-    GameBoyMap gbMap;
-    GameBoyDirect gbDirect;
-
-    uint16_t lowAddr = 0xC00A;
-    uint16_t highAddr = 0xFFE0;
-
-    ankerl::nanobench::Bench benchLow;
-    benchLow.title("Read/write access - Low addr")
-        .unit("uint8_t")
-        .warmup(100)
-        .relative(true)
-        .performanceCounters(true);
-
-    benchLow.run("std::map", [&]() {
-        auto val = gbMap.read8(lowAddr);
-        ankerl::nanobench::doNotOptimizeAway(val);
-    });
-    benchLow.run("direct access", [&]() {
-        auto val = gbDirect.read8(lowAddr);
-        ankerl::nanobench::doNotOptimizeAway(val);
-    });
-
-
-    ankerl::nanobench::Bench benchHigh;
-    benchHigh.title("Read/write access - High addr")
-        .unit("uint8_t")
-        .warmup(100)
-        .relative(true)
-        .performanceCounters(true);
-
-    benchHigh.run("std::map", [&]() {
-        auto val = gbMap.read8(highAddr);
-        ankerl::nanobench::doNotOptimizeAway(val);
-    });
-    benchHigh.run("direct access", [&]() {
-        auto val = gbDirect.read8(highAddr);
-        ankerl::nanobench::doNotOptimizeAway(val);
-    });
-
-}
+//TEST_CASE("Benchmark read/write") {
+//
+//    GameBoyMap gbMap;
+//    GameBoyDirect gbDirect;
+//
+//    uint16_t lowAddr = 0xC00A;
+//    uint16_t highAddr = 0xFFE0;
+//
+//    ankerl::nanobench::Bench benchLow;
+//    benchLow.title("Read/write access - Low addr")
+//        .unit("uint8_t")
+//        .warmup(100)
+//        .relative(true)
+//        .performanceCounters(true);
+//
+//    benchLow.run("std::map", [&]() {
+//        auto val = gbMap.read8(lowAddr);
+//        ankerl::nanobench::doNotOptimizeAway(val);
+//    });
+//    benchLow.run("direct access", [&]() {
+//        auto val = gbDirect.read8(lowAddr);
+//        ankerl::nanobench::doNotOptimizeAway(val);
+//    });
+//
+//
+//    ankerl::nanobench::Bench benchHigh;
+//    benchHigh.title("Read/write access - High addr")
+//        .unit("uint8_t")
+//        .warmup(100)
+//        .relative(true)
+//        .performanceCounters(true);
+//
+//    benchHigh.run("std::map", [&]() {
+//        auto val = gbMap.read8(highAddr);
+//        ankerl::nanobench::doNotOptimizeAway(val);
+//    });
+//    benchHigh.run("direct access", [&]() {
+//        auto val = gbDirect.read8(highAddr);
+//        ankerl::nanobench::doNotOptimizeAway(val);
+//    });
+//
+//}

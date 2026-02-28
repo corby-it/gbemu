@@ -76,10 +76,11 @@ GameBoy::GameBoy()
     , serial(*this)
     , hiRam(mmap::hiram::start)
     , status(Status::Stopped)
-    , mAddrMap(initAddressMap())
     , mType(GbType::DMG)
     , mStepInstruction(false)
 {
+    initAddrMap();
+
     cpu.setIsCgb(false);
     wram.setIsCgb(false);
     ppu.setIsCgb(false);
@@ -90,69 +91,84 @@ GameBoy::GameBoy()
     gbReset();
 }
 
-AddressMap GameBoy::initAddressMap()
+
+void GameBoy::initAddrMap()
 {
-    // highlighted by comments are registers specific to the CGB
+    // fill all address with the empty address space handler so that there 
+    // are no nullptrs in the arrays
+    mainSpace.fill(&emptySpace);
+    oamSpace.fill(&emptySpace);
+    regsSpace.fill(&emptySpace);
 
-    AddressMap map = {
-        // memory -------------------------------------------------------------
-        { mmap::rom::start, &cartridge },
-        { mmap::rom::end, &cartridge },
-        { mmap::vram::start, &ppu.vram },
-        { mmap::vram::end, &ppu.vram },
-        { mmap::external_ram::start, &cartridge },
-        { mmap::external_ram::end, &cartridge },
-        { mmap::wram::start, &wram },
-        { mmap::wram::end, &wram },
-        { mmap::echoram::start, &wram },
-        { mmap::echoram::end, &wram },
-        { mmap::oam::start, &ppu.oamRam },
-        { mmap::oam::end, &ppu.oamRam },
-        { mmap::prohibited::start, nullptr },
-        { mmap::prohibited::end, nullptr },
+    // the mainSpace map handles addresses from 00xx to FDxx using the upper byte of the address:
+    // - ROM (0000 - 7FFF)
+    // - VRAM (8000 - 9FFF)
+    // - external RAM (A000 - BFFF)
+    // - work RAM (C000 - DFFF)
+    // - echo RAM (E000 - FDFF)
 
-        // control registers --------------------------------------------------
-        { mmap::regs::joypad, &joypad },
-        { mmap::regs::serial_data, &serial },
-        { mmap::regs::serial_ctrl, &serial },
-        { mmap::regs::timer::start - 1, nullptr },
-        { mmap::regs::timer::start, &timer },
-        { mmap::regs::timer::end, &timer },
-        { mmap::regs::IF - 1, nullptr },
-        { mmap::regs::IF, &cpu },
-        { mmap::regs::audio::start, &apu },
-        { mmap::regs::audio::end, &apu },
-        { mmap::regs::lcd::start, &ppu },
-        { mmap::regs::lcd::lyc, &ppu },
-        { mmap::regs::lcd::dma, &dma },
-        { mmap::regs::lcd::bgp, &ppu },
-        { mmap::regs::lcd::end, &ppu },
-        { mmap::regs::key0, nullptr },      // KEY0
-        { mmap::regs::key1, &cpu },         // KEY1
-        { mmap::regs::vbk - 1, nullptr },   // VBK
-        { mmap::regs::vbk, &ppu.vram },     // VBK
-        { mmap::regs::boot, nullptr },      // BOOT
-        { mmap::regs::hdma::start, &ppu.hdma },   // HDMA
-        { mmap::regs::hdma::end, &ppu.hdma },     // HDMA
-        { mmap::regs::infrared, &infrared },    // Infrared
-        { mmap::regs::col_palette::start - 1, nullptr },     // Color palette
-        { mmap::regs::col_palette::start, &ppu.colors },    // Color palette
-        { mmap::regs::col_palette::end, &ppu.colors },      // Color palette
-        { mmap::regs::opri, nullptr },      // OPRI
-        { mmap::regs::svbk - 1, nullptr },  // SVBK
-        { mmap::regs::svbk, &wram },        // SVBK
-        { mmap::regs::undocumented::start - 1, nullptr },   // undoc regs
-        { mmap::regs::undocumented::start, &undocRegs },    // undoc regs
-        { mmap::regs::undocumented::end, &undocRegs },      // undoc regs
-        { mmap::regs::pcm12, &apu },  // PCM regs
-        { mmap::regs::pcm34, &apu },  // PCM regs
-        { mmap::hiram::start - 1, nullptr },
-        { mmap::hiram::start, &hiRam },
-        { mmap::hiram::end, &hiRam },
-        { mmap::IE, &cpu },
-    };
+    for (uint32_t addr = mmap::rom::start >> 8; addr <= mmap::rom::end >> 8; addr++) 
+        mainSpace[addr] = &cartridge;
+    for (uint32_t addr = mmap::vram::start >> 8; addr <= mmap::vram::end >> 8; addr++)
+        mainSpace[addr] = &ppu.vram;
+    for (uint32_t addr = mmap::external_ram::start >> 8; addr <= mmap::external_ram::end >> 8; addr++)
+        mainSpace[addr] = &cartridge;
+    for (uint32_t addr = mmap::wram::start >> 8; addr <= mmap::wram::end >> 8; addr++)
+        mainSpace[addr] = &wram;
+    for (uint32_t addr = mmap::echoram::start >> 8; addr <= mmap::echoram::end >> 8; addr++)
+        mainSpace[addr] = &wram;
 
-    return map;
+    // the oamSpace map handles addresses from FE00 - FEFF using the top nibble of the lower byte:
+    // - OAM RAM (FE000 - FE9F)
+    // - forbidden space (FEA0 - FEFF), same as empty space
+    
+    for (uint32_t addr = 0; addr < 0x0A; addr++)
+        oamSpace[addr] = &ppu.oamRam;
+
+    // the regsSpace map handles addresses from FF00 - FFFF using the lower byte of the address:
+    // - registers (FF00 - FF7F)
+    // - high RAM (FF80 - FFFE)
+    // - interrupt enable reg (FFFF)
+
+    regsSpace[mmap::regs::joypad & 0xFF] = &joypad;
+    regsSpace[mmap::regs::serial_data & 0xFF] = &serial;
+    regsSpace[mmap::regs::serial_ctrl & 0xFF] = &serial;
+
+    for (uint32_t addr = mmap::regs::timer::start & 0xFF; addr <= (mmap::regs::timer::end & 0xFF); addr++)
+        regsSpace[addr] = &timer;
+
+    regsSpace[mmap::regs::IF & 0xFF] = &cpu;
+
+    for (uint32_t addr = mmap::regs::audio::start & 0xFF; addr <= (mmap::regs::audio::end & 0xFF); addr++)
+        regsSpace[addr] = &apu;
+
+    for (uint32_t addr = mmap::regs::lcd::start & 0xFF; addr <= (mmap::regs::lcd::end & 0xFF); addr++)
+        regsSpace[addr] = &ppu;
+
+    regsSpace[mmap::regs::lcd::dma & 0xFF] = &dma;
+    regsSpace[mmap::regs::key1 & 0xFF] = &cpu;
+    regsSpace[mmap::regs::vbk & 0xFF] = &ppu.vram;
+
+    for (uint32_t addr = mmap::regs::hdma::start & 0xFF; addr <= (mmap::regs::hdma::end & 0xFF); addr++)
+        regsSpace[addr] = &ppu.hdma;
+
+    regsSpace[mmap::regs::infrared & 0xFF] = &infrared;
+
+    for (uint32_t addr = mmap::regs::col_palette::start & 0xFF; addr <= (mmap::regs::col_palette::end & 0xFF); addr++)
+        regsSpace[addr] = &ppu.colors;
+
+    regsSpace[mmap::regs::svbk & 0xFF] = &wram;
+
+    for (uint32_t addr = mmap::regs::undocumented::start & 0xFF; addr <= (mmap::regs::undocumented::end & 0xFF); addr++)
+        regsSpace[addr] = &undocRegs;
+
+    regsSpace[mmap::regs::pcm12 & 0xFF] = &apu;
+    regsSpace[mmap::regs::pcm34 & 0xFF] = &apu;
+
+    for (uint32_t addr = mmap::hiram::start & 0xFF; addr <= (mmap::hiram::end & 0xFF); addr++)
+        regsSpace[addr] = &hiRam;
+
+    regsSpace[mmap::IE & 0xFF] = &cpu;
 }
 
 void GameBoy::gbReset()
@@ -486,25 +502,6 @@ void GameBoy::stepReturn()
     status = Status::Running;
 }
 
-uint8_t GameBoy::read8(uint16_t addr) const
-{
-    auto it = mAddrMap.lower_bound(addr);
-    if (it == mAddrMap.end())
-        return 0xff;
-
-    return it->second ? it->second->read8(addr) : 0xff;
-}
-
-void GameBoy::write8(uint16_t addr, uint8_t val)
-{
-    auto it = mAddrMap.lower_bound(addr);
-    if (it == mAddrMap.end())
-        return;
-
-    if (auto* writeObj = it->second; writeObj) {
-        writeObj->write8(addr, val);
-    }
-}
 
 
 CartridgeLoadingRes GameBoy::loadCartridge(const std::filesystem::path& path)
@@ -729,5 +726,3 @@ GbStepRes GameBoy::gbStep()
 
     return res;
 }
-
-
