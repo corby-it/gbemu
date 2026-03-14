@@ -765,9 +765,9 @@ bool PPU::step(uint32_t mCycles)
     lockRamAreas(regs.LCDC.lcdEnable);
 
 
-    TracyPlot(plotDotCounter, (int64_t)mDotCounter);
+    /*TracyPlot(plotDotCounter, (int64_t)mDotCounter);
     TracyPlot(plotLY, (int64_t)regs.LY);
-    TracyPlot(plotPpuMode, (int64_t)regs.STAT.ppuMode);
+    TracyPlot(plotPpuMode, (int64_t)regs.STAT.ppuMode);*/
 
     
     // handle HDMA transfers

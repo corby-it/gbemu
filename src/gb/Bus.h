@@ -5,7 +5,6 @@
 
 #include "Ram.h"
 #include "GbCommons.h"
-#include <queue>
 
 
 // the GB has a 16-bit address bus that connects the CPU to everything else.
@@ -24,6 +23,63 @@ enum class BusEvent {
 };
 
 
+template <size_t Size>
+class BusEventQueue {
+
+    static_assert((Size > 0) && ((Size & (Size - 1)) == 0), "Size must be a power of 2!");
+
+
+public:
+    BusEventQueue()
+        : mData{}
+        , mWHead(0)
+        , mRHead(0)
+        , mCount(0)
+    {}
+
+    void push(BusEvent evt) {
+        mData[mWHead] = evt;
+        inc(mWHead);
+
+        if (mCount < Size)
+            mCount++;
+
+        // if after incrementing the write head it's the same as
+        // the read head it means the queue is full and we just lost the oldest element
+        if (mWHead == mRHead)
+            inc(mRHead);
+    }
+
+    void pop() {
+        inc(mRHead);
+        if (mCount > 0)
+            mCount--;
+    }
+
+    BusEvent front() {
+        return mData[mRHead];
+    }
+
+    uint32_t size() const { return mCount; }
+    bool empty() const { return mCount == 0; }
+
+private:
+    void inc(uint32_t& head) {
+        head = (head + 1) & (Size - 1);
+    }
+
+    std::array<BusEvent, Size> mData;
+
+    uint32_t mWHead;
+    uint32_t mRHead;
+    uint32_t mCount;
+
+    // mWHead is the place where a new item will be pushed
+    // mRHead is the place on which front() and pop() will work on
+    // if mWHead and mRHead are the same the queue is empty
+};
+
+
 class Bus : public ReadWriteIf {
 public:
     virtual ~Bus() {}
@@ -36,8 +92,7 @@ public:
     void sendEvent(BusEvent evt) { mEvtQueue.push(evt); }
 
     
-
-    std::queue<BusEvent> mEvtQueue;
+    BusEventQueue<16> mEvtQueue;
 
 
 };
